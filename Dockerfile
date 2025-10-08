@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 3000
 
 # Start command using Railway's PORT environment variable
-CMD ["sh", "-c", "npx serve . -s -l ${PORT:-3000}"]
+CMD sh -c "npx serve . -s -l ${PORT:-3000}"

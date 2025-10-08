@@ -1,0 +1,34 @@
+{
+  "name": "noairlines-clone",
+  "version": "1.0.0",
+  "description": "A modern, responsive recreation of the NoAirlines private aviation website",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "npx serve .",
+    "dev": "npx live-server --port=3000"
+  },
+  "keywords": [
+    "private-jet",
+    "aviation",
+    "responsive",
+    "html5",
+    "css3",
+    "javascript",
+    "clone",
+    "noairlines"
+  ],
+  "author": "Developer",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2",
+    "serve": "^14.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "local"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

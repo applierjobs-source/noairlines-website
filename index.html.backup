@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoAirlines - Experience the Freedom To Fly</title>
+    <meta name="description" content="NoAirlines is an extensive global private aviation network, providing access to hand-selected aircraft across all cabin classes.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <h1>NoAirlines</h1>
+                </div>
+                <div class="nav-menu">
+                    <a href="#fleet" class="nav-link">The Fleet</a>
+                    <a href="#membership" class="nav-link">Charter Membership</a>
+                    <a href="#benefits" class="nav-link">Member Benefits</a>
+                    <a href="#flights" class="nav-link">Shared Flights</a>
+                </div>
+                <div class="nav-toggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-background">
+            <div class="hero-overlay"></div>
+        </div>
+        <div class="hero-content">
+            <h1 class="hero-title">Experience the<br><span class="hero-highlight">Freedom To Fly</span></h1>
+            
+            <!-- Flight Search Form -->
+            <div class="search-container">
+                <div class="search-tabs">
+                    <button class="search-tab active" data-type="one-way">One-way</button>
+                    <button class="search-tab" data-type="round-trip">Round trip</button>
+                    <button class="search-tab" data-type="multi-leg">Multi-leg</button>
+                </div>
+                
+                <div class="search-form">
+                    <div class="search-row">
+                        <div class="search-field">
+                            <label>From</label>
+                            <div class="dropdown-container">
+                                <input type="text" placeholder="Departure city" class="search-input" id="fromInput" autocomplete="off">
+                                <div class="dropdown" id="fromDropdown"></div>
+                            </div>
+                        </div>
+                        <div class="search-field">
+                            <label>To</label>
+                            <div class="dropdown-container">
+                                <input type="text" placeholder="Destination city" class="search-input" id="toInput" autocomplete="off">
+                                <div class="dropdown" id="toDropdown"></div>
+                            </div>
+                        </div>
+                        <div class="search-field">
+                            <label>Date and time</label>
+                            <input type="datetime-local" class="search-input">
+                        </div>
+                        <div class="search-field">
+                            <label>Passengers</label>
+                            <select class="search-input" id="passengers">
+                                <option value="1">1 Passenger</option>
+                                <option value="2">2 Passengers</option>
+                                <option value="3">3 Passengers</option>
+                                <option value="4">4 Passengers</option>
+                                <option value="5">5 Passengers</option>
+                                <option value="6">6 Passengers</option>
+                                <option value="7">7 Passengers</option>
+                                <option value="8">8 Passengers</option>
+                                <option value="9">9 Passengers</option>
+                                <option value="10">10+ Passengers</option>
+                            </select>
+                        </div>
+                        <button class="search-button">
+                            <i class="fas fa-search"></i>
+                            Search
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Easy Way Section -->
+    <section class="easy-way">
+        <div class="container">
+            <h2 class="section-title">The Easy Way<br><span class="section-highlight">to Fly Private</span></h2>
+            <div class="easy-way-content">
+                <div class="easy-way-text">
+                    <p>NoAirlines is an extensive global private aviation network, providing access to hand–selected aircraft across all cabin classes. Search and book a private charter in seconds from your mobile device to almost anywhere in the world. Our aviation experts are available 24/7 to help you find the perfect plane for your journey.</p>
+                    <div class="contact-info">
+                        <p><strong>Private Flights and Membership:</strong> +1 (866) 709-3018</p>
+                        <button class="app-button">
+                            <i class="fas fa-mobile-alt"></i>
+                            Get the NoAirlines mobile app
+                        </button>
+                    </div>
+                </div>
+                <div class="easy-way-features">
+                    <div class="feature">
+                        <i class="fas fa-globe"></i>
+                        <h3>Global Network</h3>
+                        <p>Access to more than 2,000 hand–selected aircraft across all cabin classes</p>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-route"></i>
+                        <h3>60,000 Routes</h3>
+                        <p>Search and book on 60,000 routes worldwide</p>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-headset"></i>
+                        <h3>24/7 Support</h3>
+                        <p>Our aviation experts are available around the clock</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Fleet Section -->
+    <section class="fleet" id="fleet">
+        <div class="container">
+            <h2 class="section-title">An Unrivaled<br><span class="section-highlight">Global Fleet</span></h2>
+            <div class="fleet-content">
+                <p>NoAirlines offers access to one of the most extensive fleets in the industry — thousands of premium aircraft across all cabin classes. This also features the unrivaled Vista Members' fleet, including super-midsize to ultra-long-range aircraft and the world-renowned Gulfstream and Global 7500 jets.</p>
+                <button class="cta-button">Explore the fleet</button>
+            </div>
+            <div class="fleet-grid">
+                <div class="aircraft-card">
+                    <div class="aircraft-image">
+                        <i class="fas fa-plane"></i>
+                    </div>
+                    <h3>Light Jets</h3>
+                    <p>Perfect for short-haul flights with unmatched efficiency</p>
+                </div>
+                <div class="aircraft-card">
+                    <div class="aircraft-image">
+                        <i class="fas fa-plane"></i>
+                    </div>
+                    <h3>Midsize Jets</h3>
+                    <p>Ideal balance of range, comfort, and performance</p>
+                </div>
+                <div class="aircraft-card">
+                    <div class="aircraft-image">
+                        <i class="fas fa-plane"></i>
+                    </div>
+                    <h3>Heavy Jets</h3>
+                    <p>Maximum comfort for long-range international flights</p>
+                </div>
+                <div class="aircraft-card">
+                    <div class="aircraft-image">
+                        <i class="fas fa-plane"></i>
+                    </div>
+                    <h3>Ultra-Long Range</h3>
+                    <p>Global reach with unmatched luxury and performance</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Jet Deals Section -->
+    <section class="jet-deals" id="deals">
+        <div class="container">
+            <h2 class="section-title">Current<br><span class="section-highlight">Jet Deals</span></h2>
+            <div class="deals-carousel">
+                <div class="deal-card featured">
+                    <div class="deal-badge">Featured</div>
+                    <div class="deal-content">
+                        <h3>Book Now for Exceptional Shuttle Flight Pricing</h3>
+                        <p>SLATE Aviation has partnered with NoAirlines to provide enhanced by-the-seat shuttle flight experiences.</p>
+                        <div class="deal-info">
+                            <span class="deal-schedule">Schedule now available through February 2026</span>
+                            <div class="deal-contact">
+                                <p>Contact Slate or call (954) 869-8796</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="deals-navigation">
+                <button class="nav-dot active"></button>
+                <span class="deal-counter">1 of 0</span>
+                <p class="deal-subtitle">All featured private jet flights</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- News Section -->
+    <section class="news">
+        <div class="container">
+            <h2 class="section-title">News and<br><span class="section-highlight">Updates</span></h2>
+            <div class="news-grid">
+                <article class="news-item">
+                    <div class="news-date">
+                        <span class="news-month">Sep</span>
+                        <span class="news-day">29</span>
+                        <span class="news-year">2025</span>
+                    </div>
+                    <div class="news-content">
+                        <h3>Wherever You're Headed, NoAirlines Gets You There</h3>
+                        <p class="news-type">News</p>
+                    </div>
+                </article>
+                <article class="news-item">
+                    <div class="news-date">
+                        <span class="news-month">Sep</span>
+                        <span class="news-day">8</span>
+                        <span class="news-year">2025</span>
+                    </div>
+                    <div class="news-content">
+                        <h3>VistaJet is Now The First Foreign Operator To Fly Within Saudi Arabia</h3>
+                        <p class="news-type">Press release</p>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Get Started</h4>
+                    <ul>
+                        <li><a href="#">Register</a></li>
+                        <li><a href="#">NoAirlines Mobile App</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Private Jet Service</h4>
+                    <ul>
+                        <li><a href="#">How NoAirlines Works</a></li>
+                        <li><a href="#">Ways to Fly</a></li>
+                        <li><a href="#">Jet Deals</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Why NoAirlines</h4>
+                    <ul>
+                        <li><a href="#">The NoAirlines Experience</a></li>
+                        <li><a href="#">NoAirlines Memberships</a></li>
+                        <li><a href="#">The Fleet</a></li>
+                        <li><a href="#">Private Charter</a></li>
+                        <li><a href="#">Private Jet Cost</a></li>
+                        <li><a href="#">Aircraft Management</a></li>
+                        <li><a href="#">Health & Safety</a></li>
+                        <li><a href="#">Carbon Offset Program</a></li>
+                        <li><a href="#">Member Benefits</a></li>
+                        <li><a href="#">Member Referrals</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>About Us</h4>
+                    <ul>
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">News</a></li>
+                        <li><a href="#">Press</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">FAQs</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Vista</a></li>
+                        <li><a href="#">Legal</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Destinations</h4>
+                    <ul>
+                        <li><a href="#">Popular Countries</a></li>
+                        <li><a href="#">Popular Destinations</a></li>
+                        <li><a href="#">Popular Routes</a></li>
+                        <li><a href="#">Popular Airports</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>For Partners</h4>
+                    <ul>
+                        <li><a href="#">Partner With Us</a></li>
+                        <li><a href="#">For Operators</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <div class="footer-location">
+                    <i class="fas fa-flag"></i>
+                    <span>United States</span>
+                </div>
+                <div class="footer-certifications">
+                    <span>wyvern</span>
+                    <span>nbaa</span>
+                    <span>is-bao</span>
+                    <span>argus</span>
+                    <span>ebaa</span>
+                </div>
+                <div class="footer-social">
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                </div>
+            </div>
+            
+            <div class="footer-legal">
+                <p>The NoAirlines brand is comprised of a portfolio of companies, including NoAirlines Global LLC, NoAirlines Assets LLC, and Apollo Jets, LLC. NoAirlines Global LLC, an air charter broker, is not a direct air carrier and does not own or operate any aircraft. All flights will be operated by properly licensed U.S. or foreign air carriers. NoAirlines Assets LLC and its sister companies beneficially own or lease the Vista Members' fleet. All services are subject to the terms and conditions available at www.flynoairlines.com/legal. Fla. Seller of Travel Ref. No. ST42114. All crowdfunded flights are Public Charters organized by NoAirlines Global LLC under 14 CFR Part 380. The identity of the properly licensed air carrier performing the crowdfunded flight will be disclosed once the flight is confirmed. Crowdfunded and shared flights are subject to NoAirlines' Public Charter Operator Participant Agreement.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
+

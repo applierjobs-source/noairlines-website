@@ -893,3 +893,92 @@ if (typeof module !== 'undefined' && module.exports) {
         AirportDropdown
     };
 }
+
+// Flight Search Form Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Passenger counter functionality
+    const passengerMinus = document.getElementById('passenger-minus');
+    const passengerPlus = document.getElementById('passenger-plus');
+    const passengerCount = document.getElementById('passenger-count');
+    
+    if (passengerMinus && passengerPlus && passengerCount) {
+        let currentPassengers = 2;
+        
+        passengerMinus.addEventListener('click', () => {
+            if (currentPassengers > 1) {
+                currentPassengers--;
+                passengerCount.textContent = currentPassengers;
+            }
+        });
+        
+        passengerPlus.addEventListener('click', () => {
+            if (currentPassengers < 20) {
+                currentPassengers++;
+                passengerCount.textContent = currentPassengers;
+            }
+        });
+    }
+    
+    // Swap locations functionality
+    const swapButton = document.getElementById('swap-locations');
+    const fromLocation = document.getElementById('from-location');
+    const toLocation = document.getElementById('to-location');
+    
+    if (swapButton && fromLocation && toLocation) {
+        swapButton.addEventListener('click', () => {
+            const fromValue = fromLocation.value;
+            const toValue = toLocation.value;
+            
+            fromLocation.value = toValue;
+            toLocation.value = fromValue;
+        });
+    }
+    
+    // Form submission handling
+    const flightSearchForm = document.querySelector('.flight-search-form');
+    if (flightSearchForm) {
+        flightSearchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Get form data
+            const formData = {
+                tripType: document.querySelector('input[name="trip-type"]:checked').value,
+                charterType: document.querySelector('.charter-select').value,
+                from: fromLocation.value,
+                to: toLocation.value,
+                dateTime: document.getElementById('date-time').value,
+                passengers: currentPassengers
+            };
+            
+            // Basic validation
+            if (!formData.from || !formData.to) {
+                alert('Please enter both departure and arrival locations.');
+                return;
+            }
+            
+            if (!formData.dateTime) {
+                alert('Please select a date and time.');
+                return;
+            }
+            
+            // Show notification (placeholder for actual search functionality)
+            showNotification('Search functionality coming soon! Please contact quotes@noairlines.com for immediate assistance.');
+        });
+    }
+    
+    // Set default date to tomorrow
+    const dateTimeInput = document.getElementById('date-time');
+    if (dateTimeInput) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(10, 0); // Default to 10:00 AM
+        
+        const year = tomorrow.getFullYear();
+        const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        const day = String(tomorrow.getDate()).padStart(2, '0');
+        const hours = String(tomorrow.getHours()).padStart(2, '0');
+        const minutes = String(tomorrow.getMinutes()).padStart(2, '0');
+        
+        dateTimeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+});

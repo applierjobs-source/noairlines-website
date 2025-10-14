@@ -255,7 +255,7 @@ export default function NoAirlinesBooking() {
                     </Button>
                     <Button
                       onClick={nextStep}
-                      className="flex-1 h-14 text-lg bg-red-600 hover:bg-red-500"
+                      className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500"
                     >
                       Continue <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>

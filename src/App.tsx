@@ -16,9 +16,28 @@ export default function NoAirlinesBooking() {
   const [tripType, setTripType] = useState<TripType>(null)
   const [email, setEmail] = useState("")
   const [name, setName] = useState("")
+  const [returnDate, setReturnDate] = useState("")
+  const [returnTime, setReturnTime] = useState("")
 
-  const nextStep = () => setStep(step + 1)
-  const prevStep = () => setStep(step - 1)
+  const nextStep = () => {
+    // If selecting round-trip on step 5, go to return flight step (step 6)
+    if (step === 5 && tripType === "round-trip") {
+      setStep(6) // Go to return flight step
+    } else {
+      setStep(step + 1)
+    }
+  }
+  
+  const prevStep = () => {
+    // If on email step and round-trip, go back to return flight step
+    if (step === 7 && tripType === "round-trip") {
+      setStep(6) // Go back to return flight step
+    } else if (step === 6 && tripType === "round-trip") {
+      setStep(5) // Go back to trip type selection
+    } else {
+      setStep(step - 1)
+    }
+  }
 
   const handleSubmit = () => {
     console.log({
@@ -31,7 +50,7 @@ export default function NoAirlinesBooking() {
       email,
       name
     })
-    setStep(9) // Go to success screen
+    setStep(10) // Go to success screen
   }
 
   const pageVariants = {
@@ -59,13 +78,13 @@ export default function NoAirlinesBooking() {
                 <motion.div
                   className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
                   initial={{ width: "0%" }}
-                  animate={{ width: `${(step / 8) * 100}%` }}
+                  animate={{ width: `${(step / 9) * 100}%` }}
                   transition={{ duration: 0.5, ease: "easeInOut" }}
                 />
               </div>
               <div className="flex justify-between mt-2">
-                <span className="text-xs text-zinc-600">Step {step} of 8</span>
-                <span className="text-xs text-zinc-600">{Math.round((step / 8) * 100)}%</span>
+                <span className="text-xs text-zinc-600">Step {step} of 9</span>
+                <span className="text-xs text-zinc-600">{Math.round((step / 9) * 100)}%</span>
               </div>
             </div>
           </div>
@@ -329,8 +348,66 @@ export default function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 6: Email */}
-            {step === 6 && (
+            {/* Step 6: Return Flight (Round Trip Only) */}
+            {step === 6 && tripType === "round-trip" && (
+              <motion.div
+                key="step6-return"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="space-y-8"
+              >
+                <div className="text-center space-y-4">
+                  <Calendar className="h-16 w-16 mx-auto text-blue-600" />
+                  <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+                    When's your return flight?
+                  </h1>
+                </div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm text-zinc-600">Return Date</label>
+                      <Input
+                        type="date"
+                        value={returnDate}
+                        onChange={(e) => setReturnDate(e.target.value)}
+                        className="h-14 text-lg bg-white border-zinc-300 text-black"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm text-zinc-600">Return Time</label>
+                      <Input
+                        type="time"
+                        value={returnTime}
+                        onChange={(e) => setReturnTime(e.target.value)}
+                        className="h-14 text-lg bg-white border-zinc-300 text-black"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={prevStep}
+                      className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
+                    >
+                      <ArrowLeft className="mr-2 h-5 w-5" /> Back
+                    </Button>
+                    <Button
+                      onClick={nextStep}
+                      disabled={!returnDate || !returnTime}
+                      className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Continue <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 7: Email */}
+            {step === 7 && (
               <motion.div
                 key="step6"
                 variants={pageVariants}
@@ -374,8 +451,8 @@ export default function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 7: Name */}
-            {step === 7 && (
+            {/* Step 8: Name */}
+            {step === 8 && (
               <motion.div
                 key="step7"
                 variants={pageVariants}
@@ -419,8 +496,8 @@ export default function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 8: Summary */}
-            {step === 8 && (
+            {/* Step 9: Summary */}
+            {step === 9 && (
               <motion.div
                 key="step8"
                 variants={pageVariants}
@@ -448,9 +525,15 @@ export default function NoAirlinesBooking() {
                       <div className="text-lg font-semibold">{toLocation}</div>
                     </div>
                     <div>
-                      <div className="text-sm text-zinc-600">Date & Time</div>
+                      <div className="text-sm text-zinc-600">Departure</div>
                       <div className="text-lg font-semibold">{date} at {time}</div>
                     </div>
+                    {tripType === "round-trip" && (
+                      <div>
+                        <div className="text-sm text-zinc-600">Return</div>
+                        <div className="text-lg font-semibold">{returnDate} at {returnTime}</div>
+                      </div>
+                    )}
                     <div>
                       <div className="text-sm text-zinc-600">Passengers</div>
                       <div className="text-lg font-semibold">{passengers}</div>
@@ -485,7 +568,7 @@ export default function NoAirlinesBooking() {
             )}
 
             {/* Success Screen */}
-            {step === 9 && (
+            {step === 10 && (
               <motion.div
                 key="step9"
                 variants={pageVariants}

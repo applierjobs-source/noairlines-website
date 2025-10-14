@@ -1,36 +1,40 @@
 {
-  "name": "noairlines-clone",
+  "name": "noairlines",
   "version": "1.0.0",
-  "description": "A modern, responsive recreation of the NoAirlines private aviation website",
-  "main": "index.html",
+  "type": "module",
+  "description": "NoAirlines - Private Jet Charter Landing Page",
   "scripts": {
-    "start": "node server.js",
-    "serve": "npx serve .",
-    "dev": "npx live-server --port=3000"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "framer-motion": "^10.16.16",
+    "lucide-react": "^0.294.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8",
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.32",
+    "autoprefixer": "^10.4.16"
   },
   "keywords": [
     "private-jet",
     "aviation",
-    "responsive",
-    "html5",
-    "css3",
-    "javascript",
-    "clone",
-    "noairlines"
+    "react",
+    "typescript",
+    "tailwindcss"
   ],
   "author": "Developer",
-  "license": "MIT",
-  "dependencies": {
-    "serve": "^14.2.1"
-  },
-  "devDependencies": {
-    "live-server": "^1.2.2"
-  },
-  "repository": {
-    "type": "git",
-    "url": "local"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  }
+  "license": "MIT"
 }

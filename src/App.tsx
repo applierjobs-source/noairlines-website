@@ -37,9 +37,9 @@ export default function NoAirlinesBooking() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <div className="min-h-screen bg-white text-black flex flex-col">
       {/* Header */}
-      <header className="border-b border-zinc-900 bg-black/90 backdrop-blur sticky top-0 z-50">
+      <header className="border-b border-zinc-300 bg-white/90 backdrop-blur sticky top-0 z-50">
         <div className="mx-auto max-w-4xl px-6 py-6">
           <div className="flex items-center justify-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center">
@@ -51,7 +51,7 @@ export default function NoAirlinesBooking() {
           {/* Progress Bar */}
           <div className="mt-6">
             <div className="relative">
-              <div className="h-2 bg-zinc-900 rounded-full overflow-hidden">
+              <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
                   initial={{ width: "0%" }}
@@ -60,8 +60,8 @@ export default function NoAirlinesBooking() {
                 />
               </div>
               <div className="flex justify-between mt-2">
-                <span className="text-xs text-zinc-500">Step {step} of 5</span>
-                <span className="text-xs text-zinc-500">{Math.round((step / 5) * 100)}%</span>
+                <span className="text-xs text-zinc-600">Step {step} of 5</span>
+                <span className="text-xs text-zinc-600">{Math.round((step / 5) * 100)}%</span>
               </div>
             </div>
           </div>
@@ -96,7 +96,7 @@ export default function NoAirlinesBooking() {
                     value={fromLocation}
                     onChange={(e) => setFromLocation(e.target.value)}
                     placeholder="Enter departure city or airport code"
-                    className="h-14 text-lg bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500"
+                    className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
                     autoFocus
                   />
                   <Button
@@ -133,13 +133,13 @@ export default function NoAirlinesBooking() {
                     value={toLocation}
                     onChange={(e) => setToLocation(e.target.value)}
                     placeholder="Enter destination city or airport code"
-                    className="h-14 text-lg bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500"
+                    className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
                     autoFocus
                   />
                   <div className="flex gap-3">
                     <Button
                       onClick={prevStep}
-                      className="h-14 text-lg bg-transparent border-2 border-white text-white hover:bg-white hover:text-black min-w-[120px] transition-colors"
+                      className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
                     >
                       <ArrowLeft className="mr-2 h-5 w-5" /> Back
                     </Button>
@@ -178,7 +178,7 @@ export default function NoAirlinesBooking() {
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="h-14 text-lg bg-zinc-900 border-zinc-800 text-white"
+                        className="h-14 text-lg bg-white border-zinc-300 text-black"
                         autoFocus
                       />
                     </div>
@@ -188,14 +188,14 @@ export default function NoAirlinesBooking() {
                         type="time"
                         value={time}
                         onChange={(e) => setTime(e.target.value)}
-                        className="h-14 text-lg bg-zinc-900 border-zinc-800 text-white"
+                        className="h-14 text-lg bg-white border-zinc-300 text-black"
                       />
                     </div>
                   </div>
                   <div className="flex gap-3">
                     <Button
                       onClick={prevStep}
-                      className="h-14 text-lg bg-transparent border-2 border-white text-white hover:bg-white hover:text-black min-w-[120px] transition-colors"
+                      className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
                     >
                       <ArrowLeft className="mr-2 h-5 w-5" /> Back
                     </Button>
@@ -233,7 +233,7 @@ export default function NoAirlinesBooking() {
                     <Button
                       onClick={() => setPassengers(Math.max(1, passengers - 1))}
                       variant="outline"
-                      className="h-16 w-16 text-2xl border-zinc-700 hover:bg-zinc-900"
+                      className="h-16 w-16 text-2xl border-zinc-300 hover:bg-zinc-100"
                     >
                       −
                     </Button>
@@ -241,7 +241,7 @@ export default function NoAirlinesBooking() {
                     <Button
                       onClick={() => setPassengers(Math.min(20, passengers + 1))}
                       variant="outline"
-                      className="h-16 w-16 text-2xl border-zinc-700 hover:bg-zinc-900"
+                      className="h-16 w-16 text-2xl border-zinc-300 hover:bg-zinc-100"
                     >
                       +
                     </Button>
@@ -249,7 +249,7 @@ export default function NoAirlinesBooking() {
                   <div className="flex gap-3">
                     <Button
                       onClick={prevStep}
-                      className="h-14 text-lg bg-transparent border-2 border-white text-white hover:bg-white hover:text-black min-w-[120px] transition-colors"
+                      className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
                     >
                       <ArrowLeft className="mr-2 h-5 w-5" /> Back
                     </Button>
@@ -288,28 +288,28 @@ export default function NoAirlinesBooking() {
                       className={`h-32 rounded-xl border-2 transition-all ${
                         tripType === "one-way"
                           ? "border-blue-600 bg-blue-600/10"
-                          : "border-zinc-800 hover:border-zinc-700"
+                          : "border-zinc-300 hover:border-zinc-400"
                       }`}
                     >
                       <div className="text-2xl font-semibold">One-way</div>
-                      <div className="text-sm text-zinc-400 mt-2">Single flight</div>
+                      <div className="text-sm text-zinc-600 mt-2">Single flight</div>
                     </button>
                     <button
                       onClick={() => setTripType("round-trip")}
                       className={`h-32 rounded-xl border-2 transition-all ${
                         tripType === "round-trip"
                           ? "border-blue-600 bg-blue-600/10"
-                          : "border-zinc-800 hover:border-zinc-700"
+                          : "border-zinc-300 hover:border-zinc-400"
                       }`}
                     >
                       <div className="text-2xl font-semibold">Round Trip</div>
-                      <div className="text-sm text-zinc-400 mt-2">Return flight included</div>
+                      <div className="text-sm text-zinc-600 mt-2">Return flight included</div>
                     </button>
                   </div>
                   <div className="flex gap-3">
                     <Button
                       onClick={prevStep}
-                      className="h-14 text-lg bg-transparent border-2 border-white text-white hover:bg-white hover:text-black min-w-[120px] transition-colors"
+                      className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
                     >
                       <ArrowLeft className="mr-2 h-5 w-5" /> Back
                     </Button>
@@ -329,8 +329,8 @@ export default function NoAirlinesBooking() {
       </main>
 
       {/* Footer with Legal Text */}
-      <footer className="border-t border-zinc-900 bg-black">
-        <div className="mx-auto max-w-4xl px-6 py-6 text-center text-xs text-zinc-500">
+      <footer className="border-t border-zinc-300 bg-white">
+        <div className="mx-auto max-w-4xl px-6 py-6 text-center text-xs text-zinc-600">
           <p>
             NoAirlines.com acts as an air charter broker and is not a direct air carrier. All
             flights are operated by FAA-certificated Part 135 air carriers who exercise full

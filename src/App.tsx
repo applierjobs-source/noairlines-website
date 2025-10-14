@@ -362,7 +362,7 @@ export default function NoAirlinesBooking() {
                 <div className="text-center space-y-4">
                   <Calendar className="h-16 w-16 mx-auto text-blue-600" />
                   <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
-                    When's your return flight?
+                    When would you like to return?
                   </h1>
                 </div>
                 <div className="space-y-4">

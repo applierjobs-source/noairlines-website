@@ -109,17 +109,34 @@ export default function NoAirlinesBooking() {
           if (response.ok) {
             const data = await response.json()
             console.log('API Response data:', data)
+            console.log('Response type:', typeof data)
+            console.log('Is array:', Array.isArray(data))
             
             // Handle different response formats
             if (Array.isArray(data)) {
+              console.log('Returning array data:', data)
               return data
             } else if (data && Array.isArray(data.cities)) {
+              console.log('Returning cities array:', data.cities)
               return data.cities
             } else if (data && Array.isArray(data.airports)) {
+              console.log('Returning airports array:', data.airports)
               return data.airports
             } else if (data && Array.isArray(data.results)) {
+              console.log('Returning results array:', data.results)
               return data.results
+            } else if (data && typeof data === 'object') {
+              console.log('Data is object, checking for arrays inside:', Object.keys(data))
+              // Check if any property is an array
+              for (const key in data) {
+                if (Array.isArray(data[key])) {
+                  console.log(`Found array property: ${key}`, data[key])
+                  return data[key]
+                }
+              }
             }
+            
+            console.log('No valid array found in response')
           }
         } catch (endpointError) {
           console.log('Endpoint failed:', endpointError)
@@ -202,21 +219,52 @@ export default function NoAirlinesBooking() {
   }
 
   // Helper function to format airport display
-  const formatAirportDisplay = (airport: Airport): string => {
-    const city = airport.city || airport.nameIata || airport.nameAirport || 'Unknown'
-    const code = airport.codeIata || airport.codeIataAirport || ''
+  const formatAirportDisplay = (airport: any): string => {
+    console.log('Formatting airport:', airport) // Debug log
+    
+    // Try different field combinations from Aviation Edge API
+    const city = airport.city || 
+                 airport.nameIata || 
+                 airport.nameAirport || 
+                 airport.name || 
+                 airport.cityName ||
+                 airport.nameCity ||
+                 'Unknown'
+    
+    const code = airport.codeIata || 
+                 airport.codeIataAirport || 
+                 airport.iata || 
+                 airport.airportCode ||
+                 airport.code ||
+                 ''
+    
     return code ? `${city} (${code})` : city
   }
 
   // Helper function to get airport name
-  const getAirportName = (airport: Airport): string => {
-    return airport.name || airport.nameAirport || airport.city || airport.nameIata || 'Unknown Airport'
+  const getAirportName = (airport: any): string => {
+    return airport.nameAirport || 
+           airport.name || 
+           airport.airportName ||
+           airport.nameIata || 
+           airport.city || 
+           'Unknown Airport'
   }
 
   // Helper function to get airport location
-  const getAirportLocation = (airport: Airport): string => {
-    const city = airport.city || airport.nameIata || ''
-    const country = airport.country || airport.nameCountry || ''
+  const getAirportLocation = (airport: any): string => {
+    const city = airport.city || 
+                 airport.nameIata || 
+                 airport.cityName ||
+                 airport.nameCity ||
+                 ''
+    
+    const country = airport.country || 
+                    airport.nameCountry || 
+                    airport.countryName ||
+                    airport.nameCountry ||
+                    ''
+    
     return city && country ? `${city} • ${country}` : (city || country || 'Unknown Location')
   }
 

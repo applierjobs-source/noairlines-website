@@ -7,11 +7,18 @@ import { Input } from "@/components/ui/input"
 type TripType = "one-way" | "round-trip" | null
 
 interface Airport {
-  codeIata: string
-  codeIcao: string
-  name: string
-  city: string
-  country: string
+  codeIata?: string
+  codeIcao?: string
+  name?: string
+  city?: string
+  country?: string
+  // Aviation Edge API fields
+  nameIata?: string
+  nameAirport?: string
+  nameCountry?: string
+  codeIataAirport?: string
+  codeIcaoAirport?: string
+  codeIso2Country?: string
 }
 
 const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
@@ -69,59 +76,98 @@ export default function NoAirlinesBooking() {
     setStep(10) // Go to success screen
   }
 
-  // Fallback airport data for testing
-  const fallbackAirports: Airport[] = [
-    { codeIata: "JFK", codeIcao: "KJFK", name: "John F. Kennedy International Airport", city: "New York", country: "United States" },
-    { codeIata: "LAX", codeIcao: "KLAX", name: "Los Angeles International Airport", city: "Los Angeles", country: "United States" },
-    { codeIata: "LHR", codeIcao: "EGLL", name: "London Heathrow Airport", city: "London", country: "United Kingdom" },
-    { codeIata: "CDG", codeIcao: "LFPG", name: "Charles de Gaulle Airport", city: "Paris", country: "France" },
-    { codeIata: "NRT", codeIcao: "RJAA", name: "Narita International Airport", city: "Tokyo", country: "Japan" },
-    { codeIata: "DXB", codeIcao: "OMDB", name: "Dubai International Airport", city: "Dubai", country: "United Arab Emirates" },
-    { codeIata: "SIN", codeIcao: "WSSS", name: "Singapore Changi Airport", city: "Singapore", country: "Singapore" },
-    { codeIata: "HKG", codeIcao: "VHHH", name: "Hong Kong International Airport", city: "Hong Kong", country: "Hong Kong" }
-  ]
-
-  // Airport search function
+  // Airport search function using Aviation Edge API
   const searchAirports = async (query: string): Promise<Airport[]> => {
     if (query.length < 2) return []
     
-    // First try fallback data for immediate testing
-    const fallbackResults = fallbackAirports.filter(airport => 
-      airport.city.toLowerCase().includes(query.toLowerCase()) ||
-      airport.codeIata.toLowerCase().includes(query.toLowerCase()) ||
-      airport.name.toLowerCase().includes(query.toLowerCase())
-    )
-    
-    if (fallbackResults.length > 0) {
-      console.log('Using fallback results:', fallbackResults)
-      return fallbackResults
-    }
-    
-    // Try API call
     try {
-      const response = await fetch(
+      console.log('Making API request for:', query)
+      
+      // Try multiple API endpoints as per documentation
+      const endpoints = [
         `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&city=${encodeURIComponent(query)}`,
-        {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
+        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&q=${encodeURIComponent(query)}`,
+        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&search=${encodeURIComponent(query)}`
+      ]
+      
+      for (const endpoint of endpoints) {
+        try {
+          console.log('Trying endpoint:', endpoint)
+          
+          const response = await fetch(endpoint, {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          })
+          
+          console.log('Response status:', response.status)
+          console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+          
+          if (response.ok) {
+            const data = await response.json()
+            console.log('API Response data:', data)
+            
+            // Handle different response formats
+            if (Array.isArray(data)) {
+              return data
+            } else if (data && Array.isArray(data.cities)) {
+              return data.cities
+            } else if (data && Array.isArray(data.airports)) {
+              return data.airports
+            } else if (data && Array.isArray(data.results)) {
+              return data.results
+            }
+          }
+        } catch (endpointError) {
+          console.log('Endpoint failed:', endpointError)
+          continue
         }
-      )
-      
-      console.log('API Response status:', response.status)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
       }
       
-      const data = await response.json()
-      console.log('API Response data:', data)
-      return Array.isArray(data) ? data : []
+      // If all endpoints fail, try with a proxy or different approach
+      throw new Error('All API endpoints failed')
+      
     } catch (error) {
-      console.error('Error fetching airports:', error)
-      console.log('Falling back to static data')
-      return fallbackResults
+      console.error('Error fetching airports from API:', error)
+      
+      // Try alternative approach - fetch from airports database
+      try {
+        console.log('Trying airports database endpoint...')
+        const response = await fetch(
+          `https://aviation-edge.com/v2/public/airports?key=${AVIATION_EDGE_API_KEY}`,
+          {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+              'Accept': 'application/json',
+            },
+          }
+        )
+        
+        if (response.ok) {
+          const allAirports = await response.json()
+          console.log('Got all airports, filtering for:', query)
+          
+          const filtered = allAirports.filter((airport: any) => 
+            airport.nameIata && (
+              airport.nameIata.toLowerCase().includes(query.toLowerCase()) ||
+              airport.nameAirport?.toLowerCase().includes(query.toLowerCase()) ||
+              airport.nameCountry?.toLowerCase().includes(query.toLowerCase()) ||
+              airport.codeIataAirport?.toLowerCase().includes(query.toLowerCase())
+            )
+          ).slice(0, 10)
+          
+          console.log('Filtered results:', filtered)
+          return filtered
+        }
+      } catch (dbError) {
+        console.error('Database endpoint also failed:', dbError)
+      }
+      
+      return []
     }
   }
 
@@ -155,15 +201,34 @@ export default function NoAirlinesBooking() {
     }
   }
 
+  // Helper function to format airport display
+  const formatAirportDisplay = (airport: Airport): string => {
+    const city = airport.city || airport.nameIata || airport.nameAirport || 'Unknown'
+    const code = airport.codeIata || airport.codeIataAirport || ''
+    return code ? `${city} (${code})` : city
+  }
+
+  // Helper function to get airport name
+  const getAirportName = (airport: Airport): string => {
+    return airport.name || airport.nameAirport || airport.city || airport.nameIata || 'Unknown Airport'
+  }
+
+  // Helper function to get airport location
+  const getAirportLocation = (airport: Airport): string => {
+    const city = airport.city || airport.nameIata || ''
+    const country = airport.country || airport.nameCountry || ''
+    return city && country ? `${city} • ${country}` : (city || country || 'Unknown Location')
+  }
+
   // Select airport from suggestions
   const selectFromAirport = (airport: Airport) => {
-    setFromLocation(`${airport.city} (${airport.codeIata})`)
+    setFromLocation(formatAirportDisplay(airport))
     setFromSuggestions([])
     setShowFromSuggestions(false)
   }
 
   const selectToAirport = (airport: Airport) => {
-    setToLocation(`${airport.city} (${airport.codeIata})`)
+    setToLocation(formatAirportDisplay(airport))
     setToSuggestions([])
     setShowToSuggestions(false)
   }
@@ -262,10 +327,10 @@ export default function NoAirlinesBooking() {
                             className="w-full px-4 py-3 text-left hover:bg-zinc-50 border-b border-zinc-100 last:border-b-0"
                           >
                             <div className="font-semibold text-black">
-                              {airport.city} ({airport.codeIata})
+                              {formatAirportDisplay(airport)}
                             </div>
                             <div className="text-sm text-zinc-600">
-                              {airport.name} • {airport.country}
+                              {getAirportName(airport)} • {getAirportLocation(airport)}
                             </div>
                           </button>
                         ))}
@@ -319,10 +384,10 @@ export default function NoAirlinesBooking() {
                             className="w-full px-4 py-3 text-left hover:bg-zinc-50 border-b border-zinc-100 last:border-b-0"
                           >
                             <div className="font-semibold text-black">
-                              {airport.city} ({airport.codeIata})
+                              {formatAirportDisplay(airport)}
                             </div>
                             <div className="text-sm text-zinc-600">
-                              {airport.name} • {airport.country}
+                              {getAirportName(airport)} • {getAirportLocation(airport)}
                             </div>
                           </button>
                         ))}

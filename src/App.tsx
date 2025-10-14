@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane } from "lucide-react"
+import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -14,6 +14,8 @@ export default function NoAirlinesBooking() {
   const [time, setTime] = useState("")
   const [passengers, setPassengers] = useState(1)
   const [tripType, setTripType] = useState<TripType>(null)
+  const [email, setEmail] = useState("")
+  const [name, setName] = useState("")
 
   const nextStep = () => setStep(step + 1)
   const prevStep = () => setStep(step - 1)
@@ -25,9 +27,11 @@ export default function NoAirlinesBooking() {
       date,
       time,
       passengers,
-      tripType
+      tripType,
+      email,
+      name
     })
-    alert(`Quote requested for ${passengers} passenger(s) from ${fromLocation} to ${toLocation}`)
+    setStep(9) // Go to success screen
   }
 
   const pageVariants = {
@@ -55,13 +59,13 @@ export default function NoAirlinesBooking() {
                 <motion.div
                   className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
                   initial={{ width: "0%" }}
-                  animate={{ width: `${(step / 5) * 100}%` }}
+                  animate={{ width: `${(step / 8) * 100}%` }}
                   transition={{ duration: 0.5, ease: "easeInOut" }}
                 />
               </div>
               <div className="flex justify-between mt-2">
-                <span className="text-xs text-zinc-600">Step {step} of 5</span>
-                <span className="text-xs text-zinc-600">{Math.round((step / 5) * 100)}%</span>
+                <span className="text-xs text-zinc-600">Step {step} of 8</span>
+                <span className="text-xs text-zinc-600">{Math.round((step / 8) * 100)}%</span>
               </div>
             </div>
           </div>
@@ -314,13 +318,195 @@ export default function NoAirlinesBooking() {
                       <ArrowLeft className="mr-2 h-5 w-5" /> Back
                     </Button>
                     <Button
-                      onClick={handleSubmit}
+                      onClick={nextStep}
                       disabled={!tripType}
                       className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Get Quotes
+                      Continue <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 6: Email */}
+            {step === 6 && (
+              <motion.div
+                key="step6"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="space-y-8"
+              >
+                <div className="text-center space-y-4">
+                  <Mail className="h-16 w-16 mx-auto text-blue-600" />
+                  <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+                    What's your email address?
+                  </h1>
+                </div>
+                <div className="space-y-4">
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email address"
+                    className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
+                    autoFocus
+                  />
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={prevStep}
+                      className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
+                    >
+                      <ArrowLeft className="mr-2 h-5 w-5" /> Back
+                    </Button>
+                    <Button
+                      onClick={nextStep}
+                      disabled={!email.trim()}
+                      className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Continue <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 7: Name */}
+            {step === 7 && (
+              <motion.div
+                key="step7"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="space-y-8"
+              >
+                <div className="text-center space-y-4">
+                  <Users className="h-16 w-16 mx-auto text-blue-600" />
+                  <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+                    What's your name?
+                  </h1>
+                </div>
+                <div className="space-y-4">
+                  <Input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
+                    autoFocus
+                  />
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={prevStep}
+                      className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
+                    >
+                      <ArrowLeft className="mr-2 h-5 w-5" /> Back
+                    </Button>
+                    <Button
+                      onClick={nextStep}
+                      disabled={!name.trim()}
+                      className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Continue <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 8: Summary */}
+            {step === 8 && (
+              <motion.div
+                key="step8"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="space-y-8"
+              >
+                <div className="text-center space-y-4">
+                  <Plane className="h-16 w-16 mx-auto text-blue-600" />
+                  <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+                    Review Your Itinerary
+                  </h1>
+                </div>
+                
+                <div className="bg-zinc-50 rounded-xl p-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-zinc-600">From</div>
+                      <div className="text-lg font-semibold">{fromLocation}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-zinc-600">To</div>
+                      <div className="text-lg font-semibold">{toLocation}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-zinc-600">Date & Time</div>
+                      <div className="text-lg font-semibold">{date} at {time}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-zinc-600">Passengers</div>
+                      <div className="text-lg font-semibold">{passengers}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-zinc-600">Trip Type</div>
+                      <div className="text-lg font-semibold capitalize">{tripType?.replace('-', ' ')}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-zinc-600">Contact</div>
+                      <div className="text-lg font-semibold">{name}</div>
+                      <div className="text-sm text-zinc-600">{email}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    onClick={prevStep}
+                    className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
+                  >
+                    <ArrowLeft className="mr-2 h-5 w-5" /> Back
+                  </Button>
+                  <Button
+                    onClick={handleSubmit}
+                    className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500"
+                  >
+                    Get Quote
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Success Screen */}
+            {step === 9 && (
+              <motion.div
+                key="step9"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="space-y-8 text-center"
+              >
+                <div className="space-y-4">
+                  <div className="h-16 w-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+                    Thank you!
+                  </h1>
+                  <p className="text-lg text-zinc-600 max-w-md mx-auto">
+                    We have received your itinerary. You will receive a quote to your inbox within 1 hour.
+                  </p>
                 </div>
               </motion.div>
             )}

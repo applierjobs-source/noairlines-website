@@ -31,21 +31,39 @@ export default function NoAirlinesBooking() {
   }
 
   const pageVariants = {
-    initial: { opacity: 0, x: 50 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -50 }
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 }
   }
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Header */}
-      <header className="border-b border-zinc-900 bg-black/80 backdrop-blur">
-        <div className="mx-auto max-w-4xl px-6 py-4">
-          <div className="flex items-center gap-3">
+      <header className="border-b border-zinc-900 bg-black/90 backdrop-blur sticky top-0 z-50">
+        <div className="mx-auto max-w-4xl px-6 py-6">
+          <div className="flex items-center justify-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-red-600 flex items-center justify-center">
               <Plane className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-semibold tracking-tight">NoAirlines</span>
+            <span className="text-2xl font-bold tracking-tight">NoAirlines</span>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="mt-6">
+            <div className="relative">
+              <div className="h-2 bg-zinc-900 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-red-600 to-red-500"
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${(step / 5) * 100}%` }}
+                  transition={{ duration: 0.5, ease: "easeInOut" }}
+                />
+              </div>
+              <div className="flex justify-between mt-2">
+                <span className="text-xs text-zinc-500">Step {step} of 5</span>
+                <span className="text-xs text-zinc-500">{Math.round((step / 5) * 100)}%</span>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -53,20 +71,6 @@ export default function NoAirlinesBooking() {
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl">
-          {/* Progress Indicator */}
-          <div className="mb-12">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <div
-                  key={s}
-                  className={`h-2 rounded-full transition-all ${
-                    s === step ? "w-12 bg-red-600" : s < step ? "w-8 bg-red-800" : "w-8 bg-zinc-800"
-                  }`}
-                />
-              ))}
-            </div>
-            <p className="text-center text-sm text-zinc-400">Step {step} of 5</p>
-          </div>
 
           <AnimatePresence mode="wait">
             {/* Step 1: From Location */}
@@ -77,7 +81,7 @@ export default function NoAirlinesBooking() {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
                 className="space-y-8"
               >
                 <div className="text-center space-y-4">
@@ -114,7 +118,7 @@ export default function NoAirlinesBooking() {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
                 className="space-y-8"
               >
                 <div className="text-center space-y-4">
@@ -160,7 +164,7 @@ export default function NoAirlinesBooking() {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
                 className="space-y-8"
               >
                 <div className="text-center space-y-4">
@@ -217,7 +221,7 @@ export default function NoAirlinesBooking() {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
                 className="space-y-8"
               >
                 <div className="text-center space-y-4">
@@ -271,7 +275,7 @@ export default function NoAirlinesBooking() {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
                 className="space-y-8"
               >
                 <div className="text-center space-y-4">

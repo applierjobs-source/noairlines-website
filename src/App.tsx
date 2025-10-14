@@ -80,19 +80,24 @@ export default function NoAirlinesBooking() {
     setStep(10) // Go to success screen
   }
 
-  // Airport search function using Aviation Edge API
-  const searchAirports = async (query: string): Promise<Airport[]> => {
-    if (query.length < 2) return []
-    
-    try {
-      console.log('Making API request for:', query)
-      
-      // Try multiple API endpoints as per documentation
-      const endpoints = [
-        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&city=${encodeURIComponent(query)}`,
-        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&q=${encodeURIComponent(query)}`,
-        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&search=${encodeURIComponent(query)}`
-      ]
+        // Airport search function using Aviation Edge API
+        const searchAirports = async (query: string): Promise<Airport[]> => {
+          if (query.length < 2) return []
+          
+          try {
+            console.log('Making API request for:', query)
+            
+            // Try multiple API endpoints with different search strategies
+            const endpoints = [
+              // First try exact airport code search
+              `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&airport=${encodeURIComponent(query)}`,
+              // Then try city search
+              `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&city=${encodeURIComponent(query)}`,
+              // Then try general search
+              `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&q=${encodeURIComponent(query)}`,
+              // Finally try search parameter
+              `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&search=${encodeURIComponent(query)}`
+            ]
       
       for (const endpoint of endpoints) {
         try {
@@ -151,49 +156,126 @@ export default function NoAirlinesBooking() {
         }
       }
       
-      // If all endpoints fail, try with a proxy or different approach
-      throw new Error('All API endpoints failed')
-      
-    } catch (error) {
-      console.error('Error fetching airports from API:', error)
-      
-      // Try alternative approach - fetch from airports database
-      try {
-        console.log('Trying airports database endpoint...')
-        const response = await fetch(
-          `https://aviation-edge.com/v2/public/airports?key=${AVIATION_EDGE_API_KEY}`,
-          {
-            method: 'GET',
-            mode: 'cors',
-            headers: {
-              'Accept': 'application/json',
-            },
+            // If all endpoints fail, try with a proxy or different approach
+            throw new Error('All API endpoints failed')
+            
+          } catch (error) {
+            console.error('Error fetching airports from API:', error)
+            
+            // Try alternative approach - fetch from airports database
+            try {
+              console.log('Trying airports database endpoint...')
+              const response = await fetch(
+                `https://aviation-edge.com/v2/public/airports?key=${AVIATION_EDGE_API_KEY}`,
+                {
+                  method: 'GET',
+                  mode: 'cors',
+                  headers: {
+                    'Accept': 'application/json',
+                  },
+                }
+              )
+              
+              if (response.ok) {
+                const allAirports = await response.json()
+                console.log('Got all airports, filtering for:', query)
+                
+                const filtered = allAirports.filter((airport: any) => 
+                  airport.nameIata && (
+                    airport.nameIata.toLowerCase().includes(query.toLowerCase()) ||
+                    airport.nameAirport?.toLowerCase().includes(query.toLowerCase()) ||
+                    airport.nameCountry?.toLowerCase().includes(query.toLowerCase()) ||
+                    airport.codeIataAirport?.toLowerCase().includes(query.toLowerCase())
+                  )
+                ).slice(0, 10)
+                
+                console.log('Filtered results:', filtered)
+                return filtered
+              }
+            } catch (dbError) {
+              console.error('Database endpoint also failed:', dbError)
+            }
+            
+            return []
           }
-        )
-        
-        if (response.ok) {
-          const allAirports = await response.json()
-          console.log('Got all airports, filtering for:', query)
-          
-          const filtered = allAirports.filter((airport: any) => 
-            airport.nameIata && (
-              airport.nameIata.toLowerCase().includes(query.toLowerCase()) ||
-              airport.nameAirport?.toLowerCase().includes(query.toLowerCase()) ||
-              airport.nameCountry?.toLowerCase().includes(query.toLowerCase()) ||
-              airport.codeIataAirport?.toLowerCase().includes(query.toLowerCase())
-            )
-          ).slice(0, 10)
-          
-          console.log('Filtered results:', filtered)
-          return filtered
         }
-      } catch (dbError) {
-        console.error('Database endpoint also failed:', dbError)
-      }
-      
-      return []
-    }
-  }
+
+        // Helper function to sort and filter results intelligently
+        const sortAndFilterResults = (results: any[], query: string): any[] => {
+          if (!results || results.length === 0) return []
+          
+          const queryLower = query.toLowerCase().trim()
+          
+          // Define US states for better filtering
+          const usStates = [
+            'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado', 'connecticut',
+            'delaware', 'florida', 'georgia', 'hawaii', 'idaho', 'illinois', 'indiana', 'iowa',
+            'kansas', 'kentucky', 'louisiana', 'maine', 'maryland', 'massachusetts', 'michigan',
+            'minnesota', 'mississippi', 'missouri', 'montana', 'nebraska', 'nevada', 'new hampshire',
+            'new jersey', 'new mexico', 'new york', 'north carolina', 'north dakota', 'ohio',
+            'oklahoma', 'oregon', 'pennsylvania', 'rhode island', 'south carolina', 'south dakota',
+            'tennessee', 'texas', 'utah', 'vermont', 'virginia', 'washington', 'west virginia',
+            'wisconsin', 'wyoming'
+          ]
+          
+          const isUSStateQuery = usStates.includes(queryLower)
+          
+          // Score and sort results
+          const scoredResults = results.map(airport => {
+            let score = 0
+            const airportName = (airport.nameAirport || '').toLowerCase()
+            const cityName = (airport.nameCity || '').toLowerCase()
+            const countryName = (airport.nameCountry || '').toLowerCase()
+            const airportCode = (airport.codeIataAirport || '').toLowerCase()
+            
+            // Exact airport code match (highest priority)
+            if (airportCode === queryLower) {
+              score += 1000
+            }
+            
+            // Airport name starts with query (high priority)
+            if (airportName.startsWith(queryLower)) {
+              score += 500
+            }
+            
+            // Airport name contains query
+            if (airportName.includes(queryLower)) {
+              score += 200
+            }
+            
+            // City name starts with query
+            if (cityName.startsWith(queryLower)) {
+              score += 150
+            }
+            
+            // City name contains query
+            if (cityName.includes(queryLower)) {
+              score += 100
+            }
+            
+            // Country/state matching
+            if (countryName.includes(queryLower)) {
+              score += 50
+            }
+            
+            // US state query prioritization
+            if (isUSStateQuery && countryName.includes('united states')) {
+              score += 200
+            }
+            
+            // Penalize non-US results for US state queries
+            if (isUSStateQuery && !countryName.includes('united states')) {
+              score -= 100
+            }
+            
+            return { ...airport, score }
+          })
+          
+          // Sort by score (highest first) and return top 8 results
+          return scoredResults
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 8)
+        }
 
   // Handle from location input
   const handleFromLocationChange = async (value: string) => {
@@ -202,8 +284,10 @@ export default function NoAirlinesBooking() {
       console.log('Searching for:', value) // Debug log
       const airports = await searchAirports(value)
       console.log('Found airports:', airports) // Debug log
-      setFromSuggestions(airports.slice(0, 5)) // Limit to 5 suggestions
-      setShowFromSuggestions(airports.length > 0)
+      const sortedAirports = sortAndFilterResults(airports, value)
+      console.log('Sorted airports:', sortedAirports)
+      setFromSuggestions(sortedAirports)
+      setShowFromSuggestions(sortedAirports.length > 0)
     } else {
       setFromSuggestions([])
       setShowFromSuggestions(false)
@@ -217,8 +301,10 @@ export default function NoAirlinesBooking() {
       console.log('Searching for:', value) // Debug log
       const airports = await searchAirports(value)
       console.log('Found airports:', airports) // Debug log
-      setToSuggestions(airports.slice(0, 5)) // Limit to 5 suggestions
-      setShowToSuggestions(airports.length > 0)
+      const sortedAirports = sortAndFilterResults(airports, value)
+      console.log('Sorted airports:', sortedAirports)
+      setToSuggestions(sortedAirports)
+      setShowToSuggestions(sortedAirports.length > 0)
     } else {
       setToSuggestions([])
       setShowToSuggestions(false)

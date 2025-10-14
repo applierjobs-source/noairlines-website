@@ -1,10 +1,20 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 type TripType = "one-way" | "round-trip" | null
+
+interface Airport {
+  codeIata: string
+  codeIcao: string
+  name: string
+  city: string
+  country: string
+}
+
+const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
 
 export default function NoAirlinesBooking() {
   const [step, setStep] = useState(1)
@@ -18,6 +28,12 @@ export default function NoAirlinesBooking() {
   const [name, setName] = useState("")
   const [returnDate, setReturnDate] = useState("")
   const [returnTime, setReturnTime] = useState("")
+  const [fromSuggestions, setFromSuggestions] = useState<Airport[]>([])
+  const [toSuggestions, setToSuggestions] = useState<Airport[]>([])
+  const [showFromSuggestions, setShowFromSuggestions] = useState(false)
+  const [showToSuggestions, setShowToSuggestions] = useState(false)
+  const fromInputRef = useRef<HTMLInputElement>(null)
+  const toInputRef = useRef<HTMLInputElement>(null)
 
   const nextStep = () => {
     // If selecting round-trip on step 5, go to return flight step (step 6)
@@ -52,6 +68,76 @@ export default function NoAirlinesBooking() {
     })
     setStep(10) // Go to success screen
   }
+
+  // Airport search function
+  const searchAirports = async (query: string): Promise<Airport[]> => {
+    if (query.length < 2) return []
+    
+    try {
+      const response = await fetch(
+        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&city=${encodeURIComponent(query)}`
+      )
+      const data = await response.json()
+      return data || []
+    } catch (error) {
+      console.error('Error fetching airports:', error)
+      return []
+    }
+  }
+
+  // Handle from location input
+  const handleFromLocationChange = async (value: string) => {
+    setFromLocation(value)
+    if (value.length >= 2) {
+      const airports = await searchAirports(value)
+      setFromSuggestions(airports.slice(0, 5)) // Limit to 5 suggestions
+      setShowFromSuggestions(true)
+    } else {
+      setFromSuggestions([])
+      setShowFromSuggestions(false)
+    }
+  }
+
+  // Handle to location input
+  const handleToLocationChange = async (value: string) => {
+    setToLocation(value)
+    if (value.length >= 2) {
+      const airports = await searchAirports(value)
+      setToSuggestions(airports.slice(0, 5)) // Limit to 5 suggestions
+      setShowToSuggestions(true)
+    } else {
+      setToSuggestions([])
+      setShowToSuggestions(false)
+    }
+  }
+
+  // Select airport from suggestions
+  const selectFromAirport = (airport: Airport) => {
+    setFromLocation(`${airport.city} (${airport.codeIata})`)
+    setFromSuggestions([])
+    setShowFromSuggestions(false)
+  }
+
+  const selectToAirport = (airport: Airport) => {
+    setToLocation(`${airport.city} (${airport.codeIata})`)
+    setToSuggestions([])
+    setShowToSuggestions(false)
+  }
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (fromInputRef.current && !fromInputRef.current.contains(event.target as Node)) {
+        setShowFromSuggestions(false)
+      }
+      if (toInputRef.current && !toInputRef.current.contains(event.target as Node)) {
+        setShowToSuggestions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const pageVariants = {
     initial: { opacity: 0 },
@@ -114,14 +200,34 @@ export default function NoAirlinesBooking() {
                   </h1>
                 </div>
                 <div className="space-y-4">
-                  <Input
-                    type="text"
-                    value={fromLocation}
-                    onChange={(e) => setFromLocation(e.target.value)}
-                    placeholder="Enter departure city or airport code"
-                    className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
-                    autoFocus
-                  />
+                  <div className="relative" ref={fromInputRef}>
+                    <Input
+                      type="text"
+                      value={fromLocation}
+                      onChange={(e) => handleFromLocationChange(e.target.value)}
+                      placeholder="Enter departure city or airport code"
+                      className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
+                      autoFocus
+                    />
+                    {showFromSuggestions && fromSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-lg z-50">
+                        {fromSuggestions.map((airport, index) => (
+                          <button
+                            key={index}
+                            onClick={() => selectFromAirport(airport)}
+                            className="w-full px-4 py-3 text-left hover:bg-zinc-50 border-b border-zinc-100 last:border-b-0"
+                          >
+                            <div className="font-semibold text-black">
+                              {airport.city} ({airport.codeIata})
+                            </div>
+                            <div className="text-sm text-zinc-600">
+                              {airport.name} • {airport.country}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <Button
                     onClick={nextStep}
                     disabled={!fromLocation.trim()}
@@ -151,14 +257,34 @@ export default function NoAirlinesBooking() {
                   </h1>
                 </div>
                 <div className="space-y-4">
-                  <Input
-                    type="text"
-                    value={toLocation}
-                    onChange={(e) => setToLocation(e.target.value)}
-                    placeholder="Enter destination city or airport code"
-                    className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
-                    autoFocus
-                  />
+                  <div className="relative" ref={toInputRef}>
+                    <Input
+                      type="text"
+                      value={toLocation}
+                      onChange={(e) => handleToLocationChange(e.target.value)}
+                      placeholder="Enter destination city or airport code"
+                      className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
+                      autoFocus
+                    />
+                    {showToSuggestions && toSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-lg z-50">
+                        {toSuggestions.map((airport, index) => (
+                          <button
+                            key={index}
+                            onClick={() => selectToAirport(airport)}
+                            className="w-full px-4 py-3 text-left hover:bg-zinc-50 border-b border-zinc-100 last:border-b-0"
+                          >
+                            <div className="font-semibold text-black">
+                              {airport.city} ({airport.codeIata})
+                            </div>
+                            <div className="text-sm text-zinc-600">
+                              {airport.name} • {airport.country}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div className="flex gap-3">
                     <Button
                       onClick={prevStep}

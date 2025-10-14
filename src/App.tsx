@@ -19,7 +19,7 @@ const Stat = ({ label, value }: { label: string; value: string }) => (
  * Tries multiple sources in order; on error, advances to the next.
  * Adds referrerPolicy to avoid hotlink 403s and uses a final SVG fallback.
  */
-function SmartImage({ sources, alt, seed }: { sources: string[]; alt: string; seed: string }) {
+function SmartImage({ sources, alt, seed: _seed }: { sources: string[]; alt: string; seed: string }) {
   const [idx, setIdx] = useState(0)
   const src = sources[idx]
   const fallbackSvg = useMemo(() => {

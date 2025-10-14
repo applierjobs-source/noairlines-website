@@ -46,6 +46,8 @@ export default function NoAirlinesBooking() {
     // If selecting round-trip on step 5, go to return flight step (step 6)
     if (step === 5 && tripType === "round-trip") {
       setStep(6) // Go to return flight step
+    } else if (step === 5 && tripType === "one-way") {
+      setStep(7) // Skip return flight step for one-way
     } else {
       setStep(step + 1)
     }
@@ -55,6 +57,8 @@ export default function NoAirlinesBooking() {
     // If on email step and round-trip, go back to return flight step
     if (step === 7 && tripType === "round-trip") {
       setStep(6) // Go back to return flight step
+    } else if (step === 7 && tripType === "one-way") {
+      setStep(5) // Go back to trip type selection for one-way
     } else if (step === 6 && tripType === "round-trip") {
       setStep(5) // Go back to trip type selection
     } else {

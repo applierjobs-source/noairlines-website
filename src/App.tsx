@@ -243,12 +243,23 @@ export default function NoAirlinesBooking() {
 
   // Helper function to get airport name
   const getAirportName = (airport: any): string => {
-    return airport.nameAirport || 
-           airport.name || 
-           airport.airportName ||
-           airport.nameIata || 
-           airport.city || 
-           'Unknown Airport'
+    console.log('Available fields for airport name:', Object.keys(airport))
+    console.log('All airport data:', airport)
+    
+    // Try all possible field names for airport name
+    const airportName = airport.nameAirport || 
+                       airport.name || 
+                       airport.airportName ||
+                       airport.nameIata || 
+                       airport.airportNameIata ||
+                       airport.airportNameAirport ||
+                       airport.nameAirportIata ||
+                       airport.airport ||
+                       airport.city || 
+                       'Unknown Airport'
+    
+    console.log('Selected airport name:', airportName)
+    return airportName
   }
 
   // Helper function to get airport location
@@ -257,13 +268,18 @@ export default function NoAirlinesBooking() {
                  airport.nameIata || 
                  airport.cityName ||
                  airport.nameCity ||
+                 airport.cityIata ||
                  ''
     
     const country = airport.country || 
                     airport.nameCountry || 
                     airport.countryName ||
                     airport.nameCountry ||
+                    airport.countryIata ||
+                    airport.codeIso2Country ||
                     ''
+    
+    console.log('Location - city:', city, 'country:', country)
     
     return city && country ? `${city} • ${country}` : (city || country || 'Unknown Location')
   }

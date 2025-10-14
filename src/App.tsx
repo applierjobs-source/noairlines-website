@@ -116,6 +116,9 @@ export default function NoAirlinesBooking() {
             if (Array.isArray(data)) {
               console.log('Returning array data:', data)
               return data
+            } else if (data && Array.isArray(data.airportsByCities)) {
+              console.log('Returning airportsByCities array:', data.airportsByCities)
+              return data.airportsByCities
             } else if (data && Array.isArray(data.cities)) {
               console.log('Returning cities array:', data.cities)
               return data.cities
@@ -222,23 +225,24 @@ export default function NoAirlinesBooking() {
   const formatAirportDisplay = (airport: any): string => {
     console.log('Formatting airport:', airport) // Debug log
     
-    // Try different field combinations from Aviation Edge API
-    const city = airport.city || 
-                 airport.nameIata || 
-                 airport.nameAirport || 
-                 airport.name || 
-                 airport.cityName ||
-                 airport.nameCity ||
-                 'Unknown'
+    // Based on Aviation Edge API response: use nameAirport and codeIataAirport
+    const airportName = airport.nameAirport || 
+                       airport.nameCity || 
+                       airport.nameIata || 
+                       airport.name || 
+                       airport.cityName ||
+                       airport.nameCity ||
+                       'Unknown'
     
-    const code = airport.codeIata || 
-                 airport.codeIataAirport || 
+    const code = airport.codeIataAirport || 
+                 airport.codeIata || 
+                 airport.codeIataCity ||
                  airport.iata || 
                  airport.airportCode ||
                  airport.code ||
                  ''
     
-    return code ? `${city} (${code})` : city
+    return code ? `${airportName} (${code})` : airportName
   }
 
   // Helper function to get airport name
@@ -246,35 +250,35 @@ export default function NoAirlinesBooking() {
     console.log('Available fields for airport name:', Object.keys(airport))
     console.log('All airport data:', airport)
     
-    // Try all possible field names for airport name
+    // Aviation Edge API uses 'nameAirport' as the primary field for airport names
     const airportName = airport.nameAirport || 
                        airport.name || 
                        airport.airportName ||
+                       airport.airport ||
                        airport.nameIata || 
                        airport.airportNameIata ||
                        airport.airportNameAirport ||
                        airport.nameAirportIata ||
-                       airport.airport ||
                        airport.city || 
                        'Unknown Airport'
     
     console.log('Selected airport name:', airportName)
+    console.log('nameAirport field value:', airport.nameAirport)
     return airportName
   }
 
   // Helper function to get airport location
   const getAirportLocation = (airport: any): string => {
-    const city = airport.city || 
+    const city = airport.nameCity || 
+                 airport.city || 
                  airport.nameIata || 
                  airport.cityName ||
-                 airport.nameCity ||
                  airport.cityIata ||
                  ''
     
-    const country = airport.country || 
-                    airport.nameCountry || 
+    const country = airport.nameCountry || 
+                    airport.country || 
                     airport.countryName ||
-                    airport.nameCountry ||
                     airport.countryIata ||
                     airport.codeIso2Country ||
                     ''

@@ -69,19 +69,59 @@ export default function NoAirlinesBooking() {
     setStep(10) // Go to success screen
   }
 
+  // Fallback airport data for testing
+  const fallbackAirports: Airport[] = [
+    { codeIata: "JFK", codeIcao: "KJFK", name: "John F. Kennedy International Airport", city: "New York", country: "United States" },
+    { codeIata: "LAX", codeIcao: "KLAX", name: "Los Angeles International Airport", city: "Los Angeles", country: "United States" },
+    { codeIata: "LHR", codeIcao: "EGLL", name: "London Heathrow Airport", city: "London", country: "United Kingdom" },
+    { codeIata: "CDG", codeIcao: "LFPG", name: "Charles de Gaulle Airport", city: "Paris", country: "France" },
+    { codeIata: "NRT", codeIcao: "RJAA", name: "Narita International Airport", city: "Tokyo", country: "Japan" },
+    { codeIata: "DXB", codeIcao: "OMDB", name: "Dubai International Airport", city: "Dubai", country: "United Arab Emirates" },
+    { codeIata: "SIN", codeIcao: "WSSS", name: "Singapore Changi Airport", city: "Singapore", country: "Singapore" },
+    { codeIata: "HKG", codeIcao: "VHHH", name: "Hong Kong International Airport", city: "Hong Kong", country: "Hong Kong" }
+  ]
+
   // Airport search function
   const searchAirports = async (query: string): Promise<Airport[]> => {
     if (query.length < 2) return []
     
+    // First try fallback data for immediate testing
+    const fallbackResults = fallbackAirports.filter(airport => 
+      airport.city.toLowerCase().includes(query.toLowerCase()) ||
+      airport.codeIata.toLowerCase().includes(query.toLowerCase()) ||
+      airport.name.toLowerCase().includes(query.toLowerCase())
+    )
+    
+    if (fallbackResults.length > 0) {
+      console.log('Using fallback results:', fallbackResults)
+      return fallbackResults
+    }
+    
+    // Try API call
     try {
       const response = await fetch(
-        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&city=${encodeURIComponent(query)}`
+        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&city=${encodeURIComponent(query)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        }
       )
+      
+      console.log('API Response status:', response.status)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
-      return data || []
+      console.log('API Response data:', data)
+      return Array.isArray(data) ? data : []
     } catch (error) {
       console.error('Error fetching airports:', error)
-      return []
+      console.log('Falling back to static data')
+      return fallbackResults
     }
   }
 
@@ -89,9 +129,11 @@ export default function NoAirlinesBooking() {
   const handleFromLocationChange = async (value: string) => {
     setFromLocation(value)
     if (value.length >= 2) {
+      console.log('Searching for:', value) // Debug log
       const airports = await searchAirports(value)
+      console.log('Found airports:', airports) // Debug log
       setFromSuggestions(airports.slice(0, 5)) // Limit to 5 suggestions
-      setShowFromSuggestions(true)
+      setShowFromSuggestions(airports.length > 0)
     } else {
       setFromSuggestions([])
       setShowFromSuggestions(false)
@@ -102,9 +144,11 @@ export default function NoAirlinesBooking() {
   const handleToLocationChange = async (value: string) => {
     setToLocation(value)
     if (value.length >= 2) {
+      console.log('Searching for:', value) // Debug log
       const airports = await searchAirports(value)
+      console.log('Found airports:', airports) // Debug log
       setToSuggestions(airports.slice(0, 5)) // Limit to 5 suggestions
-      setShowToSuggestions(true)
+      setShowToSuggestions(airports.length > 0)
     } else {
       setToSuggestions([])
       setShowToSuggestions(false)

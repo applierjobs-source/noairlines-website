@@ -24,5 +24,5 @@ RUN ls -la dist/ && echo "=== Build completed ===" && \
 # Expose a default port (Railway will override this)
 EXPOSE 3000
 
-# Start the server
-CMD ["node", "server.js"]
+# Start the server (using .cjs extension for CommonJS)
+CMD ["node", "server.cjs"]

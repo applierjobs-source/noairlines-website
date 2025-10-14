@@ -5,6 +5,7 @@ const path = require('path');
 const PORT = process.env.PORT || 3000;
 const DIST_DIR = path.join(__dirname, 'dist');
 
+console.log('========================================');
 console.log('Starting NoAirlines server...');
 console.log(`PORT: ${PORT}`);
 console.log(`NODE_VERSION: ${process.version}`);
@@ -14,8 +15,23 @@ console.log(`DIST_DIR: ${DIST_DIR}`);
 // Check if dist directory exists
 if (!fs.existsSync(DIST_DIR)) {
   console.error('ERROR: dist directory not found! Make sure to run "npm run build" first.');
+  console.error('Current directory contents:');
+  console.error(fs.readdirSync(__dirname));
   process.exit(1);
 }
+
+// List dist directory contents
+console.log('Dist directory contents:');
+try {
+  const files = fs.readdirSync(DIST_DIR);
+  files.forEach(file => {
+    const stats = fs.statSync(path.join(DIST_DIR, file));
+    console.log(`  ${stats.isDirectory() ? '[DIR]' : '[FILE]'} ${file}`);
+  });
+} catch (err) {
+  console.error('Error reading dist directory:', err);
+}
+console.log('========================================');
 
 // MIME types for common file extensions
 const mimeTypes = {

@@ -22,6 +22,28 @@
             display: flex;
             flex-direction: column;
             line-height: 1.6;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+        
+        .video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: -1;
         }
         
         .container {
@@ -286,6 +308,70 @@
             background: #b91c1c;
         }
         
+        /* Airport Autocomplete Styles */
+        .airport-autocomplete {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .airport-option {
+            padding: 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background-color 0.2s ease;
+        }
+        
+        .airport-option:hover,
+        .airport-option.selected {
+            background-color: #f8fafc;
+        }
+        
+        .airport-option:last-child {
+            border-bottom: none;
+        }
+        
+        .airport-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+        
+        .airport-city {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 1rem;
+        }
+        
+        .airport-code {
+            font-weight: 700;
+            color: #dc2626;
+            font-size: 0.875rem;
+            background: #fef2f2;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+        
+        .airport-name {
+            font-size: 0.875rem;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+        
+        .form-field {
+            position: relative;
+        }
+        
         /* Responsive adjustments for search form */
         @media (max-width: 768px) {
             .search-form-container {
@@ -343,6 +429,10 @@
     </style>
 </head>
 <body>
+    <video autoplay muted loop playsinline class="video-background">
+        <source src="background-video.mp4" type="video/mp4">
+    </video>
+    <div class="video-overlay"></div>
     <div class="container">
         <h1>NoAirlines</h1>
         

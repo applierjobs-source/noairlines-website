@@ -87,11 +87,55 @@ export default function NoAirlinesBooking() {
           try {
             console.log('Making API request for:', query)
             
+            // For short queries (likely airport codes), try direct database search first
+            if (query.length <= 4) {
+              console.log('Short query detected, trying direct database search first')
+              try {
+                const response = await fetch(
+                  `https://aviation-edge.com/v2/public/airports?key=${AVIATION_EDGE_API_KEY}`,
+                  {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                      'Accept': 'application/json',
+                    },
+                  }
+                )
+                
+                if (response.ok) {
+                  const allAirports = await response.json()
+                  console.log('Got all airports, filtering for exact code match:', query)
+                  
+                  // Look for exact airport code matches first
+                  const exactMatches = allAirports.filter((airport: any) => 
+                    airport.codeIataAirport && 
+                    airport.codeIataAirport.toLowerCase() === query.toLowerCase()
+                  )
+                  
+                  if (exactMatches.length > 0) {
+                    console.log('Found exact code matches:', exactMatches)
+                    return exactMatches
+                  }
+                  
+                  // If no exact match, look for partial matches
+                  const partialMatches = allAirports.filter((airport: any) => 
+                    airport.codeIataAirport && 
+                    airport.codeIataAirport.toLowerCase().includes(query.toLowerCase())
+                  )
+                  
+                  if (partialMatches.length > 0) {
+                    console.log('Found partial code matches:', partialMatches)
+                    return partialMatches
+                  }
+                }
+              } catch (dbError) {
+                console.error('Database search failed:', dbError)
+              }
+            }
+            
             // Try multiple API endpoints with different search strategies
             const endpoints = [
-              // First try exact airport code search
-              `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&airport=${encodeURIComponent(query)}`,
-              // Then try city search
+              // Try city search
               `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&city=${encodeURIComponent(query)}`,
               // Then try general search
               `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&q=${encodeURIComponent(query)}`,
@@ -113,13 +157,10 @@ export default function NoAirlinesBooking() {
           })
           
           console.log('Response status:', response.status)
-          console.log('Response headers:', Object.fromEntries(response.headers.entries()))
           
           if (response.ok) {
             const data = await response.json()
             console.log('API Response data:', data)
-            console.log('Response type:', typeof data)
-            console.log('Is array:', Array.isArray(data))
             
             // Handle different response formats
             if (Array.isArray(data)) {
@@ -161,41 +202,6 @@ export default function NoAirlinesBooking() {
             
           } catch (error) {
             console.error('Error fetching airports from API:', error)
-            
-            // Try alternative approach - fetch from airports database
-            try {
-              console.log('Trying airports database endpoint...')
-              const response = await fetch(
-                `https://aviation-edge.com/v2/public/airports?key=${AVIATION_EDGE_API_KEY}`,
-                {
-                  method: 'GET',
-                  mode: 'cors',
-                  headers: {
-                    'Accept': 'application/json',
-                  },
-                }
-              )
-              
-              if (response.ok) {
-                const allAirports = await response.json()
-                console.log('Got all airports, filtering for:', query)
-                
-                const filtered = allAirports.filter((airport: any) => 
-                  airport.nameIata && (
-                    airport.nameIata.toLowerCase().includes(query.toLowerCase()) ||
-                    airport.nameAirport?.toLowerCase().includes(query.toLowerCase()) ||
-                    airport.nameCountry?.toLowerCase().includes(query.toLowerCase()) ||
-                    airport.codeIataAirport?.toLowerCase().includes(query.toLowerCase())
-                  )
-                ).slice(0, 10)
-                
-                console.log('Filtered results:', filtered)
-                return filtered
-              }
-            } catch (dbError) {
-              console.error('Database endpoint also failed:', dbError)
-            }
-            
             return []
           }
         }
@@ -205,6 +211,8 @@ export default function NoAirlinesBooking() {
           if (!results || results.length === 0) return []
           
           const queryLower = query.toLowerCase().trim()
+          
+          console.log('Sorting results for query:', query, 'Results:', results)
           
           // Define US states for better filtering
           const usStates = [
@@ -228,9 +236,12 @@ export default function NoAirlinesBooking() {
             const countryName = (airport.nameCountry || '').toLowerCase()
             const airportCode = (airport.codeIataAirport || '').toLowerCase()
             
+            console.log('Scoring airport:', airport.nameAirport, 'Code:', airportCode, 'Query:', queryLower)
+            
             // Exact airport code match (highest priority)
             if (airportCode === queryLower) {
               score += 1000
+              console.log('Exact code match! Score:', score)
             }
             
             // Airport name starts with query (high priority)
@@ -268,13 +279,24 @@ export default function NoAirlinesBooking() {
               score -= 100
             }
             
+            // Penalize airports that don't match the query at all
+            if (airportCode !== queryLower && 
+                !airportName.includes(queryLower) && 
+                !cityName.includes(queryLower)) {
+              score -= 500 // Heavy penalty for irrelevant results
+            }
+            
+            console.log('Final score for', airport.nameAirport, ':', score)
             return { ...airport, score }
           })
           
           // Sort by score (highest first) and return top 8 results
-          return scoredResults
+          const sorted = scoredResults
             .sort((a, b) => b.score - a.score)
             .slice(0, 8)
+          
+          console.log('Sorted results:', sorted.map(r => ({ name: r.nameAirport, code: r.codeIataAirport, score: r.score })))
+          return sorted
         }
 
   // Handle from location input

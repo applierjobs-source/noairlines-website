@@ -139,8 +139,7 @@ export default function NoAirlinesBooking() {
                   <div className="flex gap-3">
                     <Button
                       onClick={prevStep}
-                      variant="outline"
-                      className="h-14 text-lg border-zinc-700 hover:bg-zinc-900"
+                      className="h-14 text-lg bg-transparent border-2 border-white text-white hover:bg-white hover:text-black min-w-[120px] transition-colors"
                     >
                       <ArrowLeft className="mr-2 h-5 w-5" /> Back
                     </Button>
@@ -196,8 +195,7 @@ export default function NoAirlinesBooking() {
                   <div className="flex gap-3">
                     <Button
                       onClick={prevStep}
-                      variant="outline"
-                      className="h-14 text-lg border-zinc-700 hover:bg-zinc-900"
+                      className="h-14 text-lg bg-transparent border-2 border-white text-white hover:bg-white hover:text-black min-w-[120px] transition-colors"
                     >
                       <ArrowLeft className="mr-2 h-5 w-5" /> Back
                     </Button>
@@ -251,8 +249,7 @@ export default function NoAirlinesBooking() {
                   <div className="flex gap-3">
                     <Button
                       onClick={prevStep}
-                      variant="outline"
-                      className="h-14 text-lg border-zinc-700 hover:bg-zinc-900"
+                      className="h-14 text-lg bg-transparent border-2 border-white text-white hover:bg-white hover:text-black min-w-[120px] transition-colors"
                     >
                       <ArrowLeft className="mr-2 h-5 w-5" /> Back
                     </Button>
@@ -312,8 +309,7 @@ export default function NoAirlinesBooking() {
                   <div className="flex gap-3">
                     <Button
                       onClick={prevStep}
-                      variant="outline"
-                      className="h-14 text-lg border-zinc-700 hover:bg-zinc-900"
+                      className="h-14 text-lg bg-transparent border-2 border-white text-white hover:bg-white hover:text-black min-w-[120px] transition-colors"
                     >
                       <ArrowLeft className="mr-2 h-5 w-5" /> Back
                     </Button>

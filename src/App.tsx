@@ -42,7 +42,7 @@ export default function NoAirlinesBooking() {
       <header className="border-b border-zinc-900 bg-black/90 backdrop-blur sticky top-0 z-50">
         <div className="mx-auto max-w-4xl px-6 py-6">
           <div className="flex items-center justify-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-red-600 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center">
               <Plane className="h-5 w-5 text-white" />
             </div>
             <span className="text-2xl font-bold tracking-tight">NoAirlines</span>
@@ -53,7 +53,7 @@ export default function NoAirlinesBooking() {
             <div className="relative">
               <div className="h-2 bg-zinc-900 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-red-600 to-red-500"
+                  className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
                   initial={{ width: "0%" }}
                   animate={{ width: `${(step / 5) * 100}%` }}
                   transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -85,7 +85,7 @@ export default function NoAirlinesBooking() {
                 className="space-y-8"
               >
                 <div className="text-center space-y-4">
-                  <MapPin className="h-16 w-16 mx-auto text-red-600" />
+                  <MapPin className="h-16 w-16 mx-auto text-blue-600" />
                   <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
                     Where are you flying from?
                   </h1>
@@ -102,7 +102,7 @@ export default function NoAirlinesBooking() {
                   <Button
                     onClick={nextStep}
                     disabled={!fromLocation.trim()}
-                    className="w-full h-14 text-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Continue <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -122,7 +122,7 @@ export default function NoAirlinesBooking() {
                 className="space-y-8"
               >
                 <div className="text-center space-y-4">
-                  <MapPin className="h-16 w-16 mx-auto text-red-600" />
+                  <MapPin className="h-16 w-16 mx-auto text-blue-600" />
                   <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
                     Where are you flying to?
                   </h1>
@@ -146,7 +146,7 @@ export default function NoAirlinesBooking() {
                     <Button
                       onClick={nextStep}
                       disabled={!toLocation.trim()}
-                      className="flex-1 h-14 text-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Continue <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
@@ -167,7 +167,7 @@ export default function NoAirlinesBooking() {
                 className="space-y-8"
               >
                 <div className="text-center space-y-4">
-                  <Calendar className="h-16 w-16 mx-auto text-red-600" />
+                  <Calendar className="h-16 w-16 mx-auto text-blue-600" />
                   <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">When?</h1>
                 </div>
                 <div className="space-y-4">
@@ -202,7 +202,7 @@ export default function NoAirlinesBooking() {
                     <Button
                       onClick={nextStep}
                       disabled={!date || !time}
-                      className="flex-1 h-14 text-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Continue <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
@@ -223,7 +223,7 @@ export default function NoAirlinesBooking() {
                 className="space-y-8"
               >
                 <div className="text-center space-y-4">
-                  <Users className="h-16 w-16 mx-auto text-red-600" />
+                  <Users className="h-16 w-16 mx-auto text-blue-600" />
                   <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
                     How many passengers?
                   </h1>
@@ -276,7 +276,7 @@ export default function NoAirlinesBooking() {
                 className="space-y-8"
               >
                 <div className="text-center space-y-4">
-                  <Plane className="h-16 w-16 mx-auto text-red-600" />
+                  <Plane className="h-16 w-16 mx-auto text-blue-600" />
                   <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
                     One-way or Round Trip?
                   </h1>
@@ -287,7 +287,7 @@ export default function NoAirlinesBooking() {
                       onClick={() => setTripType("one-way")}
                       className={`h-32 rounded-xl border-2 transition-all ${
                         tripType === "one-way"
-                          ? "border-red-600 bg-red-600/10"
+                          ? "border-blue-600 bg-blue-600/10"
                           : "border-zinc-800 hover:border-zinc-700"
                       }`}
                     >
@@ -298,7 +298,7 @@ export default function NoAirlinesBooking() {
                       onClick={() => setTripType("round-trip")}
                       className={`h-32 rounded-xl border-2 transition-all ${
                         tripType === "round-trip"
-                          ? "border-red-600 bg-red-600/10"
+                          ? "border-blue-600 bg-blue-600/10"
                           : "border-zinc-800 hover:border-zinc-700"
                       }`}
                     >
@@ -316,7 +316,7 @@ export default function NoAirlinesBooking() {
                     <Button
                       onClick={handleSubmit}
                       disabled={!tripType}
-                      className="flex-1 h-14 text-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Get Quotes
                     </Button>

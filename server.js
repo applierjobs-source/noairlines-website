@@ -3,17 +3,26 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
+const DIST_DIR = path.join(__dirname, 'dist');
 
 console.log('Starting NoAirlines server...');
 console.log(`PORT: ${PORT}`);
 console.log(`NODE_VERSION: ${process.version}`);
 console.log(`WORKING_DIR: ${process.cwd()}`);
+console.log(`DIST_DIR: ${DIST_DIR}`);
+
+// Check if dist directory exists
+if (!fs.existsSync(DIST_DIR)) {
+  console.error('ERROR: dist directory not found! Make sure to run "npm run build" first.');
+  process.exit(1);
+}
 
 // MIME types for common file extensions
 const mimeTypes = {
   '.html': 'text/html',
   '.css': 'text/css',
   '.js': 'application/javascript',
+  '.mjs': 'application/javascript',
   '.json': 'application/json',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -24,17 +33,15 @@ const mimeTypes = {
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
   '.ttf': 'font/ttf',
-  '.eot': 'application/vnd.ms-fontobject'
+  '.eot': 'application/vnd.ms-fontobject',
+  '.mp4': 'video/mp4'
 };
 
 const server = http.createServer((req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   
-  // Parse URL and set file path
-  let filePath = '.' + req.url;
-  if (filePath === './') {
-    filePath = './index.html';
-  }
+  // Parse URL and set file path relative to dist directory
+  let filePath = path.join(DIST_DIR, req.url === '/' ? 'index.html' : req.url);
   
   // Remove query string
   const queryIndex = filePath.indexOf('?');
@@ -50,9 +57,9 @@ const server = http.createServer((req, res) => {
   fs.readFile(filePath, (error, content) => {
     if (error) {
       if (error.code === 'ENOENT') {
-        console.log(`File not found: ${filePath}, serving index.html`);
+        console.log(`File not found: ${filePath}, serving index.html for SPA routing`);
         // File not found - serve index.html for SPA routing
-        fs.readFile('./index.html', (err, data) => {
+        fs.readFile(path.join(DIST_DIR, 'index.html'), (err, data) => {
           if (err) {
             console.error('ERROR: Could not read index.html:', err);
             res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -85,7 +92,8 @@ server.on('error', (err) => {
 // Start listening
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`✓ Server running at http://0.0.0.0:${PORT}/`);
-  console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`✓ Serving from: ${DIST_DIR}`);
+  console.log(`✓ Environment: ${process.env.NODE_ENV || 'production'}`);
   console.log(`✓ Ready to accept connections`);
 });
 
@@ -105,4 +113,3 @@ process.on('SIGINT', () => {
     process.exit(0);
   });
 });
-

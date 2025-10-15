@@ -203,6 +203,20 @@ export default function NoAirlinesBooking() {
           
           console.log('Sorting results for query:', query, 'Results:', results)
           
+          // Filter out results that would display as "Unknown" or have no meaningful data
+          const validResults = results.filter(airport => {
+            const hasValidName = airport.nameAirport || airport.nameCity || airport.city || airport.nameIata || airport.name
+            const hasValidCode = airport.codeIataAirport || airport.codeIata || airport.iata || airport.code
+            
+            // Only include results that have at least a name or code
+            return hasValidName || hasValidCode
+          })
+          
+          if (validResults.length === 0) {
+            console.log('No valid results after filtering, returning empty array')
+            return []
+          }
+          
           // Define US states for better filtering
           const usStates = [
             'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado', 'connecticut',
@@ -218,7 +232,7 @@ export default function NoAirlinesBooking() {
           const isUSStateQuery = usStates.includes(queryLower)
           
           // Score and sort results
-          const scoredResults = results.map(airport => {
+          const scoredResults = validResults.map(airport => {
             let score = 0
             const airportName = (airport.nameAirport || '').toLowerCase()
             const cityName = (airport.nameCity || '').toLowerCase()

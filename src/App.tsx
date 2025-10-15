@@ -87,12 +87,12 @@ export default function NoAirlinesBooking() {
           try {
             console.log('Making API request for:', query)
             
-            // For short queries (likely airport codes), try direct database search first
+            // For short queries (likely airport codes), try exact airport code search first
             if (query.length <= 4) {
-              console.log('Short query detected, trying direct database search first')
+              console.log('Short query detected, trying exact airport code search')
               try {
                 const response = await fetch(
-                  `https://aviation-edge.com/v2/public/airports?key=${AVIATION_EDGE_API_KEY}`,
+                  `https://aviation-edge.com/v2/public/airportDatabase?key=${AVIATION_EDGE_API_KEY}&codeIataAirport=${encodeURIComponent(query.toUpperCase())}`,
                   {
                     method: 'GET',
                     mode: 'cors',
@@ -102,34 +102,23 @@ export default function NoAirlinesBooking() {
                   }
                 )
                 
+                console.log('Airport code search response status:', response.status)
+                
                 if (response.ok) {
-                  const allAirports = await response.json()
-                  console.log('Got all airports, filtering for exact code match:', query)
+                  const data = await response.json()
+                  console.log('Airport code search response:', data)
                   
-                  // Look for exact airport code matches first
-                  const exactMatches = allAirports.filter((airport: any) => 
-                    airport.codeIataAirport && 
-                    airport.codeIataAirport.toLowerCase() === query.toLowerCase()
-                  )
-                  
-                  if (exactMatches.length > 0) {
-                    console.log('Found exact code matches:', exactMatches)
-                    return exactMatches
-                  }
-                  
-                  // If no exact match, look for partial matches
-                  const partialMatches = allAirports.filter((airport: any) => 
-                    airport.codeIataAirport && 
-                    airport.codeIataAirport.toLowerCase().includes(query.toLowerCase())
-                  )
-                  
-                  if (partialMatches.length > 0) {
-                    console.log('Found partial code matches:', partialMatches)
-                    return partialMatches
+                  // The airportDatabase endpoint returns a single airport object or array
+                  if (data && !Array.isArray(data)) {
+                    console.log('Found exact airport code match:', data)
+                    return [data]
+                  } else if (Array.isArray(data) && data.length > 0) {
+                    console.log('Found exact airport code matches:', data)
+                    return data
                   }
                 }
-              } catch (dbError) {
-                console.error('Database search failed:', dbError)
+              } catch (codeError) {
+                console.error('Airport code search failed:', codeError)
               }
             }
             

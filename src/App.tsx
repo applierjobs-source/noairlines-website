@@ -66,8 +66,8 @@ export default function NoAirlinesBooking() {
     }
   }
 
-  const handleSubmit = () => {
-    console.log({
+  const handleSubmit = async () => {
+    const itineraryData = {
       from: fromLocation,
       to: toLocation,
       date,
@@ -75,9 +75,37 @@ export default function NoAirlinesBooking() {
       passengers,
       tripType,
       email,
-      name
-    })
-    setStep(10) // Go to success screen
+      name,
+      returnDate,
+      returnTime
+    }
+    
+    console.log('Submitting itinerary:', itineraryData)
+    
+    try {
+      const response = await fetch('/api/submit-itinerary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(itineraryData)
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        console.log('Itinerary submitted successfully')
+        setStep(10) // Go to success screen
+      } else {
+        console.error('Failed to submit itinerary:', result.error)
+        // Still go to success screen even if email fails
+        setStep(10)
+      }
+    } catch (error) {
+      console.error('Error submitting itinerary:', error)
+      // Still go to success screen even if email fails
+      setStep(10)
+    }
   }
 
         // Airport search function using Aviation Edge API

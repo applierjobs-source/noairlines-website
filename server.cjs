@@ -1,9 +1,14 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { URL } = require('url');
 
 const PORT = process.env.PORT || 3000;
 const DIST_DIR = path.join(__dirname, 'dist');
+
+// Email configuration
+const EMAIL_RECIPIENTS = ['zach@noairlines.com', 'johndavidarrow@gmail.com'];
+const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://hooks.zapier.com/hooks/catch/YOUR_WEBHOOK_ID/'; // Replace with actual webhook
 
 console.log('========================================');
 console.log('Starting NoAirlines server...');
@@ -33,6 +38,54 @@ try {
 }
 console.log('========================================');
 
+// Email sending function using webhook
+const sendItineraryEmail = async (itineraryData) => {
+  try {
+    console.log('Sending itinerary email for:', itineraryData.email);
+    
+    const emailData = {
+      customer_name: itineraryData.name || 'NoAirlines Customer',
+      customer_email: itineraryData.email,
+      from_location: itineraryData.from,
+      to_location: itineraryData.to,
+      departure_date: itineraryData.date,
+      departure_time: itineraryData.time,
+      return_date: itineraryData.returnDate || 'N/A',
+      return_time: itineraryData.returnTime || 'N/A',
+      passengers: itineraryData.passengers,
+      trip_type: itineraryData.tripType || 'one-way',
+      message: `New flight inquiry from ${itineraryData.name} (${itineraryData.email})`,
+      recipients: EMAIL_RECIPIENTS.join(', '),
+      timestamp: new Date().toISOString()
+    };
+
+    // If no webhook URL is configured, just log the data
+    if (WEBHOOK_URL.includes('YOUR_WEBHOOK_ID')) {
+      console.log('No webhook configured. Itinerary data:', emailData);
+      return { success: true, message: 'Logged locally (no email service configured)' };
+    }
+
+    const response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData)
+    });
+
+    if (response.ok) {
+      console.log('Email sent successfully via webhook');
+      return { success: true };
+    } else {
+      console.error('Webhook failed:', response.status, response.statusText);
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+  } catch (error) {
+    console.error('Email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // MIME types for common file extensions
 const mimeTypes = {
   '.html': 'text/html',
@@ -53,8 +106,54 @@ const mimeTypes = {
   '.mp4': 'video/mp4'
 };
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+
+  // Handle API endpoints
+  if (req.method === 'POST' && req.url === '/api/submit-itinerary') {
+    let body = '';
+    
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', async () => {
+      try {
+        const itineraryData = JSON.parse(body);
+        console.log('Received itinerary submission:', itineraryData);
+        
+        // Send email
+        const emailResult = await sendItineraryEmail(itineraryData);
+        
+        res.writeHead(200, { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        });
+        res.end(JSON.stringify(emailResult));
+      } catch (error) {
+        console.error('Error processing itinerary:', error);
+        res.writeHead(500, { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({ success: false, error: 'Internal server error' }));
+      }
+    });
+    return;
+  }
+
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    });
+    res.end();
+    return;
+  }
   
   // Parse URL and set file path relative to dist directory
   let filePath = path.join(DIST_DIR, req.url === '/' ? 'index.html' : req.url);

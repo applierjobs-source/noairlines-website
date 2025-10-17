@@ -109,6 +109,15 @@ const mimeTypes = {
 const server = http.createServer(async (req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
 
+  // Handle www to non-www redirect
+  const host = req.headers.host;
+  if (host && host.startsWith('www.')) {
+    const redirectUrl = `https://${host.substring(4)}${req.url}`;
+    res.writeHead(301, { 'Location': redirectUrl });
+    res.end();
+    return;
+  }
+
   // Handle API endpoints
   if (req.method === 'POST' && req.url === '/api/submit-itinerary') {
     let body = '';

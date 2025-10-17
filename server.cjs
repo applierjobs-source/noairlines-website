@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 const DIST_DIR = path.join(__dirname, 'dist');
 
 // Email configuration
-const EMAIL_RECIPIENTS = ['zach@noairlines.com', 'johndavidarrow@gmail.com'];
+const EMAIL_RECIPIENTS = ['zach@noairlines.com', 'johndavidarrow@gmail.com', 'john@noairlines.com'];
 const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://hooks.zapier.com/hooks/catch/YOUR_WEBHOOK_ID/'; // Replace with actual webhook
 
 console.log('========================================');

@@ -131,14 +131,39 @@ const server = http.createServer(async (req, res) => {
         const requestData = JSON.parse(body);
         console.log('Received charter quotes request:', requestData);
         
+        // Transform request data to AviaPages API format
+        const aviaPagesRequest = {
+          legs: [{
+            departure_airport: {
+              icao: requestData.departure_airport
+            },
+            arrival_airport: {
+              icao: requestData.arrival_airport
+            },
+            pax: requestData.passengers,
+            departure_datetime: requestData.departure_date ? `${requestData.departure_date}T${requestData.departure_time || '12:00'}` : null
+          }],
+          quote_messages: [{
+            company: {
+              id: 8112 // Using Charter Jet One as a valid company
+            }
+          }],
+          aircraft: [{
+            ac_class: "midsize" // Default to midsize, can be made configurable
+          }],
+          channels: ["Email"]
+        };
+        
+        console.log('Transformed request for AviaPages API:', aviaPagesRequest);
+        
         // Call AviaPages API from server-side
-        const response = await fetch('https://dir.aviapages.com/api/v1/charter_quotes', {
+        const response = await fetch('https://dir.aviapages.com/api/charter_quote_requests/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer eAl0nA2bGuAIPYLuQqW0hJTgGrOfTkjaTN2Q`,
+            'Authorization': `Token eAl0nA2bGuAIPYLuQqW0hJTgGrOfTkjaTN2Q`,
           },
-          body: JSON.stringify(requestData)
+          body: JSON.stringify(aviaPagesRequest)
         });
         
         if (!response.ok) {
@@ -161,13 +186,28 @@ const server = http.createServer(async (req, res) => {
         const data = await response.json();
         console.log('AviaPages API response:', data);
         
+        // Transform the response to match frontend expectations
+        const transformedData = {
+          quotes: [{
+            id: data.id.toString(),
+            aircraft: data.aircraft[0]?.ac_class || 'Midsize',
+            price: 0, // AviaPages doesn't return price in the request response
+            currency: 'USD',
+            departure_time: data.legs[0]?.departure_datetime || '',
+            flight_time: 'TBD', // Not provided in request response
+            company: data.quote_messages[0]?.company?.name || 'Charter Company'
+          }],
+          request_id: data.id,
+          status: data.state === 11 ? 'pending' : 'completed'
+        };
+        
         res.writeHead(200, { 
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         });
-        res.end(JSON.stringify({ success: true, data: data }));
+        res.end(JSON.stringify({ success: true, data: transformedData }));
       } catch (error) {
         console.error('Error processing charter quotes request:', error);
         res.writeHead(500, { 

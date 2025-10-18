@@ -269,24 +269,23 @@ const server = http.createServer(async (req, res) => {
           return imageMap[aircraftClass] || '/images/aircraft/default-jet.svg';
         };
 
-        // Generate multiple quote estimates with different aircraft types and pricing
+        // Generate multiple quote estimates with different aircraft types using real API pricing
         const generateMultipleQuotes = (basePrice, companies) => {
           const aircraftTypes = [
-            { class: 'Light', multiplier: 0.7, name: 'Citation CJ3' },
-            { class: 'Midsize', multiplier: 1.0, name: 'Hawker 800' },
-            { class: 'Heavy', multiplier: 1.4, name: 'Gulfstream G550' },
-            { class: 'Ultra Long Range', multiplier: 1.8, name: 'Global 7500' }
+            { class: 'Light', name: 'Citation CJ3' },
+            { class: 'Midsize', name: 'Hawker 800' },
+            { class: 'Heavy', name: 'Gulfstream G550' },
+            { class: 'Ultra Long Range', name: 'Global 7500' }
           ];
           
           return aircraftTypes.map((aircraft, index) => {
-            const adjustedPrice = Math.round(basePrice * aircraft.multiplier);
             const company = companies[index % companies.length];
             
             return {
               id: `${data.id}-${index + 1}`,
               aircraft: aircraft.class,
               aircraft_image: getAircraftImage(aircraft.class),
-              price: adjustedPrice,
+              price: basePrice, // Use real API price for all aircraft types
               currency: currency,
               departure_time: data.legs[0]?.departure_datetime || '',
               flight_time: 'TBD',

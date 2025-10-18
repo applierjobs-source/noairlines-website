@@ -152,8 +152,8 @@ export default function TestPage() {
         const fromAirport = fromAirports[0]
         const toAirport = toAirports[0]
         
-        fromCode = fromAirport?.codeIataAirport || fromAirport?.codeIata
-        toCode = toAirport?.codeIataAirport || toAirport?.codeIata
+        fromCode = fromAirport?.codeIcaoAirport || fromAirport?.codeIcao || fromAirport?.codeIataAirport || fromAirport?.codeIata
+        toCode = toAirport?.codeIcaoAirport || toAirport?.codeIcao || toAirport?.codeIataAirport || toAirport?.codeIata
         
         console.log('Using Aviation Edge API airport codes:', { fromCode, toCode })
       } else {
@@ -161,43 +161,68 @@ export default function TestPage() {
         console.log('No airports found from API, using fallback airport codes...')
         
         const fallbackAirports: { [key: string]: string } = {
-          'new york': 'JFK',
-          'nyc': 'JFK',
-          'new york city': 'JFK',
-          'los angeles': 'LAX',
-          'lax': 'LAX',
-          'chicago': 'ORD',
-          'miami': 'MIA',
-          'miami international': 'MIA',
-          'london': 'LHR',
-          'paris': 'CDG',
-          'tokyo': 'NRT',
-          'dubai': 'DXB',
-          'singapore': 'SIN',
-          'sydney': 'SYD',
-          'toronto': 'YYZ',
-          'vancouver': 'YVR',
-          'mexico city': 'MEX',
-          'sao paulo': 'GRU',
-          'madrid': 'MAD',
-          'rome': 'FCO',
-          'amsterdam': 'AMS',
-          'boston': 'BOS',
-          'san francisco': 'SFO',
-          'seattle': 'SEA',
-          'denver': 'DEN',
-          'atlanta': 'ATL',
-          'dallas': 'DFW',
-          'houston': 'IAH',
-          'phoenix': 'PHX',
-          'las vegas': 'LAS'
+          'new york': 'KJFK',
+          'nyc': 'KJFK',
+          'new york city': 'KJFK',
+          'jfk': 'KJFK',
+          'los angeles': 'KLAX',
+          'lax': 'KLAX',
+          'chicago': 'KORD',
+          'ord': 'KORD',
+          'miami': 'KMIA',
+          'mia': 'KMIA',
+          'miami international': 'KMIA',
+          'london': 'EGLL',
+          'lhr': 'EGLL',
+          'paris': 'LFPG',
+          'cdg': 'LFPG',
+          'tokyo': 'RJAA',
+          'nrt': 'RJAA',
+          'dubai': 'OMDB',
+          'dxb': 'OMDB',
+          'singapore': 'WSSS',
+          'sin': 'WSSS',
+          'sydney': 'YSSY',
+          'syd': 'YSSY',
+          'toronto': 'CYYZ',
+          'yyz': 'CYYZ',
+          'vancouver': 'CYVR',
+          'yvr': 'CYVR',
+          'mexico city': 'MMMX',
+          'mex': 'MMMX',
+          'sao paulo': 'SBGR',
+          'gru': 'SBGR',
+          'madrid': 'LEMD',
+          'mad': 'LEMD',
+          'rome': 'LIRF',
+          'fco': 'LIRF',
+          'amsterdam': 'EHAM',
+          'ams': 'EHAM',
+          'boston': 'KBOS',
+          'bos': 'KBOS',
+          'san francisco': 'KSFO',
+          'sfo': 'KSFO',
+          'seattle': 'KSEA',
+          'sea': 'KSEA',
+          'denver': 'KDEN',
+          'den': 'KDEN',
+          'atlanta': 'KATL',
+          'atl': 'KATL',
+          'dallas': 'KDFW',
+          'dfw': 'KDFW',
+          'houston': 'KIAH',
+          'iah': 'KIAH',
+          'phoenix': 'KPHX',
+          'phx': 'KPHX',
+          'las vegas': 'KLAS',
+          'las': 'KLAS'
         }
         
         const fromLower = fromLocation.toLowerCase().trim()
         const toLower = toLocation.toLowerCase().trim()
         
-        fromCode = fallbackAirports[fromLower] || 'JFK' // Default to JFK
-        toCode = fallbackAirports[toLower] || 'LAX' // Default to LAX
+        fromCode = fallbackAirports[fromLower] || 'KJFK' // Default to KJFK
+        toCode = fallbackAirports[toLower] || 'KLAX' // Default to KLAX
         
         console.log('Using fallback airport codes:', { fromCode, toCode, fromLower, toLower })
       }

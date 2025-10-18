@@ -31,7 +31,6 @@ interface CharterQuote {
   company: string
 }
 
-const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
 const AVIAPAGES_API_KEY = "eAl0nA2bGuAIPYLuQqW0hJTgGrOfTkjaTN2Q"
 
 export default function TestPage() {
@@ -85,39 +84,10 @@ export default function TestPage() {
     }
   }
 
-  // Airport search function using Aviation Edge API
+  // Airport search function - disabled for now
   const searchAirports = async (query: string) => {
-    if (query.length < 2) return []
-    
-    try {
-      console.log('Searching airports for query:', query)
-      const response = await fetch(
-        `https://aviation-edge.com/v2/public/airports?key=${AVIATION_EDGE_API_KEY}&codeIataAirport=${encodeURIComponent(query)}`
-      )
-      console.log('Aviation Edge API response status:', response.status)
-      
-      if (!response.ok) {
-        throw new Error(`Aviation Edge API error: ${response.status} ${response.statusText}`)
-      }
-      
-      const data = await response.json()
-      console.log('Aviation Edge API response data:', data)
-      
-      // Check if data is an array or has a different structure
-      if (Array.isArray(data)) {
-        return data
-      } else if (data && data.data && Array.isArray(data.data)) {
-        return data.data
-      } else if (data && data.airports && Array.isArray(data.airports)) {
-        return data.airports
-      } else {
-        console.warn('Unexpected data structure from Aviation Edge API:', data)
-        return []
-      }
-    } catch (error) {
-      console.error('Error searching airports:', error)
-      return []
-    }
+    // Return empty array to disable autocomplete
+    return []
   }
 
   // AviaPages API integration for charter quotes

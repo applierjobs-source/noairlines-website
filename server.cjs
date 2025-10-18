@@ -131,6 +131,20 @@ const server = http.createServer(async (req, res) => {
         const requestData = JSON.parse(body);
         console.log('Received charter quotes request:', requestData);
         
+        // Top charter operators to send quotes to
+        const charterOperators = [
+          { id: 8112, name: "Charter Jet One, Inc." },
+          { id: 8486, name: "Integra Jet, LLC" },
+          { id: 8457, name: "Secure Air Charter" },
+          { id: 8519, name: "GFK Flight Support" },
+          { id: 8458, name: "Bull Mountain Aviation LLC" },
+          { id: 8532, name: "Jetstream International Pvt. Ltd" },
+          { id: 8491, name: "VMO AERO" },
+          { id: 8487, name: "Sun Jet" },
+          { id: 8318, name: "Safarilink" },
+          { id: 8317, name: "RussAir" }
+        ];
+
         // Transform request data to AviaPages API format
         const aviaPagesRequest = {
           legs: [{
@@ -143,11 +157,11 @@ const server = http.createServer(async (req, res) => {
             pax: requestData.passengers,
             departure_datetime: requestData.departure_date ? `${requestData.departure_date}T${requestData.departure_time || '12:00'}` : null
           }],
-          quote_messages: [{
+          quote_messages: charterOperators.map(operator => ({
             company: {
-              id: 8112 // Using Charter Jet One as a valid company
+              id: operator.id
             }
-          }],
+          })),
           aircraft: [{
             ac_class: "midsize" // Default to midsize, can be made configurable
           }],
@@ -245,14 +259,14 @@ const server = http.createServer(async (req, res) => {
         // Aircraft image mapping based on aircraft class
         const getAircraftImage = (aircraftClass) => {
           const imageMap = {
-            'Light': '/images/aircraft/light-jet.jpg',
-            'Midsize': '/images/aircraft/midsize-jet.jpg', 
-            'Heavy': '/images/aircraft/heavy-jet.jpg',
-            'Ultra Long Range': '/images/aircraft/ultra-long-range-jet.jpg',
-            'Turboprop': '/images/aircraft/turboprop.jpg',
-            'Piston': '/images/aircraft/piston.jpg'
+            'Light': '/images/aircraft/light-jet.svg',
+            'Midsize': '/images/aircraft/midsize-jet.svg', 
+            'Heavy': '/images/aircraft/heavy-jet.svg',
+            'Ultra Long Range': '/images/aircraft/ultra-long-range-jet.svg',
+            'Turboprop': '/images/aircraft/turboprop.svg',
+            'Piston': '/images/aircraft/piston.svg'
           };
-          return imageMap[aircraftClass] || '/images/aircraft/default-jet.jpg';
+          return imageMap[aircraftClass] || '/images/aircraft/default-jet.svg';
         };
 
         // Transform the response to match frontend expectations
@@ -265,10 +279,12 @@ const server = http.createServer(async (req, res) => {
             currency: currency,
             departure_time: data.legs[0]?.departure_datetime || '',
             flight_time: 'TBD', // Not provided in request response
-            company: data.quote_messages[0]?.company?.name || 'Charter Company'
+            company: `${data.quote_messages?.length || charterOperators.length} Charter Companies`,
+            companies_contacted: data.quote_messages?.length || charterOperators.length
           }],
           request_id: data.id,
-          status: data.state === 11 ? 'pending' : 'completed'
+          status: data.state === 11 ? 'pending' : 'completed',
+          companies_contacted: data.quote_messages?.length || charterOperators.length
         };
         
         res.writeHead(200, { 

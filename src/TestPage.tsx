@@ -17,6 +17,7 @@ interface Airport {
   nameCountry?: string
   nameCity?: string
   codeIataAirport?: string
+  displayName?: string
   codeIcaoAirport?: string
   codeIso2Country?: string
 }
@@ -106,8 +107,29 @@ export default function TestPage() {
       const data = await response.json()
       console.log('Aviation Edge API response data:', data)
       
-      // Check if data is an array or has a different structure
-      if (Array.isArray(data)) {
+      // Aviation Edge API returns { airportsByCities: [...], cities: [...] }
+      if (data && data.airportsByCities && Array.isArray(data.airportsByCities)) {
+        // Combine airports and cities, prioritizing airports
+        const airports = data.airportsByCities.map((airport: any) => ({
+          ...airport,
+          displayName: `${airport.nameAirport} (${airport.codeIataAirport})`,
+          codeIataAirport: airport.codeIataAirport,
+          codeIcaoAirport: airport.codeIcaoAirport,
+          codeIataCity: airport.codeIataCity,
+          codeIcao: airport.codeIcaoAirport,
+          codeIata: airport.codeIataAirport
+        }))
+        
+        const cities = data.cities ? data.cities.map((city: any) => ({
+          ...city,
+          displayName: city.nameCity,
+          codeIataCity: city.codeIataCity,
+          codeIcao: city.codeIataCity,
+          codeIata: city.codeIataCity
+        })) : []
+        
+        return [...airports, ...cities]
+      } else if (Array.isArray(data)) {
         return data
       } else if (data && data.data && Array.isArray(data.data)) {
         return data.data
@@ -117,14 +139,6 @@ export default function TestPage() {
         return data.results
       } else {
         console.warn('Unexpected data structure from Aviation Edge API:', data)
-        // Try to extract any array from the response
-        if (data && typeof data === 'object') {
-          const possibleArrays = Object.values(data).filter(Array.isArray)
-          if (possibleArrays.length > 0) {
-            console.log('Found array in response:', possibleArrays[0])
-            return possibleArrays[0]
-          }
-        }
         return []
       }
     } catch (error) {
@@ -359,14 +373,14 @@ export default function TestPage() {
   }
 
   const selectFromAirport = (airport: Airport) => {
-    const displayName = airport.nameIata || airport.name || airport.nameAirport || `${airport.city || airport.nameCity}, ${airport.country || airport.nameCountry}`
+    const displayName = airport.displayName || airport.nameIata || airport.name || airport.nameAirport || `${airport.city || airport.nameCity}, ${airport.country || airport.nameCountry}`
     setFromLocation(displayName)
     setFromSuggestions([])
     setShowFromSuggestions(false)
   }
 
   const selectToAirport = (airport: Airport) => {
-    const displayName = airport.nameIata || airport.name || airport.nameAirport || `${airport.city || airport.nameCity}, ${airport.country || airport.nameCountry}`
+    const displayName = airport.displayName || airport.nameIata || airport.name || airport.nameAirport || `${airport.city || airport.nameCity}, ${airport.country || airport.nameCountry}`
     setToLocation(displayName)
     setToSuggestions([])
     setShowToSuggestions(false)
@@ -430,7 +444,7 @@ export default function TestPage() {
                             className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                           >
                             <div className="font-medium">
-                              {airport.nameIata || airport.name || airport.nameAirport || 'Airport'}
+                              {airport.displayName || airport.nameIata || airport.name || airport.nameAirport || 'Airport'}
                             </div>
                             <div className="text-sm text-gray-500">
                               {airport.city || airport.nameCity || 'City'}, {airport.country || airport.nameCountry || 'Country'}
@@ -486,7 +500,7 @@ export default function TestPage() {
                             className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                           >
                             <div className="font-medium">
-                              {airport.nameIata || airport.name || airport.nameAirport || 'Airport'}
+                              {airport.displayName || airport.nameIata || airport.name || airport.nameAirport || 'Airport'}
                             </div>
                             <div className="text-sm text-gray-500">
                               {airport.city || airport.nameCity || 'City'}, {airport.country || airport.nameCountry || 'Country'}

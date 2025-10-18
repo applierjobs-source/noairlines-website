@@ -32,7 +32,6 @@ interface CharterQuote {
 }
 
 const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
-const AVIAPAGES_API_KEY = "eAl0nA2bGuAIPYLuQqW0hJTgGrOfTkjaTN2Q"
 
 export default function TestPage() {
   const [step, setStep] = useState(1)

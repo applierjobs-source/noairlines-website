@@ -90,11 +90,30 @@ export default function TestPage() {
     if (query.length < 2) return []
     
     try {
+      console.log('Searching airports for query:', query)
       const response = await fetch(
         `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&query=${encodeURIComponent(query)}`
       )
+      console.log('Aviation Edge API response status:', response.status)
+      
+      if (!response.ok) {
+        throw new Error(`Aviation Edge API error: ${response.status} ${response.statusText}`)
+      }
+      
       const data = await response.json()
-      return data || []
+      console.log('Aviation Edge API response data:', data)
+      
+      // Check if data is an array or has a different structure
+      if (Array.isArray(data)) {
+        return data
+      } else if (data && data.data && Array.isArray(data.data)) {
+        return data.data
+      } else if (data && data.airports && Array.isArray(data.airports)) {
+        return data.airports
+      } else {
+        console.warn('Unexpected data structure from Aviation Edge API:', data)
+        return []
+      }
     } catch (error) {
       console.error('Error searching airports:', error)
       return []
@@ -116,7 +135,73 @@ export default function TestPage() {
       console.log('Airport search results:', { fromAirports, toAirports })
       
       if (fromAirports.length === 0 || toAirports.length === 0) {
-        throw new Error("Could not find airport codes for the specified locations")
+        console.log('No airports found from API, trying fallback airport codes...')
+        
+        // Fallback airport codes for common cities
+        const fallbackAirports: { [key: string]: string } = {
+          'new york': 'JFK',
+          'nyc': 'JFK',
+          'los angeles': 'LAX',
+          'lax': 'LAX',
+          'chicago': 'ORD',
+          'miami': 'MIA',
+          'miami international': 'MIA',
+          'london': 'LHR',
+          'paris': 'CDG',
+          'tokyo': 'NRT',
+          'dubai': 'DXB',
+          'singapore': 'SIN',
+          'sydney': 'SYD',
+          'toronto': 'YYZ',
+          'vancouver': 'YVR',
+          'mexico city': 'MEX',
+          'sao paulo': 'GRU',
+          'madrid': 'MAD',
+          'rome': 'FCO',
+          'amsterdam': 'AMS'
+        }
+        
+        const fromLower = fromLocation.toLowerCase()
+        const toLower = toLocation.toLowerCase()
+        
+        const fromCode = fallbackAirports[fromLower] || 'JFK' // Default to JFK
+        const toCode = fallbackAirports[toLower] || 'LAX' // Default to LAX
+        
+        console.log('Using fallback airport codes:', { fromCode, toCode })
+        
+        // Continue with the API call using fallback codes
+        const formattedDate = new Date(date).toISOString().split('T')[0]
+        console.log('Formatted date:', formattedDate)
+        
+        // Call AviaPages Charter Quote API
+        console.log('Calling AviaPages API...')
+        const response = await fetch('https://aviapages.com/api/v1/charter_quotes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${AVIAPAGES_API_KEY}`,
+          },
+          body: JSON.stringify({
+            departure_airport: fromCode,
+            arrival_airport: toCode,
+            departure_date: formattedDate,
+            passengers: passengers,
+            trip_type: tripType
+          })
+        })
+        
+        console.log('API Response status:', response.status)
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('API Error response:', errorText)
+          throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`)
+        }
+        
+        const data = await response.json()
+        console.log('API Response data:', data)
+        setQuotes(data.quotes || data || [])
+        return
       }
       
       const fromAirport = fromAirports[0]

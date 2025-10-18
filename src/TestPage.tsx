@@ -15,6 +15,7 @@ interface Airport {
   nameIata?: string
   nameAirport?: string
   nameCountry?: string
+  nameCity?: string
   codeIataAirport?: string
   codeIcaoAirport?: string
   codeIso2Country?: string

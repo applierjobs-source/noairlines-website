@@ -24,10 +24,10 @@ interface Airport {
 
 const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
 
-// Check if we're on the test page
-const isTestPage = window.location.pathname === '/test'
-
 export default function NoAirlinesBooking() {
+  // Check if we're on the test page
+  const isTestPage = window.location.pathname === '/test'
+  
   // If on test page, render TestPage component
   if (isTestPage) {
     return <TestPage />

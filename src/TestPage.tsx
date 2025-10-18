@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail, Search, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,11 @@ const AVIAPAGES_API_KEY = "eAl0nA2bGuAIPYLuQqW0hJTgGrOfTkjaTN2Q"
 
 export default function TestPage() {
   const [step, setStep] = useState(1)
+  
+  // Reset step to 1 on mount to ensure clean start
+  useEffect(() => {
+    setStep(1)
+  }, [])
   const [fromLocation, setFromLocation] = useState("")
   const [toLocation, setToLocation] = useState("")
   const [date, setDate] = useState("")

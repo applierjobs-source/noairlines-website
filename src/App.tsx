@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import TestPage from "./TestPage"
 
 type TripType = "one-way" | "round-trip" | null
 
@@ -23,7 +24,14 @@ interface Airport {
 
 const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
 
+// Check if we're on the test page
+const isTestPage = window.location.pathname === '/test'
+
 export default function NoAirlinesBooking() {
+  // If on test page, render TestPage component
+  if (isTestPage) {
+    return <TestPage />
+  }
   const [step, setStep] = useState(1)
   const [fromLocation, setFromLocation] = useState("")
   const [toLocation, setToLocation] = useState("")

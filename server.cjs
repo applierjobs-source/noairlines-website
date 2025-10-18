@@ -164,6 +164,11 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   
+  // Handle /test route - serve index.html for client-side routing
+  if (req.url === '/test') {
+    req.url = '/';
+  }
+  
   // Parse URL and set file path relative to dist directory
   let filePath = path.join(DIST_DIR, req.url === '/' ? 'index.html' : req.url);
   

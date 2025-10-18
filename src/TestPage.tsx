@@ -110,8 +110,18 @@ export default function TestPage() {
         return data.data
       } else if (data && data.airports && Array.isArray(data.airports)) {
         return data.airports
+      } else if (data && data.results && Array.isArray(data.results)) {
+        return data.results
       } else {
         console.warn('Unexpected data structure from Aviation Edge API:', data)
+        // Try to extract any array from the response
+        if (data && typeof data === 'object') {
+          const possibleArrays = Object.values(data).filter(Array.isArray)
+          if (possibleArrays.length > 0) {
+            console.log('Found array in response:', possibleArrays[0])
+            return possibleArrays[0]
+          }
+        }
         return []
       }
     } catch (error) {
@@ -318,13 +328,15 @@ export default function TestPage() {
   }
 
   const selectFromAirport = (airport: Airport) => {
-    setFromLocation(airport.nameIata || airport.name || `${airport.city}, ${airport.country}`)
+    const displayName = airport.nameIata || airport.name || airport.nameAirport || `${airport.city || airport.nameCity}, ${airport.country || airport.nameCountry}`
+    setFromLocation(displayName)
     setFromSuggestions([])
     setShowFromSuggestions(false)
   }
 
   const selectToAirport = (airport: Airport) => {
-    setToLocation(airport.nameIata || airport.name || `${airport.city}, ${airport.country}`)
+    const displayName = airport.nameIata || airport.name || airport.nameAirport || `${airport.city || airport.nameCity}, ${airport.country || airport.nameCountry}`
+    setToLocation(displayName)
     setToSuggestions([])
     setShowToSuggestions(false)
   }
@@ -387,10 +399,10 @@ export default function TestPage() {
                             className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                           >
                             <div className="font-medium">
-                              {airport.nameIata || airport.name}
+                              {airport.nameIata || airport.name || airport.nameAirport || 'Airport'}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {airport.city}, {airport.country}
+                              {airport.city || airport.nameCity || 'City'}, {airport.country || airport.nameCountry || 'Country'}
                             </div>
                           </button>
                         ))}
@@ -443,10 +455,10 @@ export default function TestPage() {
                             className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                           >
                             <div className="font-medium">
-                              {airport.nameIata || airport.name}
+                              {airport.nameIata || airport.name || airport.nameAirport || 'Airport'}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {airport.city}, {airport.country}
+                              {airport.city || airport.nameCity || 'City'}, {airport.country || airport.nameCountry || 'Country'}
                             </div>
                           </button>
                         ))}

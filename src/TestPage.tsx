@@ -90,9 +90,9 @@ export default function TestPage() {
     
     try {
       console.log('Searching airports for query:', query)
-      // Use the correct endpoint - airports database with city search
+      // Use the correct autocomplete endpoint
       const response = await fetch(
-        `https://aviation-edge.com/v2/public/airportDatabase?key=${AVIATION_EDGE_API_KEY}&codeIataCity=${encodeURIComponent(query)}`
+        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&city=${encodeURIComponent(query)}`
       )
       console.log('Aviation Edge API response status:', response.status)
       

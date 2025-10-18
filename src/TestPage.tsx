@@ -93,19 +93,20 @@ export default function TestPage() {
     if (query.length < 2) return []
     
     try {
-      console.log('Searching airports for query:', query)
+      console.log('🔍 Searching airports for query:', query)
+      const apiUrl = `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&city=${encodeURIComponent(query)}`
+      console.log('🌐 API URL:', apiUrl)
+      
       // Use the correct autocomplete endpoint
-      const response = await fetch(
-        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&city=${encodeURIComponent(query)}`
-      )
-      console.log('Aviation Edge API response status:', response.status)
+      const response = await fetch(apiUrl)
+      console.log('📡 Aviation Edge API response status:', response.status)
       
       if (!response.ok) {
         throw new Error(`Aviation Edge API error: ${response.status} ${response.statusText}`)
       }
       
       const data = await response.json()
-      console.log('Aviation Edge API response data:', data)
+      console.log('📊 Aviation Edge API response data:', data)
       
       // Aviation Edge API returns { airportsByCities: [...], cities: [...] }
       if (data && data.airportsByCities && Array.isArray(data.airportsByCities)) {
@@ -128,17 +129,23 @@ export default function TestPage() {
           codeIata: city.codeIataCity
         })) : []
         
-        return [...airports, ...cities]
+        const results = [...airports, ...cities]
+        console.log('✅ Processed results:', results)
+        return results
       } else if (Array.isArray(data)) {
+        console.log('📋 Direct array response:', data)
         return data
       } else if (data && data.data && Array.isArray(data.data)) {
+        console.log('📋 Data.data array response:', data.data)
         return data.data
       } else if (data && data.airports && Array.isArray(data.airports)) {
+        console.log('📋 Data.airports array response:', data.airports)
         return data.airports
       } else if (data && data.results && Array.isArray(data.results)) {
+        console.log('📋 Data.results array response:', data.results)
         return data.results
       } else {
-        console.warn('Unexpected data structure from Aviation Edge API:', data)
+        console.warn('⚠️ Unexpected data structure from Aviation Edge API:', data)
         return []
       }
     } catch (error) {

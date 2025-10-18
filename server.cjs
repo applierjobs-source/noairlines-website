@@ -269,19 +269,36 @@ const server = http.createServer(async (req, res) => {
           return imageMap[aircraftClass] || '/images/aircraft/default-jet.svg';
         };
 
+        // Generate multiple quote estimates with different aircraft types and pricing
+        const generateMultipleQuotes = (basePrice, companies) => {
+          const aircraftTypes = [
+            { class: 'Light', multiplier: 0.7, name: 'Citation CJ3' },
+            { class: 'Midsize', multiplier: 1.0, name: 'Hawker 800' },
+            { class: 'Heavy', multiplier: 1.4, name: 'Gulfstream G550' },
+            { class: 'Ultra Long Range', multiplier: 1.8, name: 'Global 7500' }
+          ];
+          
+          return aircraftTypes.map((aircraft, index) => {
+            const adjustedPrice = Math.round(basePrice * aircraft.multiplier);
+            const company = companies[index % companies.length];
+            
+            return {
+              id: `${data.id}-${index + 1}`,
+              aircraft: aircraft.class,
+              aircraft_image: getAircraftImage(aircraft.class),
+              price: adjustedPrice,
+              currency: currency,
+              departure_time: data.legs[0]?.departure_datetime || '',
+              flight_time: 'TBD',
+              company: company.name,
+              aircraft_model: aircraft.name
+            };
+          });
+        };
+
         // Transform the response to match frontend expectations
         const transformedData = {
-          quotes: [{
-            id: data.id.toString(),
-            aircraft: data.aircraft[0]?.ac_class || 'Midsize',
-            aircraft_image: getAircraftImage(data.aircraft[0]?.ac_class || 'Midsize'),
-            price: priceEstimate,
-            currency: currency,
-            departure_time: data.legs[0]?.departure_datetime || '',
-            flight_time: 'TBD', // Not provided in request response
-            company: `${data.quote_messages?.length || charterOperators.length} Charter Companies`,
-            companies_contacted: data.quote_messages?.length || charterOperators.length
-          }],
+          quotes: generateMultipleQuotes(priceEstimate, charterOperators),
           request_id: data.id,
           status: data.state === 11 ? 'pending' : 'completed',
           companies_contacted: data.quote_messages?.length || charterOperators.length

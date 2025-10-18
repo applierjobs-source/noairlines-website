@@ -25,6 +25,7 @@ interface CharterQuote {
   id: string
   aircraft: string
   aircraft_image?: string
+  aircraft_model?: string
   price: number
   currency: string
   departure_time: string
@@ -947,6 +948,9 @@ export default function TestPage() {
                             <div className="flex-1 flex justify-between items-start">
                               <div>
                                 <h3 className="text-xl font-semibold">{quote.aircraft}</h3>
+                                {quote.aircraft_model && (
+                                  <p className="text-sm text-gray-500 mb-1">{quote.aircraft_model}</p>
+                                )}
                                 <p className="text-gray-600">{quote.company}</p>
                               </div>
                               <div className="text-right">

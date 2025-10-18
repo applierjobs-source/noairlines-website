@@ -129,34 +129,8 @@ export default function TestPage() {
       const formattedDate = new Date(date).toISOString().split('T')[0]
       console.log('Formatted date:', formattedDate)
       
-      // For now, let's skip the actual API call and just set some mock data
-      console.log('Skipping AviaPages API call for now, using mock data')
-      setQuotes([
-        {
-          id: '1',
-          aircraft: 'Cessna Citation CJ3',
-          price: 8500,
-          currency: 'USD',
-          departure_time: time,
-          arrival_time: '14:30',
-          flight_time: '2h 30m',
-          company: 'Private Jet Charter Co.'
-        },
-        {
-          id: '2',
-          aircraft: 'Hawker 800XP',
-          price: 12000,
-          currency: 'USD',
-          departure_time: time,
-          arrival_time: '15:00',
-          flight_time: '2h 45m',
-          company: 'Elite Aviation'
-        }
-      ])
-      
-      // TODO: Uncomment this when ready to test real API
-      /*
       // Call AviaPages Charter Quote API
+      console.log('Calling AviaPages API...')
       const response = await fetch('https://aviapages.com/api/v1/charter_quotes', {
         method: 'POST',
         headers: {
@@ -172,13 +146,17 @@ export default function TestPage() {
         })
       })
       
+      console.log('API Response status:', response.status)
+      
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`)
+        const errorText = await response.text()
+        console.error('API Error response:', errorText)
+        throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`)
       }
       
       const data = await response.json()
-      setQuotes(data.quotes || [])
-      */
+      console.log('API Response data:', data)
+      setQuotes(data.quotes || data || [])
       
     } catch (error) {
       console.error('Error fetching charter quotes:', error)
@@ -815,6 +793,10 @@ export default function TestPage() {
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                       <p className="text-red-800 font-medium">Error fetching quotes:</p>
                       <p className="text-red-600">{quotesError}</p>
+                      <p className="text-sm text-red-500 mt-2">
+                        This might be due to CORS restrictions or API limitations. 
+                        Check the browser console for more details.
+                      </p>
                     </div>
                   )}
                   

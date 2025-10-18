@@ -186,13 +186,40 @@ const server = http.createServer(async (req, res) => {
         const data = await response.json();
         console.log('AviaPages API response:', data);
         
+        // Get price estimate from charter prices API
+        let priceEstimate = 0;
+        let currency = 'USD';
+        
+        try {
+          const priceResponse = await fetch('https://dir.aviapages.com/api/charter_prices/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Token eAl0nA2bGuAIPYLuQqW0hJTgGrOfTkjaTN2Q`,
+            },
+            body: JSON.stringify({
+              legs: aviaPagesRequest.legs,
+              aircraft: aviaPagesRequest.aircraft
+            })
+          });
+          
+          if (priceResponse.ok) {
+            const priceData = await priceResponse.json();
+            priceEstimate = priceData.price || 0;
+            currency = priceData.currency_code || 'USD';
+            console.log('Price estimate:', priceEstimate, currency);
+          }
+        } catch (priceError) {
+          console.error('Error fetching price estimate:', priceError);
+        }
+        
         // Transform the response to match frontend expectations
         const transformedData = {
           quotes: [{
             id: data.id.toString(),
             aircraft: data.aircraft[0]?.ac_class || 'Midsize',
-            price: 0, // AviaPages doesn't return price in the request response
-            currency: 'USD',
+            price: priceEstimate,
+            currency: currency,
             departure_time: data.legs[0]?.departure_datetime || '',
             flight_time: 'TBD', // Not provided in request response
             company: data.quote_messages[0]?.company?.name || 'Charter Company'

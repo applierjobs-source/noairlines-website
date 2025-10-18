@@ -131,7 +131,7 @@ const server = http.createServer(async (req, res) => {
         const requestData = JSON.parse(body);
         console.log('Received charter quotes request:', requestData);
         
-        // Top charter operators to send quotes to
+        // Top charter operators for display purposes
         const charterOperators = [
           { id: 8112, name: "Charter Jet One, Inc." },
           { id: 8486, name: "Integra Jet, LLC" },
@@ -145,6 +145,9 @@ const server = http.createServer(async (req, res) => {
           { id: 8317, name: "RussAir" }
         ];
 
+        // Use the original 10 verified companies (API working limit)
+        const expandedOperators = charterOperators;
+
         // Transform request data to AviaPages API format
         const aviaPagesRequest = {
           legs: [{
@@ -157,7 +160,7 @@ const server = http.createServer(async (req, res) => {
             pax: requestData.passengers,
             departure_datetime: requestData.departure_date ? `${requestData.departure_date}T${requestData.departure_time || '12:00'}` : null
           }],
-          quote_messages: charterOperators.map(operator => ({
+          quote_messages: expandedOperators.map(operator => ({
             company: {
               id: operator.id
             }
@@ -297,10 +300,10 @@ const server = http.createServer(async (req, res) => {
 
         // Transform the response to match frontend expectations
         const transformedData = {
-          quotes: generateMultipleQuotes(priceEstimate, charterOperators),
+          quotes: generateMultipleQuotes(priceEstimate, expandedOperators),
           request_id: data.id,
           status: data.state === 11 ? 'pending' : 'completed',
-          companies_contacted: data.quote_messages?.length || charterOperators.length
+          companies_contacted: data.quote_messages?.length || expandedOperators.length
         };
         
         res.writeHead(200, { 

@@ -259,6 +259,8 @@ export default function TestPage() {
     exit: { opacity: 0, x: -50 }
   }
 
+  console.log('Current step:', step)
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
       <div className="container mx-auto px-4 py-8">
@@ -267,6 +269,7 @@ export default function TestPage() {
             NoAirlines <span className="text-blue-600">Test</span>
           </h1>
           <p className="text-xl text-gray-600">Private Jet Charter with AviaPages API Integration</p>
+          <p className="text-sm text-gray-500 mt-2">Debug: Current step is {step}</p>
         </div>
 
         <div className="max-w-2xl mx-auto">

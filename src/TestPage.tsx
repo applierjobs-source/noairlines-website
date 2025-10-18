@@ -57,9 +57,9 @@ export default function TestPage() {
   const toInputRef = useRef<HTMLInputElement>(null)
 
   const nextStep = () => {
-    if (step === 5 && tripType === "round-trip") {
-      setStep(6)
-    } else if (step === 5 && tripType === "one-way") {
+    if (step === 6 && tripType === "round-trip") {
+      setStep(7) // Go to return date step
+    } else if (step === 6 && tripType === "one-way") {
       setStep(9) // Skip to email step for one-way
     } else {
       setStep(step + 1)
@@ -70,13 +70,11 @@ export default function TestPage() {
     if (step === 9 && tripType === "round-trip") {
       setStep(8) // Go back to return time step
     } else if (step === 9 && tripType === "one-way") {
-      setStep(5) // Go back to passengers step for one-way
+      setStep(6) // Go back to trip type step for one-way
     } else if (step === 8 && tripType === "round-trip") {
       setStep(7) // Go back to return date step
     } else if (step === 7 && tripType === "round-trip") {
-      setStep(6) // Go back to return date step
-    } else if (step === 6 && tripType === "round-trip") {
-      setStep(5) // Go back to trip type selection
+      setStep(6) // Go back to trip type selection
     } else {
       setStep(step - 1)
     }

@@ -1,0 +1,42 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skyGradient4" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E0F6FF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Sky background -->
+  <rect width="400" height="300" fill="url(#skyGradient4)"/>
+  
+  <!-- Ground -->
+  <rect x="0" y="250" width="400" height="50" fill="#90EE90"/>
+  
+  <!-- Ultra Long Range Jet (Global 7500 style) -->
+  <g transform="translate(200, 200)">
+    <!-- Fuselage -->
+    <ellipse cx="0" cy="0" rx="120" ry="25" fill="#FFFFFF" stroke="#CCCCCC" stroke-width="2"/>
+    
+    <!-- Wings -->
+    <ellipse cx="-35" cy="-15" rx="140" ry="15" fill="#F0F0F0" stroke="#CCCCCC" stroke-width="1"/>
+    
+    <!-- Tail -->
+    <ellipse cx="90" cy="-35" rx="20" ry="40" fill="#FFFFFF" stroke="#CCCCCC" stroke-width="1"/>
+    
+    <!-- Cockpit -->
+    <circle cx="-85" cy="-15" r="14" fill="#87CEEB" stroke="#CCCCCC" stroke-width="1"/>
+    
+    <!-- Engine nacelles -->
+    <ellipse cx="-60" cy="12" rx="25" ry="10" fill="#E0E0E0" stroke="#CCCCCC" stroke-width="1"/>
+    <ellipse cx="40" cy="12" rx="25" ry="10" fill="#E0E0E0" stroke="#CCCCCC" stroke-width="1"/>
+    
+    <!-- Landing gear -->
+    <rect x="-55" y="22" width="6" height="25" fill="#666666"/>
+    <rect x="5" y="22" width="6" height="25" fill="#666666"/>
+    <rect x="65" y="22" width="6" height="25" fill="#666666"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="200" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#333333">Ultra Long Range Jet</text>
+  <text x="200" y="75" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#666666">Global 7500 • G650ER</text>
+</svg>

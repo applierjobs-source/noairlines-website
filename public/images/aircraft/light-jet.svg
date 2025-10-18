@@ -1,0 +1,42 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E0F6FF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Sky background -->
+  <rect width="400" height="300" fill="url(#skyGradient)"/>
+  
+  <!-- Ground -->
+  <rect x="0" y="250" width="400" height="50" fill="#90EE90"/>
+  
+  <!-- Light Jet (Citation CJ3 style) -->
+  <g transform="translate(200, 200)">
+    <!-- Fuselage -->
+    <ellipse cx="0" cy="0" rx="60" ry="15" fill="#FFFFFF" stroke="#CCCCCC" stroke-width="2"/>
+    
+    <!-- Wings -->
+    <ellipse cx="-20" cy="-5" rx="80" ry="8" fill="#F0F0F0" stroke="#CCCCCC" stroke-width="1"/>
+    
+    <!-- Tail -->
+    <ellipse cx="45" cy="-20" rx="12" ry="25" fill="#FFFFFF" stroke="#CCCCCC" stroke-width="1"/>
+    
+    <!-- Cockpit -->
+    <circle cx="-40" cy="-5" r="8" fill="#87CEEB" stroke="#CCCCCC" stroke-width="1"/>
+    
+    <!-- Engine nacelles -->
+    <ellipse cx="-30" cy="5" rx="15" ry="6" fill="#E0E0E0" stroke="#CCCCCC" stroke-width="1"/>
+    <ellipse cx="10" cy="5" rx="15" ry="6" fill="#E0E0E0" stroke="#CCCCCC" stroke-width="1"/>
+    
+    <!-- Landing gear -->
+    <rect x="-25" y="10" width="3" height="15" fill="#666666"/>
+    <rect x="5" y="10" width="3" height="15" fill="#666666"/>
+    <rect x="35" y="10" width="3" height="15" fill="#666666"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="200" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#333333">Light Jet</text>
+  <text x="200" y="75" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#666666">Citation CJ3 • Phenom 100</text>
+</svg>

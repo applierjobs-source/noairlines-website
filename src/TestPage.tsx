@@ -92,7 +92,7 @@ export default function TestPage() {
     try {
       console.log('Searching airports for query:', query)
       const response = await fetch(
-        `https://aviation-edge.com/v2/public/autocomplete?key=${AVIATION_EDGE_API_KEY}&query=${encodeURIComponent(query)}`
+        `https://aviation-edge.com/v2/public/airports?key=${AVIATION_EDGE_API_KEY}&codeIataAirport=${encodeURIComponent(query)}`
       )
       console.log('Aviation Edge API response status:', response.status)
       
@@ -127,103 +127,51 @@ export default function TestPage() {
     setQuotesError("")
     
     try {
-      console.log('Searching airports for:', fromLocation, toLocation)
-      // First, get airport codes for the locations
-      const fromAirports = await searchAirports(fromLocation)
-      const toAirports = await searchAirports(toLocation)
+      console.log('Using fallback airport codes for:', fromLocation, toLocation)
       
-      console.log('Airport search results:', { fromAirports, toAirports })
-      
-      if (fromAirports.length === 0 || toAirports.length === 0) {
-        console.log('No airports found from API, trying fallback airport codes...')
-        
-        // Fallback airport codes for common cities
-        const fallbackAirports: { [key: string]: string } = {
-          'new york': 'JFK',
-          'nyc': 'JFK',
-          'los angeles': 'LAX',
-          'lax': 'LAX',
-          'chicago': 'ORD',
-          'miami': 'MIA',
-          'miami international': 'MIA',
-          'london': 'LHR',
-          'paris': 'CDG',
-          'tokyo': 'NRT',
-          'dubai': 'DXB',
-          'singapore': 'SIN',
-          'sydney': 'SYD',
-          'toronto': 'YYZ',
-          'vancouver': 'YVR',
-          'mexico city': 'MEX',
-          'sao paulo': 'GRU',
-          'madrid': 'MAD',
-          'rome': 'FCO',
-          'amsterdam': 'AMS'
-        }
-        
-        const fromLower = fromLocation.toLowerCase()
-        const toLower = toLocation.toLowerCase()
-        
-        const fromCode = fallbackAirports[fromLower] || 'JFK' // Default to JFK
-        const toCode = fallbackAirports[toLower] || 'LAX' // Default to LAX
-        
-        console.log('Using fallback airport codes:', { fromCode, toCode })
-        
-        // Continue with the API call using fallback codes
-        const formattedDate = new Date(date).toISOString().split('T')[0]
-        console.log('Formatted date:', formattedDate)
-        
-        // Call our server proxy for AviaPages API
-        console.log('Calling server proxy for AviaPages API...')
-        const response = await fetch('/api/charter-quotes', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            departure_airport: fromCode,
-            arrival_airport: toCode,
-            departure_date: formattedDate,
-            passengers: passengers,
-            trip_type: tripType
-          })
-        })
-        
-        console.log('Server proxy response status:', response.status)
-        
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error('Server proxy error response:', errorText)
-          throw new Error(`Server proxy error: ${response.status} ${response.statusText} - ${errorText}`)
-        }
-        
-        const result = await response.json()
-        console.log('Server proxy response data:', result)
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Server proxy returned error')
-        }
-        
-        setQuotes(result.data.quotes || result.data || [])
-        return
+      // Fallback airport codes for common cities
+      const fallbackAirports: { [key: string]: string } = {
+        'new york': 'JFK',
+        'nyc': 'JFK',
+        'new york city': 'JFK',
+        'los angeles': 'LAX',
+        'lax': 'LAX',
+        'chicago': 'ORD',
+        'miami': 'MIA',
+        'miami international': 'MIA',
+        'london': 'LHR',
+        'paris': 'CDG',
+        'tokyo': 'NRT',
+        'dubai': 'DXB',
+        'singapore': 'SIN',
+        'sydney': 'SYD',
+        'toronto': 'YYZ',
+        'vancouver': 'YVR',
+        'mexico city': 'MEX',
+        'sao paulo': 'GRU',
+        'madrid': 'MAD',
+        'rome': 'FCO',
+        'amsterdam': 'AMS',
+        'boston': 'BOS',
+        'san francisco': 'SFO',
+        'seattle': 'SEA',
+        'denver': 'DEN',
+        'atlanta': 'ATL',
+        'dallas': 'DFW',
+        'houston': 'IAH',
+        'phoenix': 'PHX',
+        'las vegas': 'LAS'
       }
       
-      const fromAirport = fromAirports[0]
-      const toAirport = toAirports[0]
+      const fromLower = fromLocation.toLowerCase().trim()
+      const toLower = toLocation.toLowerCase().trim()
       
-      console.log('From airport object:', fromAirport)
-      console.log('To airport object:', toAirport)
+      const fromCode = fallbackAirports[fromLower] || 'JFK' // Default to JFK
+      const toCode = fallbackAirports[toLower] || 'LAX' // Default to LAX
       
-      const fromCode = fromAirport?.codeIataAirport || fromAirport?.codeIata
-      const toCode = toAirport?.codeIataAirport || toAirport?.codeIata
+      console.log('Using airport codes:', { fromCode, toCode, fromLower, toLower })
       
-      console.log('Airport codes:', { fromCode, toCode })
-      
-      if (!fromCode || !toCode) {
-        throw new Error(`Invalid airport codes. From: ${fromCode}, To: ${toCode}. Airport objects: ${JSON.stringify({fromAirport, toAirport})}`)
-      }
-      
-      // Format date for API (YYYY-MM-DD)
+      // Continue with the API call using fallback codes
       const formattedDate = new Date(date).toISOString().split('T')[0]
       console.log('Formatted date:', formattedDate)
       

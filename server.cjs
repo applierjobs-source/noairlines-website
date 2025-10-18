@@ -132,7 +132,7 @@ const server = http.createServer(async (req, res) => {
         console.log('Received charter quotes request:', requestData);
         
         // Call AviaPages API from server-side
-        const response = await fetch('https://aviapages.com/api/v1/charter_quotes', {
+        const response = await fetch('https://dir.aviapages.com/api/v1/charter_quotes', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

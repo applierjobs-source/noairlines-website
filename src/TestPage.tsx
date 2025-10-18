@@ -119,13 +119,19 @@ export default function TestPage() {
         throw new Error("Could not find airport codes for the specified locations")
       }
       
-      const fromCode = fromAirports[0].codeIataAirport || fromAirports[0].codeIata
-      const toCode = toAirports[0].codeIataAirport || toAirports[0].codeIata
+      const fromAirport = fromAirports[0]
+      const toAirport = toAirports[0]
+      
+      console.log('From airport object:', fromAirport)
+      console.log('To airport object:', toAirport)
+      
+      const fromCode = fromAirport?.codeIataAirport || fromAirport?.codeIata
+      const toCode = toAirport?.codeIataAirport || toAirport?.codeIata
       
       console.log('Airport codes:', { fromCode, toCode })
       
       if (!fromCode || !toCode) {
-        throw new Error("Invalid airport codes")
+        throw new Error(`Invalid airport codes. From: ${fromCode}, To: ${toCode}. Airport objects: ${JSON.stringify({fromAirport, toAirport})}`)
       }
       
       // Format date for API (YYYY-MM-DD)

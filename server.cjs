@@ -206,7 +206,30 @@ const server = http.createServer(async (req, res) => {
           if (priceResponse.ok) {
             const priceData = await priceResponse.json();
             priceEstimate = priceData.price || 0;
-            currency = priceData.currency_code || 'USD';
+            const originalCurrency = priceData.currency_code || 'USD';
+            
+            // Convert to USD if not already USD
+            if (originalCurrency !== 'USD') {
+              try {
+                const conversionResponse = await fetch(`https://api.exchangerate-api.com/v4/latest/${originalCurrency}`);
+                if (conversionResponse.ok) {
+                  const conversionData = await conversionResponse.json();
+                  const usdRate = conversionData.rates.USD;
+                  priceEstimate = Math.round(priceEstimate * usdRate);
+                  currency = 'USD';
+                  console.log(`Converted ${priceData.price} ${originalCurrency} to ${priceEstimate} USD (rate: ${usdRate})`);
+                } else {
+                  console.log('Currency conversion failed, using original price');
+                  currency = originalCurrency;
+                }
+              } catch (conversionError) {
+                console.error('Currency conversion error:', conversionError);
+                currency = originalCurrency;
+              }
+            } else {
+              currency = 'USD';
+            }
+            
             console.log('Price estimate:', priceEstimate, currency);
           }
         } catch (priceError) {

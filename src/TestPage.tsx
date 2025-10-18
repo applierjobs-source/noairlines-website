@@ -247,8 +247,11 @@ export default function TestPage() {
           departure_airport: fromCode,
           arrival_airport: toCode,
           departure_date: formattedDate,
+          departure_time: time,
           passengers: passengers,
-          trip_type: tripType
+          trip_type: tripType,
+          name: name,
+          email: email
         })
       })
       

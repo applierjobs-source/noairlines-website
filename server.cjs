@@ -151,7 +151,13 @@ const server = http.createServer(async (req, res) => {
           aircraft: [{
             ac_class: "midsize" // Default to midsize, can be made configurable
           }],
-          channels: ["Email"]
+          channels: ["Email"],
+          quote_extension: {
+            client_given_name: requestData.name || 'Customer',
+            client_family_name: '',
+            client_email: requestData.email || '',
+            client_phone: requestData.phone || ''
+          }
         };
         
         console.log('Transformed request for AviaPages API:', aviaPagesRequest);

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail, Search, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"

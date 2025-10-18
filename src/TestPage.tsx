@@ -173,13 +173,12 @@ export default function TestPage() {
         const formattedDate = new Date(date).toISOString().split('T')[0]
         console.log('Formatted date:', formattedDate)
         
-        // Call AviaPages Charter Quote API
-        console.log('Calling AviaPages API...')
-        const response = await fetch('https://aviapages.com/api/v1/charter_quotes', {
+        // Call our server proxy for AviaPages API
+        console.log('Calling server proxy for AviaPages API...')
+        const response = await fetch('/api/charter-quotes', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${AVIAPAGES_API_KEY}`,
           },
           body: JSON.stringify({
             departure_airport: fromCode,
@@ -190,17 +189,22 @@ export default function TestPage() {
           })
         })
         
-        console.log('API Response status:', response.status)
+        console.log('Server proxy response status:', response.status)
         
         if (!response.ok) {
           const errorText = await response.text()
-          console.error('API Error response:', errorText)
-          throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`)
+          console.error('Server proxy error response:', errorText)
+          throw new Error(`Server proxy error: ${response.status} ${response.statusText} - ${errorText}`)
         }
         
-        const data = await response.json()
-        console.log('API Response data:', data)
-        setQuotes(data.quotes || data || [])
+        const result = await response.json()
+        console.log('Server proxy response data:', result)
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Server proxy returned error')
+        }
+        
+        setQuotes(result.data.quotes || result.data || [])
         return
       }
       
@@ -223,13 +227,12 @@ export default function TestPage() {
       const formattedDate = new Date(date).toISOString().split('T')[0]
       console.log('Formatted date:', formattedDate)
       
-      // Call AviaPages Charter Quote API
-      console.log('Calling AviaPages API...')
-      const response = await fetch('https://aviapages.com/api/v1/charter_quotes', {
+      // Call our server proxy for AviaPages API
+      console.log('Calling server proxy for AviaPages API...')
+      const response = await fetch('/api/charter-quotes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AVIAPAGES_API_KEY}`,
         },
         body: JSON.stringify({
           departure_airport: fromCode,
@@ -240,17 +243,22 @@ export default function TestPage() {
         })
       })
       
-      console.log('API Response status:', response.status)
+      console.log('Server proxy response status:', response.status)
       
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('API Error response:', errorText)
-        throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`)
+        console.error('Server proxy error response:', errorText)
+        throw new Error(`Server proxy error: ${response.status} ${response.statusText} - ${errorText}`)
       }
       
-      const data = await response.json()
-      console.log('API Response data:', data)
-      setQuotes(data.quotes || data || [])
+      const result = await response.json()
+      console.log('Server proxy response data:', result)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Server proxy returned error')
+      }
+      
+      setQuotes(result.data.quotes || result.data || [])
       
     } catch (error) {
       console.error('Error fetching charter quotes:', error)

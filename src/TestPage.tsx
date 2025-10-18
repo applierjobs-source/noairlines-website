@@ -31,6 +31,7 @@ interface CharterQuote {
   company: string
 }
 
+const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
 const AVIAPAGES_API_KEY = "eAl0nA2bGuAIPYLuQqW0hJTgGrOfTkjaTN2Q"
 
 export default function TestPage() {
@@ -84,10 +85,40 @@ export default function TestPage() {
     }
   }
 
-  // Airport search function - disabled for now
+  // Airport search function using Aviation Edge API
   const searchAirports = async (query: string) => {
-    // Return empty array to disable autocomplete
-    return []
+    if (query.length < 2) return []
+    
+    try {
+      console.log('Searching airports for query:', query)
+      // Use the correct endpoint - airports database with city search
+      const response = await fetch(
+        `https://aviation-edge.com/v2/public/airportDatabase?key=${AVIATION_EDGE_API_KEY}&codeIataCity=${encodeURIComponent(query)}`
+      )
+      console.log('Aviation Edge API response status:', response.status)
+      
+      if (!response.ok) {
+        throw new Error(`Aviation Edge API error: ${response.status} ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      console.log('Aviation Edge API response data:', data)
+      
+      // Check if data is an array or has a different structure
+      if (Array.isArray(data)) {
+        return data
+      } else if (data && data.data && Array.isArray(data.data)) {
+        return data.data
+      } else if (data && data.airports && Array.isArray(data.airports)) {
+        return data.airports
+      } else {
+        console.warn('Unexpected data structure from Aviation Edge API:', data)
+        return []
+      }
+    } catch (error) {
+      console.error('Error searching airports:', error)
+      return []
+    }
   }
 
   // AviaPages API integration for charter quotes
@@ -97,51 +128,75 @@ export default function TestPage() {
     setQuotesError("")
     
     try {
-      console.log('Using fallback airport codes for:', fromLocation, toLocation)
+      console.log('Searching airports for:', fromLocation, toLocation)
+      // First, get airport codes for the locations using Aviation Edge API
+      const fromAirports = await searchAirports(fromLocation)
+      const toAirports = await searchAirports(toLocation)
       
-      // Fallback airport codes for common cities
-      const fallbackAirports: { [key: string]: string } = {
-        'new york': 'JFK',
-        'nyc': 'JFK',
-        'new york city': 'JFK',
-        'los angeles': 'LAX',
-        'lax': 'LAX',
-        'chicago': 'ORD',
-        'miami': 'MIA',
-        'miami international': 'MIA',
-        'london': 'LHR',
-        'paris': 'CDG',
-        'tokyo': 'NRT',
-        'dubai': 'DXB',
-        'singapore': 'SIN',
-        'sydney': 'SYD',
-        'toronto': 'YYZ',
-        'vancouver': 'YVR',
-        'mexico city': 'MEX',
-        'sao paulo': 'GRU',
-        'madrid': 'MAD',
-        'rome': 'FCO',
-        'amsterdam': 'AMS',
-        'boston': 'BOS',
-        'san francisco': 'SFO',
-        'seattle': 'SEA',
-        'denver': 'DEN',
-        'atlanta': 'ATL',
-        'dallas': 'DFW',
-        'houston': 'IAH',
-        'phoenix': 'PHX',
-        'las vegas': 'LAS'
+      console.log('Airport search results:', { fromAirports, toAirports })
+      
+      let fromCode, toCode
+      
+      if (fromAirports.length > 0 && toAirports.length > 0) {
+        // Use Aviation Edge API results
+        const fromAirport = fromAirports[0]
+        const toAirport = toAirports[0]
+        
+        fromCode = fromAirport?.codeIataAirport || fromAirport?.codeIata
+        toCode = toAirport?.codeIataAirport || toAirport?.codeIata
+        
+        console.log('Using Aviation Edge API airport codes:', { fromCode, toCode })
+      } else {
+        // Fallback to hardcoded airport codes
+        console.log('No airports found from API, using fallback airport codes...')
+        
+        const fallbackAirports: { [key: string]: string } = {
+          'new york': 'JFK',
+          'nyc': 'JFK',
+          'new york city': 'JFK',
+          'los angeles': 'LAX',
+          'lax': 'LAX',
+          'chicago': 'ORD',
+          'miami': 'MIA',
+          'miami international': 'MIA',
+          'london': 'LHR',
+          'paris': 'CDG',
+          'tokyo': 'NRT',
+          'dubai': 'DXB',
+          'singapore': 'SIN',
+          'sydney': 'SYD',
+          'toronto': 'YYZ',
+          'vancouver': 'YVR',
+          'mexico city': 'MEX',
+          'sao paulo': 'GRU',
+          'madrid': 'MAD',
+          'rome': 'FCO',
+          'amsterdam': 'AMS',
+          'boston': 'BOS',
+          'san francisco': 'SFO',
+          'seattle': 'SEA',
+          'denver': 'DEN',
+          'atlanta': 'ATL',
+          'dallas': 'DFW',
+          'houston': 'IAH',
+          'phoenix': 'PHX',
+          'las vegas': 'LAS'
+        }
+        
+        const fromLower = fromLocation.toLowerCase().trim()
+        const toLower = toLocation.toLowerCase().trim()
+        
+        fromCode = fallbackAirports[fromLower] || 'JFK' // Default to JFK
+        toCode = fallbackAirports[toLower] || 'LAX' // Default to LAX
+        
+        console.log('Using fallback airport codes:', { fromCode, toCode, fromLower, toLower })
       }
       
-      const fromLower = fromLocation.toLowerCase().trim()
-      const toLower = toLocation.toLowerCase().trim()
+      if (!fromCode || !toCode) {
+        throw new Error(`Invalid airport codes. From: ${fromCode}, To: ${toCode}`)
+      }
       
-      const fromCode = fallbackAirports[fromLower] || 'JFK' // Default to JFK
-      const toCode = fallbackAirports[toLower] || 'LAX' // Default to LAX
-      
-      console.log('Using airport codes:', { fromCode, toCode, fromLower, toLower })
-      
-      // Continue with the API call using fallback codes
+      // Continue with the API call using airport codes
       const formattedDate = new Date(date).toISOString().split('T')[0]
       console.log('Formatted date:', formattedDate)
       

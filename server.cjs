@@ -236,11 +236,25 @@ const server = http.createServer(async (req, res) => {
           console.error('Error fetching price estimate:', priceError);
         }
         
+        // Aircraft image mapping based on aircraft class
+        const getAircraftImage = (aircraftClass) => {
+          const imageMap = {
+            'Light': '/images/aircraft/light-jet.jpg',
+            'Midsize': '/images/aircraft/midsize-jet.jpg', 
+            'Heavy': '/images/aircraft/heavy-jet.jpg',
+            'Ultra Long Range': '/images/aircraft/ultra-long-range-jet.jpg',
+            'Turboprop': '/images/aircraft/turboprop.jpg',
+            'Piston': '/images/aircraft/piston.jpg'
+          };
+          return imageMap[aircraftClass] || '/images/aircraft/default-jet.jpg';
+        };
+
         // Transform the response to match frontend expectations
         const transformedData = {
           quotes: [{
             id: data.id.toString(),
             aircraft: data.aircraft[0]?.ac_class || 'Midsize',
+            aircraft_image: getAircraftImage(data.aircraft[0]?.ac_class || 'Midsize'),
             price: priceEstimate,
             currency: currency,
             departure_time: data.legs[0]?.departure_datetime || '',

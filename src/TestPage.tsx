@@ -24,6 +24,7 @@ interface Airport {
 interface CharterQuote {
   id: string
   aircraft: string
+  aircraft_image?: string
   price: number
   currency: string
   departure_time: string
@@ -919,18 +920,41 @@ export default function TestPage() {
                     <div className="space-y-4">
                       {quotes.map((quote, index) => (
                         <div key={index} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <h3 className="text-xl font-semibold">{quote.aircraft}</h3>
-                              <p className="text-gray-600">{quote.company}</p>
+                          <div className="flex gap-4 mb-4">
+                            {/* Aircraft Image */}
+                            <div className="flex-shrink-0">
+                              {quote.aircraft_image ? (
+                                <img 
+                                  src={quote.aircraft_image} 
+                                  alt={`${quote.aircraft} aircraft`}
+                                  className="w-24 h-16 object-cover rounded-lg"
+                                  onError={(e) => {
+                                    // Fallback to a placeholder if image fails to load
+                                    e.currentTarget.src = '/images/aircraft/default-jet.jpg';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-24 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                                  <span className="text-gray-400 text-xs">✈️</span>
+                                </div>
+                              )}
                             </div>
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-green-600">
-                                ${quote.price.toLocaleString()}
+                            
+                            {/* Quote Details */}
+                            <div className="flex-1 flex justify-between items-start">
+                              <div>
+                                <h3 className="text-xl font-semibold">{quote.aircraft}</h3>
+                                <p className="text-gray-600">{quote.company}</p>
                               </div>
-                              <div className="text-sm text-gray-500">{quote.currency}</div>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-green-600">
+                                  ${quote.price.toLocaleString()}
+                                </div>
+                                <div className="text-sm text-gray-500">{quote.currency}</div>
+                              </div>
                             </div>
                           </div>
+                          
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="font-medium">Departure:</span> {quote.departure_time}

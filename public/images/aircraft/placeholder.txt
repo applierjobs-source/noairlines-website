@@ -1,0 +1,17 @@
+# Aircraft Images Directory
+
+Place your aircraft images here with these filenames:
+
+- light-jet.jpg (for Light jets like Citation CJ3, Phenom 100)
+- midsize-jet.jpg (for Midsize jets like Citation XLS, Hawker 800)
+- heavy-jet.jpg (for Heavy jets like Gulfstream G550, Challenger 605)
+- ultra-long-range-jet.jpg (for Ultra Long Range jets like Global 7500, G650ER)
+- turboprop.jpg (for Turboprops like King Air 350, PC-12)
+- piston.jpg (for Piston aircraft like Cirrus SR22, Cessna 172)
+- default-jet.jpg (fallback image for unknown aircraft types)
+
+Recommended image specifications:
+- Format: JPG or PNG
+- Size: 400x300 pixels or similar aspect ratio
+- Quality: High resolution for web display
+- Content: Professional aircraft photos showing the exterior

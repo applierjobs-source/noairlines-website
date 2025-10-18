@@ -60,19 +60,23 @@ export default function TestPage() {
     if (step === 5 && tripType === "round-trip") {
       setStep(6)
     } else if (step === 5 && tripType === "one-way") {
-      setStep(7)
+      setStep(9) // Skip to email step for one-way
     } else {
       setStep(step + 1)
     }
   }
   
   const prevStep = () => {
-    if (step === 7 && tripType === "round-trip") {
-      setStep(6)
-    } else if (step === 7 && tripType === "one-way") {
-      setStep(5)
+    if (step === 9 && tripType === "round-trip") {
+      setStep(8) // Go back to return time step
+    } else if (step === 9 && tripType === "one-way") {
+      setStep(5) // Go back to passengers step for one-way
+    } else if (step === 8 && tripType === "round-trip") {
+      setStep(7) // Go back to return date step
+    } else if (step === 7 && tripType === "round-trip") {
+      setStep(6) // Go back to return date step
     } else if (step === 6 && tripType === "round-trip") {
-      setStep(5)
+      setStep(5) // Go back to trip type selection
     } else {
       setStep(step - 1)
     }
@@ -150,6 +154,8 @@ export default function TestPage() {
   }
 
   const handleSubmit = async () => {
+    console.log('Form submitted, current step:', step)
+    
     const itineraryData = {
       from: fromLocation,
       to: toLocation,
@@ -166,7 +172,9 @@ export default function TestPage() {
     console.log('Submitting itinerary:', itineraryData)
     
     // Fetch quotes from AviaPages API
+    console.log('Fetching quotes...')
     await fetchCharterQuotes()
+    console.log('Quotes fetched, setting step to 11')
     
     // Also send to your existing email system
     try {
@@ -184,7 +192,8 @@ export default function TestPage() {
       console.error('Error sending email:', error)
     }
     
-    setStep(10) // Go to results screen
+    console.log('Setting step to 11 for results')
+    setStep(11) // Go to results screen
   }
 
   const handleFromInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

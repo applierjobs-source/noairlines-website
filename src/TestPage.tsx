@@ -100,13 +100,17 @@ export default function TestPage() {
 
   // AviaPages API integration for charter quotes
   const fetchCharterQuotes = async () => {
+    console.log('Starting fetchCharterQuotes...')
     setLoadingQuotes(true)
     setQuotesError("")
     
     try {
+      console.log('Searching airports for:', fromLocation, toLocation)
       // First, get airport codes for the locations
       const fromAirports = await searchAirports(fromLocation)
       const toAirports = await searchAirports(toLocation)
+      
+      console.log('Airport search results:', { fromAirports, toAirports })
       
       if (fromAirports.length === 0 || toAirports.length === 0) {
         throw new Error("Could not find airport codes for the specified locations")
@@ -115,13 +119,43 @@ export default function TestPage() {
       const fromCode = fromAirports[0].codeIataAirport || fromAirports[0].codeIata
       const toCode = toAirports[0].codeIataAirport || toAirports[0].codeIata
       
+      console.log('Airport codes:', { fromCode, toCode })
+      
       if (!fromCode || !toCode) {
         throw new Error("Invalid airport codes")
       }
       
       // Format date for API (YYYY-MM-DD)
       const formattedDate = new Date(date).toISOString().split('T')[0]
+      console.log('Formatted date:', formattedDate)
       
+      // For now, let's skip the actual API call and just set some mock data
+      console.log('Skipping AviaPages API call for now, using mock data')
+      setQuotes([
+        {
+          id: '1',
+          aircraft: 'Cessna Citation CJ3',
+          price: 8500,
+          currency: 'USD',
+          departure_time: time,
+          arrival_time: '14:30',
+          flight_time: '2h 30m',
+          company: 'Private Jet Charter Co.'
+        },
+        {
+          id: '2',
+          aircraft: 'Hawker 800XP',
+          price: 12000,
+          currency: 'USD',
+          departure_time: time,
+          arrival_time: '15:00',
+          flight_time: '2h 45m',
+          company: 'Elite Aviation'
+        }
+      ])
+      
+      // TODO: Uncomment this when ready to test real API
+      /*
       // Call AviaPages Charter Quote API
       const response = await fetch('https://aviapages.com/api/v1/charter_quotes', {
         method: 'POST',
@@ -144,11 +178,13 @@ export default function TestPage() {
       
       const data = await response.json()
       setQuotes(data.quotes || [])
+      */
       
     } catch (error) {
       console.error('Error fetching charter quotes:', error)
       setQuotesError(error instanceof Error ? error.message : 'Failed to fetch quotes')
     } finally {
+      console.log('Setting loadingQuotes to false')
       setLoadingQuotes(false)
     }
   }
@@ -171,10 +207,15 @@ export default function TestPage() {
     
     console.log('Submitting itinerary:', itineraryData)
     
-    // Fetch quotes from AviaPages API
-    console.log('Fetching quotes...')
-    await fetchCharterQuotes()
-    console.log('Quotes fetched, setting step to 11')
+    try {
+      // Fetch quotes from AviaPages API
+      console.log('Fetching quotes...')
+      await fetchCharterQuotes()
+      console.log('Quotes fetched, setting step to 11')
+    } catch (error) {
+      console.error('Error in fetchCharterQuotes:', error)
+      // Continue anyway, show results page even if quotes fail
+    }
     
     // Also send to your existing email system
     try {

@@ -1143,14 +1143,14 @@ export default function NoAirlinesBooking() {
                               <img 
                                 src={quote.aircraft_image} 
                                 alt={`${quote.aircraft} aircraft`}
-                                className="w-24 h-16 object-contain rounded-lg bg-zinc-100 p-2"
+                                className="w-48 h-32 object-contain rounded-lg bg-zinc-100 p-2"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                 }}
                               />
                             ) : (
-                              <div className="w-24 h-16 bg-zinc-100 rounded-lg flex items-center justify-center">
-                                <Plane className="h-8 w-8 text-zinc-400" />
+                              <div className="w-48 h-32 bg-zinc-100 rounded-lg flex items-center justify-center">
+                                <Plane className="h-12 w-12 text-zinc-400" />
                               </div>
                             )}
                           </div>

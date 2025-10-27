@@ -137,7 +137,7 @@ export default function NoAirlinesBooking() {
           id: '1',
           aircraft: 'Light',
           aircraft_model: 'Citation CJ3',
-          aircraft_image: '/images/aircraft/light-jet.svg',
+          aircraft_image: 'https://flyusa.com/wp-content/uploads/2022/10/Cessna-Citation-Jet.jpg',
           price: Math.floor(8000 + Math.random() * 4000),
           currency: 'USD',
           departure_time: `${date}T${time}`,

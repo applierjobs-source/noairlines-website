@@ -1135,37 +1135,37 @@ export default function NoAirlinesBooking() {
                 {quotes.length > 0 && (
                   <div className="space-y-4">
                     {quotes.map((quote, index) => (
-                      <div key={index} className="border border-zinc-300 rounded-xl p-6 hover:shadow-lg transition-shadow bg-white">
-                        <div className="flex gap-4 mb-4">
+                      <div key={index} className="border border-zinc-300 rounded-xl p-4 md:p-6 hover:shadow-lg transition-shadow bg-white">
+                        <div className="flex flex-col md:flex-row gap-4 mb-4">
                           {/* Aircraft Image */}
-                          <div className="flex-shrink-0">
+                          <div className="flex-shrink-0 mx-auto md:mx-0">
                             {quote.aircraft_image ? (
                               <img 
                                 src={quote.aircraft_image} 
                                 alt={`${quote.aircraft} aircraft`}
-                                className="w-48 h-32 object-contain rounded-lg bg-zinc-100 p-2"
+                                className="w-full max-w-sm h-40 md:w-48 md:h-32 object-contain rounded-lg bg-zinc-100 p-2"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                 }}
                               />
                             ) : (
-                              <div className="w-48 h-32 bg-zinc-100 rounded-lg flex items-center justify-center">
+                              <div className="w-full max-w-sm h-40 md:w-48 md:h-32 bg-zinc-100 rounded-lg flex items-center justify-center">
                                 <Plane className="h-12 w-12 text-zinc-400" />
                               </div>
                             )}
                           </div>
                           
                           {/* Quote Details */}
-                          <div className="flex-1 flex justify-between items-start">
-                            <div>
+                          <div className="flex-1 flex flex-col md:flex-row md:justify-between items-center md:items-start text-center md:text-left">
+                            <div className="mb-3 md:mb-0">
                               <h3 className="text-xl font-semibold text-black">{quote.aircraft}</h3>
                               {quote.aircraft_model && (
                                 <p className="text-sm text-zinc-600 mb-1">{quote.aircraft_model}</p>
                               )}
                               <p className="text-zinc-600">{quote.company}</p>
                             </div>
-                            <div className="text-right">
-                              <div className="text-3xl font-bold text-blue-600">
+                            <div className="md:text-right">
+                              <div className="text-3xl md:text-4xl font-bold text-blue-600">
                                 ${quote.price.toLocaleString()}
                               </div>
                               <div className="text-sm text-zinc-500">{quote.currency}</div>
@@ -1173,7 +1173,7 @@ export default function NoAirlinesBooking() {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-4 text-sm border-t border-zinc-200 pt-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 text-sm border-t border-zinc-200 pt-4 mb-4">
                           <div>
                             <span className="font-medium text-zinc-600">Departure:</span> 
                             <span className="ml-2 text-black">
@@ -1191,7 +1191,7 @@ export default function NoAirlinesBooking() {
                             <span className="font-medium text-zinc-600">Flight Time:</span> 
                             <span className="ml-2 text-black">{quote.flight_time || 'TBD'}</span>
                           </div>
-                          <div className="col-span-2">
+                          <div className="md:col-span-2">
                             <span className="font-medium text-zinc-600">Passengers:</span> 
                             <span className="ml-2 text-black">{passengers}</span>
                           </div>

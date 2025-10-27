@@ -90,20 +90,6 @@ export default function NoAirlinesBooking() {
     }
   }
 
-  // Helper function to extract airport code from formatted string like "JFK (JFK)"
-  const extractAirportCode = (location: string): string => {
-    const match = location.match(/\(([A-Z0-9]+)\)$/)
-    if (match) {
-      return match[1]
-    }
-    // Try to find 3-letter code like JFK, LAX, etc.
-    const threeLetterMatch = location.match(/\b([A-Z]{3})\b/)
-    if (threeLetterMatch) {
-      return threeLetterMatch[1]
-    }
-    return ''
-  }
-
   const handleSubmit = async () => {
     const itineraryData = {
       from: fromLocation,
@@ -136,76 +122,66 @@ export default function NoAirlinesBooking() {
       console.error('Error sending email:', error)
     }
     
-    // Fetch charter quotes
+    // Generate mock quotes
     setLoadingQuotes(true)
-    setQuotesError("")
     
-    try {
-      // Extract airport codes
-      let fromCode = extractAirportCode(fromLocation)
-      let toCode = extractAirportCode(toLocation)
-      
-      // Fallback mapping for common airport names
-      const fallbackAirports: { [key: string]: string } = {
-        'new york': 'KJFK', 'nyc': 'KJFK', 'new york city': 'KJFK',
-        'los angeles': 'KLAX', 'chicago': 'KORD', 'miami': 'KMIA',
-        'san francisco': 'KSFO', 'boston': 'KBOS', 'seattle': 'KSEA',
-        'atlanta': 'KATL', 'dallas': 'KDFW', 'houston': 'KIAH'
-      }
-      
-      if (!fromCode) {
-        fromCode = fallbackAirports[fromLocation.toLowerCase()] || 'KJFK'
-      }
-      if (!toCode) {
-        toCode = fallbackAirports[toLocation.toLowerCase()] || 'KLAX'
-      }
-      
-      // Convert to ICAO format if needed
-      if (!fromCode.startsWith('K') && fromCode.length === 3) {
-        fromCode = `K${fromCode}`
-      }
-      if (!toCode.startsWith('K') && toCode.length === 3) {
-        toCode = `K${toCode}`
-      }
-      
-      console.log('Fetching quotes with airport codes:', { fromCode, toCode })
-      
-      // Fetch quotes
-      const quotesResponse = await fetch('/api/charter-quotes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    // Simulate API delay
+    setTimeout(() => {
+      const mockQuotes: CharterQuote[] = [
+        {
+          id: '1',
+          aircraft: 'Light',
+          aircraft_model: 'Citation CJ3',
+          aircraft_image: '/images/aircraft/light-jet.svg',
+          price: Math.floor(8000 + Math.random() * 4000),
+          currency: 'USD',
+          departure_time: `${date}T${time}`,
+          arrival_time: '',
+          flight_time: '2h 15m',
+          company: 'Charter Jet One, Inc.'
         },
-        body: JSON.stringify({
-          departure_airport: fromCode,
-          arrival_airport: toCode,
-          departure_date: date,
-          departure_time: time,
-          passengers: passengers,
-          trip_type: tripType,
-          name: name,
-          email: email
-        })
-      })
-      
-      if (quotesResponse.ok) {
-        const quotesResult = await quotesResponse.json()
-        console.log('Quotes received:', quotesResult)
-        if (quotesResult.success && quotesResult.data) {
-          setQuotes(quotesResult.data.quotes || quotesResult.data || [])
+        {
+          id: '2',
+          aircraft: 'Midsize',
+          aircraft_model: 'Hawker 800',
+          aircraft_image: '/images/aircraft/midsize-jet.svg',
+          price: Math.floor(12000 + Math.random() * 5000),
+          currency: 'USD',
+          departure_time: `${date}T${time}`,
+          arrival_time: '',
+          flight_time: '2h 10m',
+          company: 'Integra Jet, LLC'
+        },
+        {
+          id: '3',
+          aircraft: 'Heavy',
+          aircraft_model: 'Gulfstream G550',
+          aircraft_image: '/images/aircraft/heavy-jet.svg',
+          price: Math.floor(18000 + Math.random() * 8000),
+          currency: 'USD',
+          departure_time: `${date}T${time}`,
+          arrival_time: '',
+          flight_time: '2h 5m',
+          company: 'Secure Air Charter'
+        },
+        {
+          id: '4',
+          aircraft: 'Ultra Long Range',
+          aircraft_model: 'Global 7500',
+          aircraft_image: '/images/aircraft/ultra-long-range-jet.svg',
+          price: Math.floor(25000 + Math.random() * 10000),
+          currency: 'USD',
+          departure_time: `${date}T${time}`,
+          arrival_time: '',
+          flight_time: '2h 0m',
+          company: 'GFK Flight Support'
         }
-      } else {
-        throw new Error('Failed to fetch quotes')
-      }
-    } catch (error) {
-      console.error('Error fetching quotes:', error)
-      setQuotesError(error instanceof Error ? error.message : 'Failed to fetch quotes')
-    } finally {
+      ]
+      
+      setQuotes(mockQuotes)
       setLoadingQuotes(false)
-    }
-    
-    // Go to results screen
-    setStep(10)
+      setStep(10)
+    }, 1500) // 1.5 second loading delay
   }
 
         // Airport search function using Aviation Edge API

@@ -62,7 +62,6 @@ export default function NoAirlinesBooking() {
   const [showToSuggestions, setShowToSuggestions] = useState(false)
   const [quotes, setQuotes] = useState<CharterQuote[]>([])
   const [loadingQuotes, setLoadingQuotes] = useState(false)
-  const [quotesError, setQuotesError] = useState("")
   const fromInputRef = useRef<HTMLInputElement>(null)
   const toInputRef = useRef<HTMLInputElement>(null)
 
@@ -1127,16 +1126,6 @@ export default function NoAirlinesBooking() {
                   </div>
                 )}
                 
-                {quotesError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-                    <p className="text-red-800 font-medium mb-2">Unable to fetch quotes</p>
-                    <p className="text-red-600 text-sm">{quotesError}</p>
-                    <p className="text-sm text-zinc-600 mt-4">
-                      We have received your itinerary and will send a quote to your inbox within 1 hour.
-                    </p>
-                  </div>
-                )}
-                
                 {quotes.length > 0 && (
                   <div className="space-y-4">
                     {quotes.map((quote, index) => (
@@ -1206,7 +1195,7 @@ export default function NoAirlinesBooking() {
                   </div>
                 )}
                 
-                {!loadingQuotes && !quotesError && quotes.length === 0 && (
+                {!loadingQuotes && quotes.length === 0 && (
                   <div className="text-center py-12">
                     <div className="h-16 w-16 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
                       <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

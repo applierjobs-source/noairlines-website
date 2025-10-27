@@ -95,6 +95,117 @@ export default function NoAirlinesBooking() {
     setStep(11)
   }
 
+  // Calculate flight time based on route and aircraft type
+  const calculateFlightTime = (aircraft: string): string => {
+    // Extract airport codes or use city names
+    const fromStr = fromLocation.toLowerCase()
+    const toStr = toLocation.toLowerCase()
+    
+    // Try to extract airport codes (format: "Airport Name (ABC)")
+    const fromMatch = fromLocation.match(/\(([A-Z]{3})\)/)
+    const toMatch = toLocation.match(/\(([A-Z]{3})\)/)
+    const fromCode = fromMatch ? fromMatch[1] : null
+    const toCode = toMatch ? toMatch[1] : null
+    
+    // Common routes database (approximate flight times in minutes)
+    const commonRoutes: Record<string, number> = {
+      // Austin to New Orleans
+      'AUS->MSY': 105,
+      'MSY->AUS': 105,
+      
+      // Austin to Los Angeles
+      'AUS->LAX': 180,
+      'LAX->AUS': 180,
+      
+      // Austin to New York
+      'AUS->JFK': 210,
+      'JFK->AUS': 210,
+      'AUS->LGA': 210,
+      'LGA->AUS': 210,
+      
+      // Austin to Miami
+      'AUS->MIA': 165,
+      'MIA->AUS': 165,
+      
+      // Austin to Seattle
+      'AUS->SEA': 240,
+      'SEA->AUS': 240,
+      
+      // Austin to Chicago
+      'AUS->ORD': 135,
+      'ORD->AUS': 135,
+      
+      // New York to Los Angeles
+      'JFK->LAX': 360,
+      'LAX->JFK': 360,
+      'LGA->LAX': 360,
+      'LAX->LGA': 360,
+      
+      // Los Angeles to Miami
+      'LAX->MIA': 270,
+      'MIA->LAX': 270,
+      
+      // Chicago to Miami
+      'ORD->MIA': 150,
+      'MIA->ORD': 150,
+      
+      // New York to Miami
+      'JFK->MIA': 165,
+      'MIA->JFK': 165,
+      'LGA->MIA': 165,
+      'MIA->LGA': 165,
+    }
+    
+    // Look up exact route if airport codes are available
+    if (fromCode && toCode) {
+      const routeKey = `${fromCode}->${toCode}`
+      const exactRoute = commonRoutes[routeKey]
+      if (exactRoute) {
+        // Adjust based on aircraft type (heavier/larger jets are typically faster)
+        const adjustment = {
+          'Light': 1.0,         // Citation speed
+          'Midsize': 0.95,       // Hawker slightly faster
+          'Heavy': 0.90,         // Gulfstream faster
+          'Ultra Long Range': 0.85 // Global fastest
+        }[aircraft] || 1.0
+        
+        const finalTime = Math.round(exactRoute * adjustment)
+        const hours = Math.floor(finalTime / 60)
+        const minutes = finalTime % 60
+        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+      }
+    }
+    
+    // Estimate based on city names
+    const cityKey = (fromStr + ' to ' + toStr).toLowerCase()
+    if (cityKey.includes('austin') && cityKey.includes('orleans')) {
+      const time = aircraft === 'Light' ? 105 : aircraft === 'Midsize' ? 100 : aircraft === 'Heavy' ? 95 : 90
+      return time >= 60 ? `${Math.floor(time/60)}h ${time%60}m` : `${time}m`
+    }
+    if (cityKey.includes('austin') && cityKey.includes('los angeles')) {
+      const time = aircraft === 'Light' ? 180 : aircraft === 'Midsize' ? 170 : aircraft === 'Heavy' ? 165 : 155
+      return `${Math.floor(time/60)}h ${time%60}m`
+    }
+    if (cityKey.includes('austin') && cityKey.includes('new york')) {
+      const time = aircraft === 'Light' ? 210 : aircraft === 'Midsize' ? 200 : aircraft === 'Heavy' ? 190 : 180
+      return `${Math.floor(time/60)}h ${time%60}m`
+    }
+    if (cityKey.includes('new york') && cityKey.includes('los angeles')) {
+      const time = aircraft === 'Light' ? 360 : aircraft === 'Midsize' ? 340 : aircraft === 'Heavy' ? 320 : 300
+      return `${Math.floor(time/60)}h ${time%60}m`
+    }
+    
+    // Default estimation for unknown routes (estimated based on typical speeds)
+    const defaultTimes: Record<string, string> = {
+      'Light': '2h 15m',
+      'Midsize': '2h 10m',
+      'Heavy': '2h 5m',
+      'Ultra Long Range': '2h 0m'
+    }
+    
+    return defaultTimes[aircraft] || '2h 0m'
+  }
+
   const handleSubmit = async () => {
     const itineraryData = {
       from: fromLocation,
@@ -142,7 +253,7 @@ export default function NoAirlinesBooking() {
           currency: 'USD',
           departure_time: `${date}T${time}`,
           arrival_time: '',
-          flight_time: '2h 15m',
+          flight_time: calculateFlightTime('Light'),
           company: 'Charter Jet One, Inc.'
         },
         {
@@ -154,7 +265,7 @@ export default function NoAirlinesBooking() {
           currency: 'USD',
           departure_time: `${date}T${time}`,
           arrival_time: '',
-          flight_time: '2h 10m',
+          flight_time: calculateFlightTime('Midsize'),
           company: 'Integra Jet, LLC'
         },
         {
@@ -166,7 +277,7 @@ export default function NoAirlinesBooking() {
           currency: 'USD',
           departure_time: `${date}T${time}`,
           arrival_time: '',
-          flight_time: '2h 5m',
+          flight_time: calculateFlightTime('Heavy'),
           company: 'Secure Air Charter'
         },
         {
@@ -178,7 +289,7 @@ export default function NoAirlinesBooking() {
           currency: 'USD',
           departure_time: `${date}T${time}`,
           arrival_time: '',
-          flight_time: '2h 0m',
+          flight_time: calculateFlightTime('Ultra Long Range'),
           company: 'GFK Flight Support'
         }
       ]

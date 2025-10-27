@@ -62,6 +62,7 @@ export default function NoAirlinesBooking() {
   const [showToSuggestions, setShowToSuggestions] = useState(false)
   const [quotes, setQuotes] = useState<CharterQuote[]>([])
   const [loadingQuotes, setLoadingQuotes] = useState(false)
+  const [selectedQuote, setSelectedQuote] = useState<CharterQuote | null>(null)
   const fromInputRef = useRef<HTMLInputElement>(null)
   const toInputRef = useRef<HTMLInputElement>(null)
 
@@ -87,6 +88,11 @@ export default function NoAirlinesBooking() {
     } else {
       setStep(step - 1)
     }
+  }
+
+  const handleBookNow = (quote: CharterQuote) => {
+    setSelectedQuote(quote)
+    setStep(11)
   }
 
   const handleSubmit = async () => {
@@ -564,18 +570,18 @@ export default function NoAirlinesBooking() {
           
           {/* Progress Bar */}
           <div className="mt-6">
-            <div className="relative">
+              <div className="relative">
               <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
                     initial={{ width: "0%" }}
-                    animate={{ width: `${(step / 10) * 100}%` }}
+                    animate={{ width: `${(step / 11) * 100}%` }}
                     transition={{ duration: 0.5, ease: "easeInOut" }}
                   />
               </div>
               <div className="flex justify-between mt-2">
-                <span className="text-xs text-zinc-600">Step {step} of 10</span>
-                <span className="text-xs text-zinc-600">{Math.round((step / 10) * 100)}%</span>
+                <span className="text-xs text-zinc-600">Step {step} of 11</span>
+                <span className="text-xs text-zinc-600">{Math.round((step / 11) * 100)}%</span>
               </div>
             </div>
           </div>
@@ -1167,7 +1173,7 @@ export default function NoAirlinesBooking() {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-4 text-sm border-t border-zinc-200 pt-4">
+                        <div className="grid grid-cols-2 gap-4 text-sm border-t border-zinc-200 pt-4 mb-4">
                           <div>
                             <span className="font-medium text-zinc-600">Departure:</span> 
                             <span className="ml-2 text-black">
@@ -1190,6 +1196,13 @@ export default function NoAirlinesBooking() {
                             <span className="ml-2 text-black">{passengers}</span>
                           </div>
                         </div>
+                        
+                        <Button
+                          onClick={() => handleBookNow(quote)}
+                          className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-500"
+                        >
+                          Book Now
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -1215,6 +1228,76 @@ export default function NoAirlinesBooking() {
                     className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-500"
                   >
                     New Search
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 11: Thank You Page */}
+            {step === 11 && (
+              <motion.div
+                key="step11"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="space-y-8"
+              >
+                <div className="text-center space-y-4">
+                  <div className="h-16 w-16 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
+                    <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+                    Thank you!
+                  </h1>
+                  <p className="text-lg text-zinc-600">
+                    Please allow 1 hour for us to secure this flight for you.
+                  </p>
+                  
+                  {selectedQuote && (
+                    <div className="mt-8 bg-zinc-50 rounded-xl p-6 max-w-md mx-auto">
+                      <h2 className="text-xl font-semibold mb-4">Your Selected Flight</h2>
+                      <div className="space-y-2 text-left">
+                        <div className="flex justify-between">
+                          <span className="text-zinc-600">Aircraft:</span>
+                          <span className="font-semibold">{selectedQuote.aircraft}</span>
+                        </div>
+                        {selectedQuote.aircraft_model && (
+                          <div className="flex justify-between">
+                            <span className="text-zinc-600">Model:</span>
+                            <span className="font-semibold">{selectedQuote.aircraft_model}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-zinc-600">Price:</span>
+                          <span className="font-semibold text-blue-600">
+                            ${selectedQuote.price.toLocaleString()} {selectedQuote.currency}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-600">Route:</span>
+                          <span className="font-semibold">
+                            {fromLocation} → {toLocation}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <p className="text-sm text-zinc-600 mt-8">
+                    You will receive a confirmation email shortly with all the details.
+                  </p>
+                </div>
+                
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setStep(1)}
+                    className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-500"
+                  >
+                    Book Another Flight
                   </Button>
                 </div>
               </motion.div>

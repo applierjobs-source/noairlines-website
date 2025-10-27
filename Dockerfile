@@ -8,13 +8,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies needed for build)
-RUN npm ci && npm cache clean --force
+RUN npm ci
 
 # Copy all source files
 COPY . .
 
-# Build the React app
-RUN npm run build
+# Build the React app with verbose output
+RUN npm run build 2>&1 || (echo "Build failed!" && exit 1)
 
 # Verify build output
 RUN ls -la dist/ && echo "=== Build completed ===" && \

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail } from "lucide-react"
+import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import TestPage from "./TestPage"
@@ -20,6 +20,19 @@ interface Airport {
   codeIataAirport?: string
   codeIcaoAirport?: string
   codeIso2Country?: string
+}
+
+interface CharterQuote {
+  id: string
+  aircraft: string
+  aircraft_image?: string
+  aircraft_model?: string
+  price: number
+  currency: string
+  departure_time: string
+  arrival_time: string
+  flight_time: string
+  company: string
 }
 
 const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
@@ -47,6 +60,9 @@ export default function NoAirlinesBooking() {
   const [toSuggestions, setToSuggestions] = useState<Airport[]>([])
   const [showFromSuggestions, setShowFromSuggestions] = useState(false)
   const [showToSuggestions, setShowToSuggestions] = useState(false)
+  const [quotes, setQuotes] = useState<CharterQuote[]>([])
+  const [loadingQuotes, setLoadingQuotes] = useState(false)
+  const [quotesError, setQuotesError] = useState("")
   const fromInputRef = useRef<HTMLInputElement>(null)
   const toInputRef = useRef<HTMLInputElement>(null)
 
@@ -74,6 +90,20 @@ export default function NoAirlinesBooking() {
     }
   }
 
+  // Helper function to extract airport code from formatted string like "JFK (JFK)"
+  const extractAirportCode = (location: string): string => {
+    const match = location.match(/\(([A-Z0-9]+)\)$/)
+    if (match) {
+      return match[1]
+    }
+    // Try to find 3-letter code like JFK, LAX, etc.
+    const threeLetterMatch = location.match(/\b([A-Z]{3})\b/)
+    if (threeLetterMatch) {
+      return threeLetterMatch[1]
+    }
+    return ''
+  }
+
   const handleSubmit = async () => {
     const itineraryData = {
       from: fromLocation,
@@ -90,8 +120,9 @@ export default function NoAirlinesBooking() {
     
     console.log('Submitting itinerary:', itineraryData)
     
+    // Send email notification
     try {
-      const response = await fetch('/api/submit-itinerary', {
+      const emailResponse = await fetch('/api/submit-itinerary', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,21 +130,82 @@ export default function NoAirlinesBooking() {
         body: JSON.stringify(itineraryData)
       })
       
-      const result = await response.json()
+      const emailResult = await emailResponse.json()
+      console.log('Itinerary submitted:', emailResult.success)
+    } catch (error) {
+      console.error('Error sending email:', error)
+    }
+    
+    // Fetch charter quotes
+    setLoadingQuotes(true)
+    setQuotesError("")
+    
+    try {
+      // Extract airport codes
+      let fromCode = extractAirportCode(fromLocation)
+      let toCode = extractAirportCode(toLocation)
       
-      if (result.success) {
-        console.log('Itinerary submitted successfully')
-        setStep(10) // Go to success screen
+      // Fallback mapping for common airport names
+      const fallbackAirports: { [key: string]: string } = {
+        'new york': 'KJFK', 'nyc': 'KJFK', 'new york city': 'KJFK',
+        'los angeles': 'KLAX', 'chicago': 'KORD', 'miami': 'KMIA',
+        'san francisco': 'KSFO', 'boston': 'KBOS', 'seattle': 'KSEA',
+        'atlanta': 'KATL', 'dallas': 'KDFW', 'houston': 'KIAH'
+      }
+      
+      if (!fromCode) {
+        fromCode = fallbackAirports[fromLocation.toLowerCase()] || 'KJFK'
+      }
+      if (!toCode) {
+        toCode = fallbackAirports[toLocation.toLowerCase()] || 'KLAX'
+      }
+      
+      // Convert to ICAO format if needed
+      if (!fromCode.startsWith('K') && fromCode.length === 3) {
+        fromCode = `K${fromCode}`
+      }
+      if (!toCode.startsWith('K') && toCode.length === 3) {
+        toCode = `K${toCode}`
+      }
+      
+      console.log('Fetching quotes with airport codes:', { fromCode, toCode })
+      
+      // Fetch quotes
+      const quotesResponse = await fetch('/api/charter-quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          departure_airport: fromCode,
+          arrival_airport: toCode,
+          departure_date: date,
+          departure_time: time,
+          passengers: passengers,
+          trip_type: tripType,
+          name: name,
+          email: email
+        })
+      })
+      
+      if (quotesResponse.ok) {
+        const quotesResult = await quotesResponse.json()
+        console.log('Quotes received:', quotesResult)
+        if (quotesResult.success && quotesResult.data) {
+          setQuotes(quotesResult.data.quotes || quotesResult.data || [])
+        }
       } else {
-        console.error('Failed to submit itinerary:', result.error)
-        // Still go to success screen even if email fails
-        setStep(10)
+        throw new Error('Failed to fetch quotes')
       }
     } catch (error) {
-      console.error('Error submitting itinerary:', error)
-      // Still go to success screen even if email fails
-      setStep(10)
+      console.error('Error fetching quotes:', error)
+      setQuotesError(error instanceof Error ? error.message : 'Failed to fetch quotes')
+    } finally {
+      setLoadingQuotes(false)
     }
+    
+    // Go to results screen
+    setStep(10)
   }
 
         // Airport search function using Aviation Edge API
@@ -499,16 +591,16 @@ export default function NoAirlinesBooking() {
           <div className="mt-6">
             <div className="relative">
               <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
-                  initial={{ width: "0%" }}
-                  animate={{ width: `${(step / 9) * 100}%` }}
-                  transition={{ duration: 0.5, ease: "easeInOut" }}
-                />
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${(step / 10) * 100}%` }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                  />
               </div>
               <div className="flex justify-between mt-2">
-                <span className="text-xs text-zinc-600">Step {step} of 9</span>
-                <span className="text-xs text-zinc-600">{Math.round((step / 9) * 100)}%</span>
+                <span className="text-xs text-zinc-600">Step {step} of 10</span>
+                <span className="text-xs text-zinc-600">{Math.round((step / 10) * 100)}%</span>
               </div>
             </div>
           </div>
@@ -1031,29 +1123,134 @@ export default function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Success Screen */}
+            {/* Step 10: Charter Quotes */}
             {step === 10 && (
               <motion.div
-                key="step9"
+                key="step10"
                 variants={pageVariants}
                 initial="initial"
                 animate="animate"
                 exit="exit"
                 transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="space-y-8 text-center"
+                className="space-y-8"
               >
-                <div className="space-y-4">
-                  <div className="h-16 w-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-                    <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
+                <div className="text-center space-y-4">
+                  <DollarSign className="h-16 w-16 mx-auto text-blue-600" />
                   <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
-                    Thank you!
+                    Available Flights
                   </h1>
-                  <p className="text-lg text-zinc-600 max-w-md mx-auto">
-                    We have received your itinerary. You will receive a quote to your inbox within 1 hour.
+                  <p className="text-lg text-zinc-600">
+                    {fromLocation} → {toLocation}
                   </p>
+                </div>
+                
+                {loadingQuotes && (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-4 text-zinc-600">Fetching available flights...</p>
+                  </div>
+                )}
+                
+                {quotesError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+                    <p className="text-red-800 font-medium mb-2">Unable to fetch quotes</p>
+                    <p className="text-red-600 text-sm">{quotesError}</p>
+                    <p className="text-sm text-zinc-600 mt-4">
+                      We have received your itinerary and will send a quote to your inbox within 1 hour.
+                    </p>
+                  </div>
+                )}
+                
+                {quotes.length > 0 && (
+                  <div className="space-y-4">
+                    {quotes.map((quote, index) => (
+                      <div key={index} className="border border-zinc-300 rounded-xl p-6 hover:shadow-lg transition-shadow bg-white">
+                        <div className="flex gap-4 mb-4">
+                          {/* Aircraft Image */}
+                          <div className="flex-shrink-0">
+                            {quote.aircraft_image ? (
+                              <img 
+                                src={quote.aircraft_image} 
+                                alt={`${quote.aircraft} aircraft`}
+                                className="w-24 h-16 object-contain rounded-lg bg-zinc-100 p-2"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-24 h-16 bg-zinc-100 rounded-lg flex items-center justify-center">
+                                <Plane className="h-8 w-8 text-zinc-400" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Quote Details */}
+                          <div className="flex-1 flex justify-between items-start">
+                            <div>
+                              <h3 className="text-xl font-semibold text-black">{quote.aircraft}</h3>
+                              {quote.aircraft_model && (
+                                <p className="text-sm text-zinc-600 mb-1">{quote.aircraft_model}</p>
+                              )}
+                              <p className="text-zinc-600">{quote.company}</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-3xl font-bold text-blue-600">
+                                ${quote.price.toLocaleString()}
+                              </div>
+                              <div className="text-sm text-zinc-500">{quote.currency}</div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm border-t border-zinc-200 pt-4">
+                          <div>
+                            <span className="font-medium text-zinc-600">Departure:</span> 
+                            <span className="ml-2 text-black">
+                              {quote.departure_time 
+                                ? new Date(quote.departure_time).toLocaleString('en-US', {
+                                    month: 'short', 
+                                    day: 'numeric', 
+                                    hour: 'numeric', 
+                                    minute: '2-digit'
+                                  })
+                                : `${date} at ${time}`}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-medium text-zinc-600">Flight Time:</span> 
+                            <span className="ml-2 text-black">{quote.flight_time || 'TBD'}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="font-medium text-zinc-600">Passengers:</span> 
+                            <span className="ml-2 text-black">{passengers}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {!loadingQuotes && !quotesError && quotes.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="h-16 w-16 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
+                      <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h2 className="text-2xl font-semibold mb-2">Thank you!</h2>
+                    <p className="text-zinc-600 max-w-md mx-auto">
+                      We have received your itinerary. You will receive a quote to your inbox within 1 hour.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setStep(1)}
+                    className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-500"
+                  >
+                    New Search
+                  </Button>
                 </div>
               </motion.div>
             )}

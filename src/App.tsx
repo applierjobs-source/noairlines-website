@@ -1273,7 +1273,6 @@ export default function NoAirlinesBooking() {
                               {quote.aircraft_model && (
                                 <p className="text-sm text-zinc-600 mb-1">{quote.aircraft_model}</p>
                               )}
-                              <p className="text-zinc-600">{quote.company}</p>
                             </div>
                             <div className="md:text-right">
                               <div className="text-3xl md:text-4xl font-bold text-blue-600">

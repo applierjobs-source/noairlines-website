@@ -1245,7 +1245,10 @@ export default function NoAirlinesBooking() {
                 
                 {quotes.length > 0 && (
                   <div className="space-y-4">
-                    {quotes.map((quote, index) => (
+                    {quotes.map((quote, index) => {
+                      const priceMin = quote.price;
+                      const priceMax = quote.price * 4;
+                      return (
                       <div key={index} className="border border-zinc-300 rounded-xl p-4 md:p-6 hover:shadow-lg transition-shadow bg-white">
                         <div className="flex flex-col md:flex-row gap-4 mb-4">
                           {/* Aircraft Image */}
@@ -1276,7 +1279,7 @@ export default function NoAirlinesBooking() {
                             </div>
                             <div className="md:text-right">
                               <div className="text-3xl md:text-4xl font-bold text-blue-600">
-                                ${quote.price.toLocaleString()}
+                                ${priceMin.toLocaleString()}-${priceMax.toLocaleString()}
                               </div>
                               <div className="text-sm text-zinc-500">{quote.currency}</div>
                             </div>
@@ -1314,7 +1317,8 @@ export default function NoAirlinesBooking() {
                           Book Now
                         </Button>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
                 
@@ -1384,7 +1388,7 @@ export default function NoAirlinesBooking() {
                         <div className="flex justify-between">
                           <span className="text-zinc-600">Price:</span>
                           <span className="font-semibold text-blue-600">
-                            ${selectedQuote.price.toLocaleString()} {selectedQuote.currency}
+                            ${selectedQuote.price.toLocaleString()}-${(selectedQuote.price * 4).toLocaleString()} {selectedQuote.currency}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -1400,15 +1404,6 @@ export default function NoAirlinesBooking() {
                   <p className="text-sm text-zinc-600 mt-8">
                     You will receive a confirmation email shortly with all the details.
                   </p>
-                </div>
-                
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setStep(1)}
-                    className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-500"
-                  >
-                    Book Another Flight
-                  </Button>
                 </div>
               </motion.div>
             )}

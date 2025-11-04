@@ -976,7 +976,7 @@ export default function TestPage() {
                               </div>
                               <div className="text-right">
                                 <div className="text-2xl font-bold text-green-600">
-                                  ${quote.price.toLocaleString()}
+                                  ${quote.price.toLocaleString()}-${(quote.price * 4).toLocaleString()}
                                 </div>
                                 <div className="text-sm text-gray-500">{quote.currency}</div>
                               </div>

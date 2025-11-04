@@ -376,6 +376,7 @@ const server = http.createServer(async (req, res) => {
         };
 
         // Generate multiple quote estimates with different aircraft types using real API pricing
+        // Prices will be displayed as ranges from base price to 4x (handled in frontend)
         const generateMultipleQuotes = (basePrice, companies) => {
           const aircraftTypes = [
             { class: 'Light', name: 'Citation CJ3' },
@@ -391,7 +392,7 @@ const server = http.createServer(async (req, res) => {
               id: `${data.id}-${index + 1}`,
               aircraft: aircraft.class,
               aircraft_image: getAircraftImage(aircraft.class),
-              price: basePrice, // Use real API price for all aircraft types
+              price: basePrice, // Base price - frontend will display as range (base to 4x)
               currency: currency,
               departure_time: data.legs[0]?.departure_datetime || '',
               flight_time: 'TBD',

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail, DollarSign } from "lucide-react"
+import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail, Phone, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import TestPage from "./TestPage"
@@ -53,6 +53,7 @@ export default function NoAirlinesBooking() {
   const [passengers, setPassengers] = useState(1)
   const [tripType, setTripType] = useState<TripType>(null)
   const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [name, setName] = useState("")
   const [returnDate, setReturnDate] = useState("")
   const [returnTime, setReturnTime] = useState("")
@@ -78,8 +79,12 @@ export default function NoAirlinesBooking() {
   }
   
   const prevStep = () => {
-    // If on email step and round-trip, go back to return flight step
-    if (step === 7 && tripType === "round-trip") {
+    // If on phone step, go back to email step
+    if (step === 8 && tripType === "round-trip") {
+      setStep(7) // Go back to email step
+    } else if (step === 8 && tripType === "one-way") {
+      setStep(7) // Go back to email step
+    } else if (step === 7 && tripType === "round-trip") {
       setStep(6) // Go back to return flight step
     } else if (step === 7 && tripType === "one-way") {
       setStep(5) // Go back to trip type selection for one-way
@@ -92,7 +97,7 @@ export default function NoAirlinesBooking() {
 
   const handleBookNow = (quote: CharterQuote) => {
     setSelectedQuote(quote)
-    setStep(11)
+    setStep(12)
   }
 
   // Calculate flight time based on route and aircraft type
@@ -215,6 +220,7 @@ export default function NoAirlinesBooking() {
       passengers,
       tripType,
       email,
+      phone,
       name,
       returnDate,
       returnTime
@@ -296,7 +302,7 @@ export default function NoAirlinesBooking() {
       
       setQuotes(mockQuotes)
       setLoadingQuotes(false)
-      setStep(10)
+      setStep(11)
     }, 1500) // 1.5 second loading delay
   }
 
@@ -686,13 +692,13 @@ export default function NoAirlinesBooking() {
                   <motion.div
                     className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
                     initial={{ width: "0%" }}
-                    animate={{ width: `${(step / 11) * 100}%` }}
+                    animate={{ width: `${(step / 12) * 100}%` }}
                     transition={{ duration: 0.5, ease: "easeInOut" }}
                   />
               </div>
               <div className="flex justify-between mt-2">
-                <span className="text-xs text-zinc-600">Step {step} of 11</span>
-                <span className="text-xs text-zinc-600">{Math.round((step / 11) * 100)}%</span>
+                <span className="text-xs text-zinc-600">Step {step} of 12</span>
+                <span className="text-xs text-zinc-600">{Math.round((step / 12) * 100)}%</span>
               </div>
             </div>
           </div>
@@ -1099,8 +1105,53 @@ export default function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 8: Name */}
+            {/* Step 8: Phone */}
             {step === 8 && (
+              <motion.div
+                key="step8"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="space-y-8"
+              >
+                <div className="text-center space-y-4">
+                  <Phone className="h-16 w-16 mx-auto text-blue-600" />
+                  <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+                    What's your phone number?
+                  </h1>
+                </div>
+                <div className="space-y-4">
+                  <Input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Enter your phone number"
+                    className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
+                    autoFocus
+                  />
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={prevStep}
+                      className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
+                    >
+                      <ArrowLeft className="mr-2 h-5 w-5" /> Back
+                    </Button>
+                    <Button
+                      onClick={nextStep}
+                      disabled={!phone.trim()}
+                      className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Continue <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 9: Name */}
+            {step === 9 && (
               <motion.div
                 key="step7"
                 variants={pageVariants}
@@ -1144,8 +1195,8 @@ export default function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 9: Summary */}
-            {step === 9 && (
+            {/* Step 10: Summary */}
+            {step === 10 && (
               <motion.div
                 key="step8"
                 variants={pageVariants}
@@ -1194,6 +1245,7 @@ export default function NoAirlinesBooking() {
                       <div className="text-sm text-zinc-600">Contact</div>
                       <div className="text-lg font-semibold">{name}</div>
                       <div className="text-sm text-zinc-600">{email}</div>
+                      <div className="text-sm text-zinc-600">{phone}</div>
                     </div>
                   </div>
                 </div>
@@ -1215,8 +1267,8 @@ export default function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 10: Charter Quotes */}
-            {step === 10 && (
+            {/* Step 11: Charter Quotes */}
+            {step === 11 && (
               <motion.div
                 key="step10"
                 variants={pageVariants}
@@ -1347,8 +1399,8 @@ export default function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 11: Thank You Page */}
-            {step === 11 && (
+            {/* Step 12: Thank You Page */}
+            {step === 12 && (
               <motion.div
                 key="step11"
                 variants={pageVariants}

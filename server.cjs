@@ -46,6 +46,7 @@ const sendItineraryEmail = async (itineraryData) => {
     const emailData = {
       customer_name: itineraryData.name || 'NoAirlines Customer',
       customer_email: itineraryData.email,
+      customer_phone: itineraryData.phone || 'N/A',
       from_location: itineraryData.from,
       to_location: itineraryData.to,
       departure_date: itineraryData.date,

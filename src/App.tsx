@@ -1368,7 +1368,7 @@ export default function NoAirlinesBooking() {
                     Thank you!
                   </h1>
                   <p className="text-lg text-zinc-600">
-                    Please allow 1 hour for us to secure this flight for you.
+                    Please allow up to one hour while we secure the best possible price for you.
                   </p>
                   
                   {selectedQuote && (

@@ -1314,7 +1314,7 @@ export default function NoAirlinesBooking() {
                           onClick={() => handleBookNow(quote)}
                           className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-500"
                         >
-                          Book Now
+                          Enquire Now
                         </Button>
                       </div>
                       );

@@ -55,6 +55,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
   const [fromLocation, setFromLocation] = useState(route.from)
   const [toLocation, setToLocation] = useState(route.to)
   const [currentNotification, setCurrentNotification] = useState(0)
+  const [daysAgo, setDaysAgo] = useState(Math.floor(Math.random() * 7) + 1)
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
   const [passengers, setPassengers] = useState(1)
@@ -87,6 +88,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
     if (!showBookingForm) {
       const interval = setInterval(() => {
         setCurrentNotification((prev) => (prev + 1) % exampleNotifications.length)
+        setDaysAgo(Math.floor(Math.random() * 7) + 1) // Randomize days ago for each notification
       }, 4000) // Change every 4 seconds
 
       return () => clearInterval(interval)
@@ -474,27 +476,31 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
       {!showBookingForm ? (
         <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
           {/* Social Proof Notification Bubble - Bottom Left */}
-          <motion.div
-            key={currentNotification}
-            initial={{ opacity: 0, y: 20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            transition={{ duration: 0.3 }}
-            className="absolute bottom-6 left-6 bg-white border border-zinc-200 rounded-2xl shadow-lg px-4 py-3 max-w-xs z-10"
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <Plane className="w-5 h-5 text-blue-600" />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentNotification}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="absolute bottom-4 left-4 md:bottom-6 md:left-6 bg-white border border-zinc-200 rounded-2xl shadow-lg px-3 py-2.5 md:px-4 md:py-3 max-w-[280px] md:max-w-xs z-10"
+            >
+              <div className="flex items-start gap-2.5 md:gap-3">
+                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Plane className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs md:text-sm text-zinc-900 font-medium leading-tight">
+                    <span className="font-semibold">{exampleNotifications[currentNotification].name}</span> just chartered a jet for{" "}
+                    <span className="font-semibold text-blue-600">{exampleNotifications[currentNotification].price}</span>
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {daysAgo} {daysAgo === 1 ? 'day' : 'days'} ago
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-zinc-900 font-medium">
-                  <span className="font-semibold">{exampleNotifications[currentNotification].name}</span> just chartered a jet for{" "}
-                  <span className="font-semibold text-blue-600">{exampleNotifications[currentNotification].price}</span>
-                </p>
-                <p className="text-xs text-zinc-500 mt-1">2 minutes ago</p>
-              </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </AnimatePresence>
 
           <div className="w-full max-w-4xl space-y-8">
             {/* Hero Section */}

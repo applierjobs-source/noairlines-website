@@ -12,20 +12,20 @@ export default function JetProgressBar({ step, totalSteps }: JetProgressBarProps
   return (
     <div className="relative">
       {/* Sky/Background Track */}
-      <div className="h-4 bg-gradient-to-b from-sky-50 via-blue-50/50 to-sky-50 rounded-full overflow-visible border border-blue-200/30 relative">
+      <div className="h-4 bg-white rounded-full overflow-visible border border-blue-200/40 relative">
         {/* Progress Fill with Contrail effect */}
         <motion.div
-          className="h-full bg-gradient-to-r from-blue-500 via-blue-400 to-blue-300 relative overflow-visible"
+          className="h-full bg-gradient-to-r from-blue-400 via-blue-300 to-blue-200 relative overflow-visible"
           initial={{ width: "0%" }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
         >
-          {/* Contrail - white hazy overlay on the blue fill */}
+          {/* Contrail - white hazy overlay fading from jet (right) to left */}
           <div className="absolute inset-0">
-            {/* Main contrail overlay - hazy white on blue */}
-            <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-white/30 to-white/20 blur-sm"></div>
+            {/* Main contrail overlay - most opaque near jet, fading left */}
+            <div className="absolute inset-0 bg-gradient-to-l from-white/50 via-white/30 to-transparent blur-sm"></div>
             {/* Secondary contrail layer for depth */}
-            <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/15 to-transparent blur-[2px]"></div>
+            <div className="absolute inset-0 bg-gradient-to-l from-white/30 via-white/15 to-transparent blur-[2px]"></div>
           </div>
         </motion.div>
         
@@ -40,10 +40,15 @@ export default function JetProgressBar({ step, totalSteps }: JetProgressBarProps
           animate={{ left: `${Math.max(0, Math.min(progress, 100))}%` }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
         >
-          <Plane 
-            className="w-5 h-5 text-blue-700 drop-shadow-md" 
-            fill="currentColor"
-          />
+          <div className="relative">
+            {/* Jet shadow/glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-blue-900/10 rounded-full blur-sm"></div>
+            {/* Jet icon */}
+            <Plane 
+              className="w-5 h-5 text-blue-600 relative z-10 drop-shadow-sm" 
+              fill="currentColor"
+            />
+          </div>
         </motion.div>
       </div>
       

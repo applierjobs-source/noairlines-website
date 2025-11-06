@@ -49,6 +49,18 @@ const exampleNotifications = [
   { name: "Jennifer L.", price: "$15,200" },
 ]
 
+// Light and midsize jet types
+const jetTypes = [
+  "Citation CJ3",
+  "Hawker 800",
+  "Citation XLS",
+  "Learjet 45",
+  "Citation Mustang",
+  "Hawker 4000",
+  "Challenger 300",
+  "Gulfstream G150"
+]
+
 export default function RouteLandingPage({ route }: RouteLandingPageProps) {
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [step, setStep] = useState(1)
@@ -56,6 +68,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
   const [toLocation, setToLocation] = useState(route.to)
   const [currentNotification, setCurrentNotification] = useState(0)
   const [daysAgo, setDaysAgo] = useState(Math.floor(Math.random() * 7) + 1)
+  const [jetType, setJetType] = useState(jetTypes[Math.floor(Math.random() * jetTypes.length)])
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
   const [passengers, setPassengers] = useState(1)
@@ -89,6 +102,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
       const interval = setInterval(() => {
         setCurrentNotification((prev) => (prev + 1) % exampleNotifications.length)
         setDaysAgo(Math.floor(Math.random() * 7) + 1) // Randomize days ago for each notification
+        setJetType(jetTypes[Math.floor(Math.random() * jetTypes.length)]) // Randomize jet type
       }, 4000) // Change every 4 seconds
 
       return () => clearInterval(interval)
@@ -491,7 +505,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs md:text-sm text-zinc-900 font-medium leading-tight">
-                    <span className="font-semibold">{exampleNotifications[currentNotification].name}</span> just chartered a jet for{" "}
+                    <span className="font-semibold">{exampleNotifications[currentNotification].name}</span> chartered a {jetType} for{" "}
                     <span className="font-semibold text-blue-600">{exampleNotifications[currentNotification].price}</span>
                   </p>
                   <p className="text-xs text-zinc-500 mt-1">

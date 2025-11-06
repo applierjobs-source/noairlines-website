@@ -525,6 +525,9 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
               <p className="text-xl md:text-2xl text-zinc-600 font-medium">
                 Fly from {route.from} to {route.to} on a Private Jet 🛩
               </p>
+              <p className="text-sm md:text-base font-semibold text-blue-600 tracking-wide uppercase">
+                INSTANT QUOTES | BEST DEALS
+              </p>
               <Button
                 onClick={() => setShowBookingForm(true)}
                 className="mt-8 h-14 px-8 text-lg bg-blue-600 hover:bg-blue-500"

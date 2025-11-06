@@ -461,7 +461,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
                 {route.title}
               </h1>
               <p className="text-xl md:text-2xl text-zinc-600 font-medium">
-                Fly from {route.from} to {route.to}
+                Fly from {route.from} to {route.to} on a Private Jet 🛩
               </p>
               <Button
                 onClick={() => setShowBookingForm(true)}

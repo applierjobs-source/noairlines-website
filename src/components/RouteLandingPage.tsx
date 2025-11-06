@@ -105,8 +105,6 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
   }
 
   const calculateFlightTime = (aircraft: string): string => {
-    const fromStr = fromLocation.toLowerCase()
-    const toStr = toLocation.toLowerCase()
     const fromMatch = fromLocation.match(/\(([A-Z]{3})\)/)
     const toMatch = toLocation.match(/\(([A-Z]{3})\)/)
     const fromCode = fromMatch ? fromMatch[1] : null

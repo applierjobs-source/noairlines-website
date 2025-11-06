@@ -230,7 +230,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
           id: '1',
           aircraft: 'Light',
           aircraft_model: 'Citation CJ3',
-          aircraft_image: '/images/aircraft/light-jet.svg',
+          aircraft_image: 'https://flyusa.com/wp-content/uploads/2022/10/Cessna-Citation-Jet.jpg',
           price: Math.floor(8000 + Math.random() * 4000),
           currency: 'USD',
           departure_time: `${date}T${time}`,
@@ -242,7 +242,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
           id: '2',
           aircraft: 'Midsize',
           aircraft_model: 'Hawker 800',
-          aircraft_image: '/images/aircraft/midsize-jet.svg',
+          aircraft_image: 'https://cdn.prod.website-files.com/65a0f5e2f3a73fc7e30e9205/65afc9d515cf52cead9ada4e_53416239464_9dd989950f_k.webp',
           price: Math.floor(12000 + Math.random() * 5000),
           currency: 'USD',
           departure_time: `${date}T${time}`,
@@ -254,7 +254,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
           id: '3',
           aircraft: 'Heavy',
           aircraft_model: 'Gulfstream G550',
-          aircraft_image: '/images/aircraft/heavy-jet.svg',
+          aircraft_image: 'https://www.jetaviation.com/wp-content/uploads/2024/10/IMG_7040.jpg',
           price: Math.floor(18000 + Math.random() * 8000),
           currency: 'USD',
           departure_time: `${date}T${time}`,
@@ -266,7 +266,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
           id: '4',
           aircraft: 'Ultra Long Range',
           aircraft_model: 'Global 7500',
-          aircraft_image: '/images/aircraft/ultra-long-range-jet.svg',
+          aircraft_image: 'https://aerocorner.com/wp-content/uploads/2020/02/Bombardier-Global-7500-Bombardier-N750GX.jpg',
           price: Math.floor(25000 + Math.random() * 10000),
           currency: 'USD',
           departure_time: `${date}T${time}`,
@@ -1139,7 +1139,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
                     <div className="space-y-4">
                       {quotes.map((quote, index) => {
                         const priceMin = quote.price;
-                        const priceMax = quote.price * 4;
+                        const priceMax = quote.price * 3;
                         return (
                         <div key={index} className="border border-zinc-300 rounded-xl p-4 md:p-6 hover:shadow-lg transition-shadow bg-white">
                           <div className="flex flex-col md:flex-row gap-4 mb-4">
@@ -1278,7 +1278,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
                           <div className="flex justify-between">
                             <span className="text-zinc-600">Price:</span>
                             <span className="font-semibold text-blue-600">
-                              ${selectedQuote.price.toLocaleString()}-${(selectedQuote.price * 4).toLocaleString()} {selectedQuote.currency}
+                              ${selectedQuote.price.toLocaleString()}-${(selectedQuote.price * 3).toLocaleString()} {selectedQuote.currency}
                             </span>
                           </div>
                           <div className="flex justify-between">

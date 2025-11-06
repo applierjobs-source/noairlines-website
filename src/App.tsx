@@ -1288,7 +1288,7 @@ function NoAirlinesBooking() {
                   <div className="space-y-4">
                     {quotes.map((quote, index) => {
                       const priceMin = quote.price;
-                      const priceMax = quote.price * 4;
+                      const priceMax = quote.price * 3;
                       return (
                       <div key={index} className="border border-zinc-300 rounded-xl p-4 md:p-6 hover:shadow-lg transition-shadow bg-white">
                         <div className="flex flex-col md:flex-row gap-4 mb-4">
@@ -1429,7 +1429,7 @@ function NoAirlinesBooking() {
                         <div className="flex justify-between">
                           <span className="text-zinc-600">Price:</span>
                           <span className="font-semibold text-blue-600">
-                            ${selectedQuote.price.toLocaleString()}-${(selectedQuote.price * 4).toLocaleString()} {selectedQuote.currency}
+                            ${selectedQuote.price.toLocaleString()}-${(selectedQuote.price * 3).toLocaleString()} {selectedQuote.currency}
                           </span>
                         </div>
                         <div className="flex justify-between">

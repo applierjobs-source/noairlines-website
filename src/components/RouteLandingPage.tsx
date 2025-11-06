@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RouteData } from "@/routes/routeData"
 import Layout from "./Layout"
+import JetProgressBar from "./JetProgressBar"
 
 type TripType = "one-way" | "round-trip" | null
 
@@ -471,20 +472,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
           <div className="w-full max-w-2xl">
             {/* Progress Bar */}
             <div className="mb-8">
-              <div className="relative">
-                <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
-                    initial={{ width: "0%" }}
-                    animate={{ width: `${(step / 12) * 100}%` }}
-                    transition={{ duration: 0.5, ease: "easeInOut" }}
-                  />
-                </div>
-                <div className="flex justify-between mt-2">
-                  <span className="text-xs text-zinc-600">Step {step} of 12</span>
-                  <span className="text-xs text-zinc-600">{Math.round((step / 12) * 100)}%</span>
-                </div>
-              </div>
+              <JetProgressBar step={step} totalSteps={12} />
             </div>
 
             <AnimatePresence mode="wait">

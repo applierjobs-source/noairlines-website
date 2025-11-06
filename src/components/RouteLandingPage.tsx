@@ -42,11 +42,19 @@ interface RouteLandingPageProps {
   route: RouteData
 }
 
+// Example notifications for social proof
+const exampleNotifications = [
+  { name: "Sarah M.", price: "$12,500" },
+  { name: "Michael R.", price: "$18,900" },
+  { name: "Jennifer L.", price: "$15,200" },
+]
+
 export default function RouteLandingPage({ route }: RouteLandingPageProps) {
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [step, setStep] = useState(1)
   const [fromLocation, setFromLocation] = useState(route.from)
   const [toLocation, setToLocation] = useState(route.to)
+  const [currentNotification, setCurrentNotification] = useState(0)
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
   const [passengers, setPassengers] = useState(1)
@@ -73,6 +81,17 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
       setToLocation(`${route.to} (${route.toCode})`)
     }
   }, [route])
+
+  // Cycle through notifications
+  useEffect(() => {
+    if (!showBookingForm) {
+      const interval = setInterval(() => {
+        setCurrentNotification((prev) => (prev + 1) % exampleNotifications.length)
+      }, 4000) // Change every 4 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [showBookingForm])
 
   const nextStep = () => {
     if (step === 5 && tripType === "round-trip") {
@@ -453,7 +472,30 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
   return (
     <Layout>
       {!showBookingForm ? (
-        <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
+          {/* Social Proof Notification Bubble - Bottom Left */}
+          <motion.div
+            key={currentNotification}
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            transition={{ duration: 0.3 }}
+            className="absolute bottom-6 left-6 bg-white border border-zinc-200 rounded-2xl shadow-lg px-4 py-3 max-w-xs z-10"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <Plane className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-zinc-900 font-medium">
+                  <span className="font-semibold">{exampleNotifications[currentNotification].name}</span> just chartered a jet for{" "}
+                  <span className="font-semibold text-blue-600">{exampleNotifications[currentNotification].price}</span>
+                </p>
+                <p className="text-xs text-zinc-500 mt-1">2 minutes ago</p>
+              </div>
+            </div>
+          </motion.div>
+
           <div className="w-full max-w-4xl space-y-8">
             {/* Hero Section */}
             <div className="text-center space-y-6">

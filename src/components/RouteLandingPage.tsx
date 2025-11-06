@@ -490,31 +490,34 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
       {!showBookingForm ? (
         <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
           {/* Social Proof Notification Bubble - Bottom Left - Fixed Position */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentNotification}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className="fixed bottom-4 left-4 md:bottom-6 md:left-6 bg-white border border-zinc-200 rounded-2xl shadow-lg px-3 py-2.5 md:px-4 md:py-3 max-w-[280px] md:max-w-xs z-50"
-            >
-              <div className="flex items-start gap-2.5 md:gap-3">
-                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <Plane className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+          {/* Disabled for now */}
+          {false && (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentNotification}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="fixed bottom-4 left-4 md:bottom-6 md:left-6 bg-white border border-zinc-200 rounded-2xl shadow-lg px-3 py-2.5 md:px-4 md:py-3 max-w-[280px] md:max-w-xs z-50"
+              >
+                <div className="flex items-start gap-2.5 md:gap-3">
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <Plane className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs md:text-sm text-zinc-900 font-medium leading-tight">
+                      <span className="font-semibold">{exampleNotifications[currentNotification].name}</span> chartered a {jetType} for{" "}
+                      <span className="font-semibold text-blue-600">{exampleNotifications[currentNotification].price}</span>
+                    </p>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      {daysAgo} {daysAgo === 1 ? 'day' : 'days'} ago
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs md:text-sm text-zinc-900 font-medium leading-tight">
-                    <span className="font-semibold">{exampleNotifications[currentNotification].name}</span> chartered a {jetType} for{" "}
-                    <span className="font-semibold text-blue-600">{exampleNotifications[currentNotification].price}</span>
-                  </p>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    {daysAgo} {daysAgo === 1 ? 'day' : 'days'} ago
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
+              </motion.div>
+            </AnimatePresence>
+          )}
 
           <div className="w-full max-w-4xl space-y-8">
             {/* Hero Section */}

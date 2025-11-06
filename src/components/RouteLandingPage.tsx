@@ -425,6 +425,11 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
     setShowToSuggestions(false)
   }
 
+  // Scroll to top when step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [step])
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (fromInputRef.current && !fromInputRef.current.contains(event.target as Node)) {

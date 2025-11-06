@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail, Phone, DollarSign, Star } from "lucide-react"
+import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail, Phone, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RouteData } from "@/routes/routeData"
@@ -522,16 +522,6 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
               <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
                 {route.title}
               </h1>
-              {/* 5-Star Quality Rating */}
-              <div className="flex items-center justify-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className="w-5 h-5 fill-yellow-400 text-yellow-400"
-                  />
-                ))}
-                <span className="ml-2 text-sm text-zinc-600 font-medium">Premium Service</span>
-              </div>
               <p className="text-xl md:text-2xl text-zinc-600 font-medium">
                 Fly from {route.from} to {route.to} on a Private Jet 🛩
               </p>

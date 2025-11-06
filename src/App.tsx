@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, ArrowLeft, MapPin, Calendar, Users, Plane, Mail, Phone, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom"
 import TestPage from "./TestPage"
+import RoutePage from "./pages/RoutePage"
+import { routes } from "@/routes/routeData"
 
 type TripType = "one-way" | "round-trip" | null
 
@@ -37,14 +40,7 @@ interface CharterQuote {
 
 const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
 
-export default function NoAirlinesBooking() {
-  // Check if we're on the test page
-  const isTestPage = window.location.pathname === '/test'
-  
-  // If on test page, render TestPage component
-  if (isTestPage) {
-    return <TestPage />
-  }
+function NoAirlinesBooking() {
   const [step, setStep] = useState(1)
   const [fromLocation, setFromLocation] = useState("")
   const [toLocation, setToLocation] = useState("")
@@ -1465,15 +1461,46 @@ export default function NoAirlinesBooking() {
 
       {/* Footer with Legal Text */}
       <footer className="border-t border-zinc-300 bg-white">
-        <div className="mx-auto max-w-4xl px-6 py-6 text-center text-xs text-zinc-600">
-          <p>
-            NoAirlines.com acts as an air charter broker and is not a direct air carrier. All
-            flights are operated by FAA-certificated Part 135 air carriers who exercise full
-            operational control of charter flights at all times.
-          </p>
-          <p className="mt-2">© {new Date().getFullYear()} NoAirlines. All rights reserved.</p>
+        <div className="mx-auto max-w-4xl px-6 py-6">
+          {/* Popular Routes */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-black mb-3 text-center">Popular Routes</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
+              {routes.map((route) => (
+                <Link
+                  key={route.id}
+                  to={`/routes/${route.slug}`}
+                  className="text-zinc-600 hover:text-blue-600 transition-colors text-center"
+                >
+                  {route.title}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Legal Disclaimer */}
+          <div className="text-center text-xs text-zinc-600 border-t border-zinc-200 pt-6">
+            <p>
+              NoAirlines.com acts as an air charter broker and is not a direct air carrier. All
+              flights are operated by FAA-certificated Part 135 air carriers who exercise full
+              operational control of charter flights at all times.
+            </p>
+            <p className="mt-2">© {new Date().getFullYear()} NoAirlines. All rights reserved.</p>
+          </div>
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/test" element={<TestPage />} />
+        <Route path="/routes/:slug" element={<RoutePage />} />
+        <Route path="/" element={<NoAirlinesBooking />} />
+      </Routes>
+    </BrowserRouter>
   )
 }

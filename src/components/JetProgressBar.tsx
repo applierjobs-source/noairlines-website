@@ -11,50 +11,39 @@ export default function JetProgressBar({ step, totalSteps }: JetProgressBarProps
 
   return (
     <div className="relative">
-      {/* Jet Icon - positioned above the progress bar */}
-      <motion.div
-        className="absolute -top-3 z-20"
-        style={{ 
-          left: `${Math.max(0, Math.min(progress, 100))}%`,
-          transform: 'translateX(-50%)'
-        }}
-        initial={{ left: "0%" }}
-        animate={{ left: `${Math.max(0, Math.min(progress, 100))}%` }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
-      >
-        <div className="relative">
-          {/* Jet icon - facing right */}
-          <Plane 
-            className="w-6 h-6 text-blue-700 relative z-10 drop-shadow-sm" 
-            fill="currentColor"
-          />
-        </div>
-      </motion.div>
-
       {/* Sky/Background Track */}
-      <div className="h-4 bg-gradient-to-b from-sky-100 via-blue-50 to-sky-100 rounded-full overflow-visible border border-blue-200/50 shadow-inner relative">
-        {/* Progress Fill (Contrail base) */}
+      <div className="h-4 bg-gradient-to-b from-sky-50 via-blue-50/50 to-sky-50 rounded-full overflow-visible border border-blue-200/30 relative">
+        {/* Progress Fill with Contrail effect */}
         <motion.div
-          className="h-full bg-gradient-to-r from-blue-400 via-blue-300 to-blue-200 relative overflow-visible"
+          className="h-full bg-gradient-to-r from-blue-500 via-blue-400 to-blue-300 relative overflow-visible"
           initial={{ width: "0%" }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
         >
-          {/* Contrails - multiple layers for realistic effect, positioned behind jet */}
-          <div className="absolute inset-0 overflow-visible">
-            {/* Main contrail - thick white trail */}
-            <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-1 bg-gradient-to-r from-white/60 via-white/40 to-transparent blur-sm"></div>
-            {/* Secondary contrail - thinner, more diffused */}
-            <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-white/40 via-white/20 to-transparent blur-[3px]"></div>
-            {/* Fading trail at the end (where jet is) */}
-            <motion.div
-              className="absolute top-1/2 -translate-y-1/2 h-2 bg-gradient-to-l from-white/40 to-transparent blur-md"
-              style={{ 
-                right: 0,
-                width: '20px'
-              }}
-            />
+          {/* Contrail - white hazy overlay on the blue fill */}
+          <div className="absolute inset-0">
+            {/* Main contrail overlay - hazy white on blue */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-white/30 to-white/20 blur-sm"></div>
+            {/* Secondary contrail layer for depth */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/15 to-transparent blur-[2px]"></div>
           </div>
+        </motion.div>
+        
+        {/* Jet Icon - positioned directly on the progress bar at the leading edge */}
+        <motion.div
+          className="absolute top-1/2 z-20"
+          style={{ 
+            left: `${Math.max(0, Math.min(progress, 100))}%`,
+            transform: 'translate(-50%, -50%)'
+          }}
+          initial={{ left: "0%" }}
+          animate={{ left: `${Math.max(0, Math.min(progress, 100))}%` }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+        >
+          <Plane 
+            className="w-5 h-5 text-blue-700 drop-shadow-md" 
+            fill="currentColor"
+          />
         </motion.div>
       </div>
       

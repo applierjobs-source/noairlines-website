@@ -489,7 +489,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
     <Layout>
       {!showBookingForm ? (
         <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
-          {/* Social Proof Notification Bubble - Bottom Left */}
+          {/* Social Proof Notification Bubble - Bottom Left - Fixed Position */}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentNotification}
@@ -497,7 +497,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
-              className="absolute bottom-4 left-4 md:bottom-6 md:left-6 bg-white border border-zinc-200 rounded-2xl shadow-lg px-3 py-2.5 md:px-4 md:py-3 max-w-[280px] md:max-w-xs z-10"
+              className="fixed bottom-4 left-4 md:bottom-6 md:left-6 bg-white border border-zinc-200 rounded-2xl shadow-lg px-3 py-2.5 md:px-4 md:py-3 max-w-[280px] md:max-w-xs z-50"
             >
               <div className="flex items-start gap-2.5 md:gap-3">
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">

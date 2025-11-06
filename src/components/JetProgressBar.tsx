@@ -40,10 +40,10 @@ export default function JetProgressBar({ step, totalSteps }: JetProgressBarProps
           animate={{ left: `${Math.max(0, Math.min(progress, 100))}%` }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
         >
-          <div className="relative">
+          <div className="relative" style={{ transform: 'rotate(45deg)' }}>
             {/* Jet shadow/glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-blue-900/10 rounded-full blur-sm"></div>
-            {/* Jet icon */}
+            {/* Jet icon - rotated to face right */}
             <Plane 
               className="w-5 h-5 text-blue-600 relative z-10 drop-shadow-sm" 
               fill="currentColor"

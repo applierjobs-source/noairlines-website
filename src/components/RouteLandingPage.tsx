@@ -460,15 +460,18 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
               <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
                 {route.title}
               </h1>
-              <p className="text-xl md:text-2xl text-zinc-600 max-w-3xl mx-auto leading-relaxed">
-                {route.description}
+              <p className="text-xl md:text-2xl text-zinc-600 font-medium">
+                Fly from {route.from} to {route.to}
               </p>
               <Button
                 onClick={() => setShowBookingForm(true)}
                 className="mt-8 h-14 px-8 text-lg bg-blue-600 hover:bg-blue-500"
               >
-                Book Your Flight <ArrowRight className="ml-2 h-5 w-5" />
+                Get Quotes <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
+              <p className="text-lg md:text-xl text-zinc-600 max-w-3xl mx-auto leading-relaxed pt-4">
+                {route.description}
+              </p>
             </div>
           </div>
         </div>

@@ -15,17 +15,17 @@ export default function JetProgressBar({ step, totalSteps }: JetProgressBarProps
       <div className="h-4 bg-white rounded-full overflow-visible border border-blue-200/40 relative">
         {/* Progress Fill with Contrail effect */}
         <motion.div
-          className="h-full bg-gradient-to-r from-blue-400 via-blue-300 to-blue-200 relative overflow-visible"
+          className="h-full bg-gradient-to-r from-blue-200 via-blue-100 to-blue-50 relative overflow-visible"
           initial={{ width: "0%" }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
         >
-          {/* Contrail - white hazy overlay fading from jet (right) to left */}
+          {/* Contrail - gray hazy overlay fading from jet (right) to left */}
           <div className="absolute inset-0">
             {/* Main contrail overlay - most opaque near jet, fading left */}
-            <div className="absolute inset-0 bg-gradient-to-l from-white/50 via-white/30 to-transparent blur-sm"></div>
+            <div className="absolute inset-0 bg-gradient-to-l from-gray-400/40 via-gray-300/30 to-transparent blur-sm"></div>
             {/* Secondary contrail layer for depth */}
-            <div className="absolute inset-0 bg-gradient-to-l from-white/30 via-white/15 to-transparent blur-[2px]"></div>
+            <div className="absolute inset-0 bg-gradient-to-l from-gray-300/30 via-gray-200/20 to-transparent blur-[2px]"></div>
           </div>
         </motion.div>
         

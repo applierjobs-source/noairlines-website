@@ -506,7 +506,6 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
                         onChange={(e) => handleFromLocationChange(e.target.value)}
                         placeholder="Enter departure city or airport code"
                         className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
-                        autoFocus
                       />
                       {showFromSuggestions && fromSuggestions.length > 0 && (
                         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-lg z-50">
@@ -563,7 +562,6 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
                         onChange={(e) => handleToLocationChange(e.target.value)}
                         placeholder="Enter destination city or airport code"
                         className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
-                        autoFocus
                       />
                       {showToSuggestions && toSuggestions.length > 0 && (
                         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-lg z-50">

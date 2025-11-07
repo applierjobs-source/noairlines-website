@@ -703,11 +703,11 @@ function NoAirlinesBooking() {
           <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
             <div className="w-full max-w-4xl space-y-8">
               {/* Hero Section */}
-              <div className="text-center space-y-6">
-                <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
+              <div className="text-center space-y-4 md:space-y-6 px-4">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
                   Get Your Private Jet Quote Instantly
                 </h1>
-                <p className="text-xl md:text-2xl text-zinc-600 font-medium">
+                <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-zinc-600 font-medium px-2">
                   Private Flights. Instant Quotes. No Airlines.
                 </p>
                 <Button

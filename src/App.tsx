@@ -42,6 +42,7 @@ interface CharterQuote {
 const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
 
 function NoAirlinesBooking() {
+  const [showBookingForm, setShowBookingForm] = useState(false)
   const [step, setStep] = useState(1)
   const [fromLocation, setFromLocation] = useState("")
   const [toLocation, setToLocation] = useState("")
@@ -687,18 +688,49 @@ function NoAirlinesBooking() {
             <span className="text-2xl font-bold tracking-tight">NoAirlines</span>
           </div>
           
-          {/* Progress Bar */}
-          <div className="mt-6">
-            <JetProgressBar step={step} totalSteps={12} />
-          </div>
+          {/* Progress Bar - Only show when booking form is visible */}
+          {showBookingForm && (
+            <div className="mt-6">
+              <JetProgressBar step={step} totalSteps={12} />
+            </div>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-2xl">
-
-          <AnimatePresence mode="wait">
+        {!showBookingForm ? (
+          <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
+            <div className="w-full max-w-4xl space-y-8">
+              {/* Hero Section */}
+              <div className="text-center space-y-6">
+                <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
+                  Private Jet Charter
+                </h1>
+                <p className="text-xl md:text-2xl text-zinc-600 font-medium">
+                  Fly Anywhere on a Private Jet 🛩
+                </p>
+                <p className="text-sm md:text-base font-semibold text-blue-600 tracking-wide uppercase">
+                  INSTANT QUOTES | BEST DEALS
+                </p>
+                <Button
+                  onClick={() => {
+                    setShowBookingForm(true)
+                    setStep(1)
+                  }}
+                  className="mt-8 h-14 px-8 text-lg bg-blue-600 hover:bg-blue-500"
+                >
+                  Get Charter Jet Quotes <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+                <p className="text-lg md:text-xl text-zinc-600 max-w-3xl mx-auto leading-relaxed pt-4">
+                  Experience the ultimate in luxury travel with our private jet charter service. Skip the crowds, connections, and delays. Fly directly to your destination with instant quotes, transparent pricing, and access to exclusive destinations that commercial airlines can't reach. All flights operated by FAA-certified Part 135 carriers.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full max-w-2xl">
+            <AnimatePresence mode="wait">
             {/* Step 1: From Location */}
             {step === 1 && (
               <motion.div
@@ -1449,7 +1481,8 @@ function NoAirlinesBooking() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+          </div>
+        )}
       </main>
 
       {/* Footer with Legal Text */}

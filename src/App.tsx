@@ -705,7 +705,7 @@ function NoAirlinesBooking() {
               {/* Hero Section */}
               <div className="text-center space-y-6">
                 <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
-                  Get Your Private Jet Quote Today
+                  Get Your Private Jet Quote Instantly
                 </h1>
                 <p className="text-xl md:text-2xl text-zinc-600 font-medium">
                   Fly Anywhere on a Private Jet 🛩

@@ -655,6 +655,13 @@ function NoAirlinesBooking() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [step])
 
+  // Scroll to top when booking form opens
+  useEffect(() => {
+    if (showBookingForm) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [showBookingForm])
+
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -753,7 +760,6 @@ function NoAirlinesBooking() {
                       onChange={(e) => handleFromLocationChange(e.target.value)}
                       placeholder="Enter departure city or airport code"
                       className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
-                      autoFocus
                     />
                     {showFromSuggestions && fromSuggestions.length > 0 && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-300 rounded-lg shadow-lg z-50">

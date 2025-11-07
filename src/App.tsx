@@ -708,7 +708,7 @@ function NoAirlinesBooking() {
                   Get Your Charter Jet Quote Instantly
                 </h1>
                 <p className="text-xl md:text-2xl text-zinc-600 font-medium">
-                  Fly Anywhere on a Private Jet 🛩
+                  Private Flights. Instant Quotes. No Airlines.
                 </p>
                 <Button
                   onClick={() => {

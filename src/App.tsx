@@ -705,7 +705,7 @@ function NoAirlinesBooking() {
               {/* Hero Section */}
               <div className="text-center space-y-4 md:space-y-6 px-4">
                 <h1 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
-                  Get Your Private Jet Quote Instantly
+                  Fly Private. Without the Wait.
                 </h1>
                 <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-zinc-600 font-medium px-2">
                   Private Flights. Instant Quotes. No Airlines.

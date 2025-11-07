@@ -698,9 +698,9 @@ function NoAirlinesBooking() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
+      <main className="flex-1 flex items-center justify-center px-6 py-6 md:py-12">
         {!showBookingForm ? (
-          <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
+          <div className="flex-1 flex items-center justify-center px-6 py-4 md:py-12 relative">
             <div className="w-full max-w-4xl space-y-8">
               {/* Hero Section */}
               <div className="text-center space-y-4 md:space-y-6 px-4">

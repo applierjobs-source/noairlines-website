@@ -9,6 +9,12 @@ import RoutePage from "./pages/RoutePage"
 import { routes } from "@/routes/routeData"
 import JetProgressBar from "./components/JetProgressBar"
 
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void
+  }
+}
+
 type TripType = "one-way" | "round-trip" | null
 
 interface Airport {
@@ -653,6 +659,24 @@ function NoAirlinesBooking() {
   // Scroll to top when step changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [step])
+
+  // Scroll to top when booking form opens
+  useEffect(() => {
+    if (showBookingForm) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [showBookingForm])
+
+  // Fire Google Ads conversion event when user reaches confirmation step
+  useEffect(() => {
+    if (step === 12 && typeof window !== "undefined" && typeof window.gtag === "function") {
+      window.gtag("event", "conversion", {
+        send_to: "AW-17710035997/ESHYCLzZsrsbEJ3o5vxB",
+        value: 1.0,
+        currency: "USD",
+      })
+    }
   }, [step])
 
   // Scroll to top when booking form opens

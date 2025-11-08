@@ -7,6 +7,12 @@ import { RouteData } from "@/routes/routeData"
 import Layout from "./Layout"
 import JetProgressBar from "./JetProgressBar"
 
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void
+  }
+}
+
 type TripType = "one-way" | "round-trip" | null
 
 interface Airport {
@@ -463,6 +469,16 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
   // Scroll to top when step changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [step])
+
+  useEffect(() => {
+    if (step === 12 && typeof window !== "undefined" && typeof window.gtag === "function") {
+      window.gtag("event", "conversion", {
+        send_to: "AW-17710035997/ESHYCLzZsrsbEJ3o5vxB",
+        value: 1.0,
+        currency: "USD",
+      })
+    }
   }, [step])
 
   useEffect(() => {

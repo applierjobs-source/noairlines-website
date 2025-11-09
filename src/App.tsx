@@ -712,12 +712,12 @@ function NoAirlinesBooking() {
       {/* Header */}
       <header className="border-b border-zinc-300 bg-white/90 backdrop-blur sticky top-0 z-50">
         <div className="mx-auto max-w-4xl px-6 py-6">
-          <div className="flex items-center justify-center gap-3">
+          <Link to="/" className="flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-xl px-2 py-1">
             <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center">
               <Plane className="h-5 w-5 text-white" />
             </div>
             <span className="text-2xl font-bold tracking-tight">NoAirlines</span>
-          </div>
+          </Link>
           
           {/* Progress Bar - Only show when booking form is visible */}
           {showBookingForm && (

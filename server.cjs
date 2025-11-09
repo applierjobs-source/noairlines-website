@@ -43,10 +43,14 @@ const sendItineraryEmail = async (itineraryData) => {
   try {
     console.log('Sending itinerary email for:', itineraryData.email);
     
+    const phoneDisplay = (itineraryData.phone && itineraryData.phone.toString().trim()) || 'N/A';
+
     const emailData = {
       customer_name: itineraryData.name || 'NoAirlines Customer',
       customer_email: itineraryData.email,
-      customer_phone: itineraryData.phone || 'N/A',
+      customer_phone: phoneDisplay,
+      phone: phoneDisplay,
+      phone_display: phoneDisplay,
       from_location: itineraryData.from,
       to_location: itineraryData.to,
       departure_date: itineraryData.date,
@@ -55,7 +59,7 @@ const sendItineraryEmail = async (itineraryData) => {
       return_time: itineraryData.returnTime || 'N/A',
       passengers: itineraryData.passengers,
       trip_type: itineraryData.tripType || 'one-way',
-      message: `New flight inquiry from ${itineraryData.name || 'NoAirlines Customer'} (${itineraryData.email || 'no email provided'}) — Phone: ${itineraryData.phone || 'N/A'}`,
+      message: `New flight inquiry from ${itineraryData.name || 'NoAirlines Customer'} (${itineraryData.email || 'no email provided'})\nPhone: ${phoneDisplay}`,
       recipients: EMAIL_RECIPIENTS.join(', '),
       timestamp: new Date().toISOString()
     };

@@ -481,13 +481,33 @@ const server = http.createServer(async (req, res) => {
   }
   
   // Parse URL and set file path relative to dist directory
-  let filePath = path.join(DIST_DIR, req.url === '/' ? 'index.html' : req.url);
-  
-  // Remove query string
-  const queryIndex = filePath.indexOf('?');
-  if (queryIndex !== -1) {
-    filePath = filePath.substring(0, queryIndex);
+  let requestUrl;
+  try {
+    requestUrl = new URL(req.url, `http://${host || 'localhost'}`);
+  } catch (error) {
+    console.error('Invalid URL received:', req.url, error);
+    res.writeHead(400, { 'Content-Type': 'text/plain' });
+    res.end('Bad Request');
+    return;
   }
+
+  let pathname = requestUrl.pathname;
+
+  // Prevent directory traversal
+  if (pathname.includes('..')) {
+    res.writeHead(400, { 'Content-Type': 'text/plain' });
+    res.end('Bad Request');
+    return;
+  }
+
+  // Serve index.html for SPA-compatible routes
+  if (pathname === '/' || pathname === '') {
+    pathname = 'index.html';
+  } else {
+    pathname = pathname.replace(/^\/+/, '');
+  }
+
+  let filePath = path.join(DIST_DIR, pathname);
   
   // Get file extension
   const extname = String(path.extname(filePath)).toLowerCase();

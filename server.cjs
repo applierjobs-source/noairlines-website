@@ -43,11 +43,16 @@ const sendItineraryEmail = async (itineraryData) => {
   try {
     console.log('Sending itinerary email for:', itineraryData.email);
     
+    const emailDisplay = (itineraryData.email && itineraryData.email.toString().trim()) || 'N/A';
     const phoneDisplay = (itineraryData.phone && itineraryData.phone.toString().trim()) || 'N/A';
+    const emailWithPhone = phoneDisplay !== 'N/A'
+      ? `${emailDisplay} (Phone: ${phoneDisplay})`
+      : emailDisplay;
 
     const emailData = {
       customer_name: itineraryData.name || 'NoAirlines Customer',
-      customer_email: itineraryData.email,
+      customer_email: emailWithPhone,
+      customer_email_raw: emailDisplay,
       customer_phone: phoneDisplay,
       phone: phoneDisplay,
       phone_display: phoneDisplay,

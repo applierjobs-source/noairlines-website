@@ -55,7 +55,7 @@ const sendItineraryEmail = async (itineraryData) => {
       return_time: itineraryData.returnTime || 'N/A',
       passengers: itineraryData.passengers,
       trip_type: itineraryData.tripType || 'one-way',
-      message: `New flight inquiry from ${itineraryData.name} (${itineraryData.email})`,
+      message: `New flight inquiry from ${itineraryData.name || 'NoAirlines Customer'} (${itineraryData.email || 'no email provided'}) — Phone: ${itineraryData.phone || 'N/A'}`,
       recipients: EMAIL_RECIPIENTS.join(', '),
       timestamp: new Date().toISOString()
     };

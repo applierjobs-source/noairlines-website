@@ -69,6 +69,19 @@ const homepagePopupPrices = [
   "$16,950"
 ]
 
+const homepagePopupRoutes = [
+  { from: "LAX", to: "JFK" },
+  { from: "LAX", to: "ASE" },
+  { from: "PBI", to: "ACK" },
+  { from: "JFK", to: "SEA" },
+  { from: "LAX", to: "HNL" },
+  { from: "JFK", to: "MIA" },
+  { from: "LAX", to: "VNY" },
+  { from: "JFK", to: "BHB" },
+  { from: "LAX", to: "GCN" },
+  { from: "JFK", to: "SSI" }
+]
+
 function NoAirlinesBooking() {
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [step, setStep] = useState(1)
@@ -97,6 +110,9 @@ function NoAirlinesBooking() {
     homepagePopupPrices[Math.floor(Math.random() * homepagePopupPrices.length)]
   )
   const [homepageDaysAgo, setHomepageDaysAgo] = useState(Math.floor(Math.random() * 7) + 1)
+  const [homepageRoute, setHomepageRoute] = useState(
+    homepagePopupRoutes[Math.floor(Math.random() * homepagePopupRoutes.length)]
+  )
   const fromInputRef = useRef<HTMLInputElement>(null)
   const toInputRef = useRef<HTMLInputElement>(null)
 
@@ -700,6 +716,7 @@ function NoAirlinesBooking() {
           homepagePopupPrices[Math.floor(Math.random() * homepagePopupPrices.length)]
         )
         setHomepageDaysAgo(Math.floor(Math.random() * 7) + 1)
+        setHomepageRoute(homepagePopupRoutes[Math.floor(Math.random() * homepagePopupRoutes.length)])
       }, 4000)
 
       return () => clearInterval(interval)
@@ -785,7 +802,7 @@ function NoAirlinesBooking() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs md:text-sm text-zinc-900 font-medium leading-tight">
-                      <span className="font-semibold">{homepageJetModel}</span> departing {fromLocation || 'LAX'} to {toLocation || 'JFK'} quoted for{" "}
+                      <span className="font-semibold">{homepageJetModel}</span> departing {homepageRoute.from} to {homepageRoute.to} quoted for{" "}
                       <span className="font-semibold text-blue-600">{homepageQuotePrice}</span>
                     </p>
                     <p className="text-xs text-zinc-500 mt-1">

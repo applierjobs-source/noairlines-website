@@ -47,6 +47,28 @@ interface CharterQuote {
 
 const AVIATION_EDGE_API_KEY = "ebf7a6-412b1a"
 
+const homepagePopupModels = [
+  "Citation X",
+  "Gulfstream G500",
+  "Challenger 350",
+  "Phenom 300",
+  "Global 6000",
+  "Citation CJ3",
+  "Learjet 45",
+  "Hawker 800"
+]
+
+const homepagePopupPrices = [
+  "$9,750",
+  "$11,200",
+  "$13,450",
+  "$14,995",
+  "$15,800",
+  "$16,200",
+  "$16,750",
+  "$16,950"
+]
+
 function NoAirlinesBooking() {
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [step, setStep] = useState(1)
@@ -68,6 +90,13 @@ function NoAirlinesBooking() {
   const [quotes, setQuotes] = useState<CharterQuote[]>([])
   const [loadingQuotes, setLoadingQuotes] = useState(false)
   const [selectedQuote, setSelectedQuote] = useState<CharterQuote | null>(null)
+  const [homepageJetModel, setHomepageJetModel] = useState(
+    homepagePopupModels[Math.floor(Math.random() * homepagePopupModels.length)]
+  )
+  const [homepageQuotePrice, setHomepageQuotePrice] = useState(
+    homepagePopupPrices[Math.floor(Math.random() * homepagePopupPrices.length)]
+  )
+  const [homepageDaysAgo, setHomepageDaysAgo] = useState(Math.floor(Math.random() * 7) + 1)
   const fromInputRef = useRef<HTMLInputElement>(null)
   const toInputRef = useRef<HTMLInputElement>(null)
 
@@ -661,10 +690,19 @@ function NoAirlinesBooking() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [step])
 
-  // Scroll to top when booking form opens
   useEffect(() => {
-    if (showBookingForm) {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (!showBookingForm) {
+      const interval = setInterval(() => {
+        setHomepageJetModel(
+          homepagePopupModels[Math.floor(Math.random() * homepagePopupModels.length)]
+        )
+        setHomepageQuotePrice(
+          homepagePopupPrices[Math.floor(Math.random() * homepagePopupPrices.length)]
+        )
+        setHomepageDaysAgo(Math.floor(Math.random() * 7) + 1)
+      }, 4000)
+
+      return () => clearInterval(interval)
     }
   }, [showBookingForm])
 
@@ -732,6 +770,31 @@ function NoAirlinesBooking() {
       <main className="flex-1 flex items-center justify-center px-6 py-6 md:py-12">
         {!showBookingForm ? (
           <div className="flex-1 flex items-center justify-center px-6 py-4 md:py-12 relative">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${homepageJetModel}-${homepageQuotePrice}`}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="fixed bottom-4 left-4 md:bottom-6 md:left-6 bg-white border border-zinc-200 rounded-2xl shadow-lg px-3 py-2.5 md:px-4 md:py-3 max-w-[280px] md:max-w-xs z-50"
+              >
+                <div className="flex items-start gap-2.5 md:gap-3">
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <Plane className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs md:text-sm text-zinc-900 font-medium leading-tight">
+                      <span className="font-semibold">{homepageJetModel}</span> departing {fromLocation || 'LAX'} to {toLocation || 'JFK'} quoted for{" "}
+                      <span className="font-semibold text-blue-600">{homepageQuotePrice}</span>
+                    </p>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      {homepageDaysAgo} {homepageDaysAgo === 1 ? 'day' : 'days'} ago
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
             <div className="w-full max-w-4xl space-y-8">
               {/* Hero Section */}
               <div className="text-center space-y-4 md:space-y-6 px-4">

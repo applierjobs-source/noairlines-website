@@ -48,23 +48,17 @@ interface RouteLandingPageProps {
   route: RouteData
 }
 
-// Example notifications for social proof
-const exampleNotifications = [
-  { name: "Sarah M.", price: "$12,500" },
-  { name: "Michael R.", price: "$18,900" },
-  { name: "Jennifer L.", price: "$15,200" },
-]
+const examplePrices = ["$12,800", "$16,500", "$18,900", "$14,750", "$22,300"]
 
-// Light and midsize jet types
-const jetTypes = [
+const jetModels = [
+  "Citation X",
+  "Gulfstream G500",
+  "Challenger 350",
+  "Phenom 300",
+  "Global 6000",
   "Citation CJ3",
-  "Hawker 800",
-  "Citation XLS",
   "Learjet 45",
-  "Citation Mustang",
-  "Hawker 4000",
-  "Challenger 300",
-  "Gulfstream G150"
+  "Hawker 800"
 ]
 
 export default function RouteLandingPage({ route }: RouteLandingPageProps) {
@@ -74,7 +68,8 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
   const [toLocation, setToLocation] = useState(route.to)
   const [currentNotification, setCurrentNotification] = useState(0)
   const [daysAgo, setDaysAgo] = useState(Math.floor(Math.random() * 7) + 1)
-  const [jetType, setJetType] = useState(jetTypes[Math.floor(Math.random() * jetTypes.length)])
+  const [jetModel, setJetModel] = useState(jetModels[Math.floor(Math.random() * jetModels.length)])
+  const [quotePrice, setQuotePrice] = useState(examplePrices[Math.floor(Math.random() * examplePrices.length)])
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
   const [passengers, setPassengers] = useState(1)
@@ -91,6 +86,8 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
   const [quotes, setQuotes] = useState<CharterQuote[]>([])
   const [loadingQuotes, setLoadingQuotes] = useState(false)
   const [selectedQuote, setSelectedQuote] = useState<CharterQuote | null>(null)
+  const routeFromLabel = route.fromCode || route.from
+  const routeToLabel = route.toCode || route.to
   const fromInputRef = useRef<HTMLInputElement>(null)
   const toInputRef = useRef<HTMLInputElement>(null)
 
@@ -106,10 +103,11 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
   useEffect(() => {
     if (!showBookingForm) {
       const interval = setInterval(() => {
-        setCurrentNotification((prev) => (prev + 1) % exampleNotifications.length)
-        setDaysAgo(Math.floor(Math.random() * 7) + 1) // Randomize days ago for each notification
-        setJetType(jetTypes[Math.floor(Math.random() * jetTypes.length)]) // Randomize jet type
-      }, 4000) // Change every 4 seconds
+        setCurrentNotification((prev) => (prev + 1) % examplePrices.length)
+        setDaysAgo(Math.floor(Math.random() * 7) + 1)
+        setJetModel(jetModels[Math.floor(Math.random() * jetModels.length)])
+        setQuotePrice(examplePrices[Math.floor(Math.random() * examplePrices.length)])
+      }, 4000)
 
       return () => clearInterval(interval)
     }
@@ -506,34 +504,31 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
       {!showBookingForm ? (
         <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
           {/* Social Proof Notification Bubble - Bottom Left - Fixed Position */}
-          {/* Disabled for now */}
-          {false && (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentNotification}
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-                className="fixed bottom-4 left-4 md:bottom-6 md:left-6 bg-white border border-zinc-200 rounded-2xl shadow-lg px-3 py-2.5 md:px-4 md:py-3 max-w-[280px] md:max-w-xs z-50"
-              >
-                <div className="flex items-start gap-2.5 md:gap-3">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <Plane className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs md:text-sm text-zinc-900 font-medium leading-tight">
-                      <span className="font-semibold">{exampleNotifications[currentNotification].name}</span> chartered a {jetType} for{" "}
-                      <span className="font-semibold text-blue-600">{exampleNotifications[currentNotification].price}</span>
-                    </p>
-                    <p className="text-xs text-zinc-500 mt-1">
-                      {daysAgo} {daysAgo === 1 ? 'day' : 'days'} ago
-                    </p>
-                  </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentNotification}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="fixed bottom-4 left-4 md:bottom-6 md:left-6 bg-white border border-zinc-200 rounded-2xl shadow-lg px-3 py-2.5 md:px-4 md:py-3 max-w-[280px] md:max-w-xs z-50"
+            >
+              <div className="flex items-start gap-2.5 md:gap-3">
+                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Plane className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
                 </div>
-              </motion.div>
-            </AnimatePresence>
-          )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs md:text-sm text-zinc-900 font-medium leading-tight">
+                    <span className="font-semibold">{jetModel}</span> departing {routeFromLabel} to {routeToLabel} quoted for{" "}
+                    <span className="font-semibold text-blue-600">{quotePrice}</span>
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {daysAgo} {daysAgo === 1 ? 'day' : 'days'} ago
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
 
           <div className="w-full max-w-4xl space-y-8">
             {/* Hero Section */}

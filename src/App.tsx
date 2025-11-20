@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom"
 import TestPage from "./TestPage"
 import RoutePage from "./pages/RoutePage"
+import CharterPage from "./pages/CharterPage"
 import { routes } from "@/routes/routeData"
 import JetProgressBar from "./components/JetProgressBar"
 
@@ -1632,6 +1633,7 @@ export default function App() {
       <Routes>
         <Route path="/test" element={<TestPage />} />
         <Route path="/routes/:slug" element={<RoutePage />} />
+        <Route path="/charter" element={<CharterPage />} />
         <Route path="/" element={<NoAirlinesBooking />} />
       </Routes>
     </BrowserRouter>

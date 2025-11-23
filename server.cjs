@@ -10,6 +10,14 @@ const DIST_DIR = path.join(__dirname, 'dist');
 const EMAIL_RECIPIENTS = ['zach@noairlines.com', 'johndavidarrow@gmail.com', 'john@noairlines.com'];
 const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://hooks.zapier.com/hooks/catch/YOUR_WEBHOOK_ID/'; // Replace with actual webhook
 
+// SMS configuration (Twilio)
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || '';
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '';
+
+// OpenAI configuration for AI evaluation
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+
 console.log('========================================');
 console.log('Starting NoAirlines server...');
 console.log(`PORT: ${PORT}`);
@@ -37,6 +45,240 @@ try {
   console.error('Error reading dist directory:', err);
 }
 console.log('========================================');
+
+// Helper function to extract airport code from location string
+// Example: "Raleigh (RDU)" -> "RDU" or "New York (JFK)" -> "JFK"
+const extractAirportCode = (locationString) => {
+  if (!locationString) return null;
+  const match = locationString.match(/\(([A-Z]{3})\)/);
+  return match ? match[1] : null;
+};
+
+// Helper function to format airport codes for display
+// Example: "RDU" -> "RDU", "JFK" -> "NYC" (if NYC is preferred)
+const formatRouteDisplay = (fromCode, toCode) => {
+  // Common city code mappings
+  const cityCodeMap = {
+    'JFK': 'NYC',
+    'LGA': 'NYC',
+    'EWR': 'NYC',
+    'LAX': 'LAX',
+    'SFO': 'SFO',
+    'ORD': 'CHI',
+    'MIA': 'MIA'
+  };
+  
+  const from = cityCodeMap[fromCode] || fromCode;
+  const to = cityCodeMap[toCode] || toCode;
+  
+  return `${from} → ${to}`;
+};
+
+// AI evaluation function to generate price estimates
+const evaluateItineraryWithAI = async (itineraryData) => {
+  try {
+    const fromCode = extractAirportCode(itineraryData.from);
+    const toCode = extractAirportCode(itineraryData.to);
+    
+    if (!fromCode || !toCode) {
+      console.log('Could not extract airport codes, using default estimates');
+      return {
+        lightJet: { min: 8000, max: 11000 },
+        midJet: { min: 11000, max: 15000 },
+        superMid: { min: 15000, max: 22000 }
+      };
+    }
+
+    // If OpenAI API key is not configured, use rule-based estimation
+    if (!OPENAI_API_KEY || OPENAI_API_KEY === '') {
+      console.log('OpenAI API key not configured, using rule-based estimation');
+      return estimatePricesRuleBased(fromCode, toCode, itineraryData.passengers);
+    }
+
+    // Use OpenAI to evaluate itinerary
+    const prompt = `You are an expert private jet charter pricing analyst. Based on the following flight details, provide realistic price estimates in USD for three aircraft categories:
+
+Route: ${fromCode} to ${toCode}
+Passengers: ${itineraryData.passengers}
+Trip Type: ${itineraryData.tripType || 'one-way'}
+Date: ${itineraryData.date}
+
+Provide price ranges (min-max) in USD for:
+1. Light Jet (e.g., Citation CJ3, Citation XLS)
+2. Mid Jet (e.g., Hawker 800, Citation X)
+3. Super Mid (e.g., Challenger 350, Gulfstream G280)
+
+Respond ONLY with a JSON object in this exact format:
+{
+  "lightJet": { "min": 8000, "max": 11000 },
+  "midJet": { "min": 11000, "max": 15000 },
+  "superMid": { "min": 15000, "max": 22000 }
+}
+
+Base your estimates on current market rates, distance, passenger count, and typical charter pricing.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a private jet charter pricing expert. Always respond with valid JSON only.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 200
+      })
+    });
+
+    if (!response.ok) {
+      console.error('OpenAI API error:', response.status);
+      return estimatePricesRuleBased(fromCode, toCode, itineraryData.passengers);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+    
+    if (!content) {
+      return estimatePricesRuleBased(fromCode, toCode, itineraryData.passengers);
+    }
+
+    // Parse JSON response
+    try {
+      const prices = JSON.parse(content);
+      return {
+        lightJet: prices.lightJet || { min: 8000, max: 11000 },
+        midJet: prices.midJet || { min: 11000, max: 15000 },
+        superMid: prices.superMid || { min: 15000, max: 22000 }
+      };
+    } catch (parseError) {
+      console.error('Error parsing AI response:', parseError);
+      return estimatePricesRuleBased(fromCode, toCode, itineraryData.passengers);
+    }
+  } catch (error) {
+    console.error('Error in AI evaluation:', error);
+    const fromCode = extractAirportCode(itineraryData.from);
+    const toCode = extractAirportCode(itineraryData.to);
+    return estimatePricesRuleBased(fromCode, toCode, itineraryData.passengers);
+  }
+};
+
+// Rule-based price estimation fallback
+const estimatePricesRuleBased = (fromCode, toCode, passengers) => {
+  // Base prices per hour of flight (rough estimates)
+  const baseHourlyRates = {
+    lightJet: 3500,
+    midJet: 5000,
+    superMid: 7000
+  };
+
+  // Common route distances (in flight hours, approximate)
+  const routeDistances = {
+    'RDU->JFK': 1.5,
+    'RDU->NYC': 1.5,
+    'JFK->RDU': 1.5,
+    'NYC->RDU': 1.5,
+    'LAX->JFK': 5.5,
+    'JFK->LAX': 5.5,
+    'MIA->JFK': 2.5,
+    'JFK->MIA': 2.5
+  };
+
+  const routeKey = `${fromCode}->${toCode}`;
+  const reverseRouteKey = `${toCode}->${fromCode}`;
+  const flightHours = routeDistances[routeKey] || routeDistances[reverseRouteKey] || 2.5;
+
+  // Passenger multiplier (more passengers = slightly higher price)
+  const passengerMultiplier = 1 + (passengers - 1) * 0.1;
+
+  const lightBase = baseHourlyRates.lightJet * flightHours * passengerMultiplier;
+  const midBase = baseHourlyRates.midJet * flightHours * passengerMultiplier;
+  const superMidBase = baseHourlyRates.superMid * flightHours * passengerMultiplier;
+
+  return {
+    lightJet: { 
+      min: Math.round(lightBase * 0.8), 
+      max: Math.round(lightBase * 1.2) 
+    },
+    midJet: { 
+      min: Math.round(midBase * 0.8), 
+      max: Math.round(midBase * 1.2) 
+    },
+    superMid: { 
+      min: Math.round(superMidBase * 0.8), 
+      max: Math.round(superMidBase * 1.2) 
+    }
+  };
+};
+
+// Format price for SMS (e.g., 8000 -> "$8k")
+const formatPrice = (price) => {
+  if (price >= 1000) {
+    return `$${Math.round(price / 1000)}k`;
+  }
+  return `$${price}`;
+};
+
+// Send SMS using Twilio
+const sendSMS = async (phoneNumber, message) => {
+  try {
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+      console.log('Twilio not configured. SMS message would be:', message);
+      return { success: true, message: 'SMS logged (Twilio not configured)' };
+    }
+
+    // Format phone number (ensure it starts with +)
+    let formattedPhone = phoneNumber.trim();
+    if (!formattedPhone.startsWith('+')) {
+      // Remove any non-digit characters except +
+      formattedPhone = formattedPhone.replace(/\D/g, '');
+      if (formattedPhone.length === 10) {
+        formattedPhone = '+1' + formattedPhone; // US number
+      } else if (formattedPhone.length === 11 && formattedPhone.startsWith('1')) {
+        formattedPhone = '+' + formattedPhone;
+      } else {
+        formattedPhone = '+' + formattedPhone;
+      }
+    }
+
+    const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
+    
+    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${auth}`
+      },
+      body: new URLSearchParams({
+        From: TWILIO_PHONE_NUMBER,
+        To: formattedPhone,
+        Body: message
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Twilio API error:', response.status, errorText);
+      return { success: false, error: `Twilio API error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    console.log('SMS sent successfully:', data.sid);
+    return { success: true, messageSid: data.sid };
+  } catch (error) {
+    console.error('Error sending SMS:', error);
+    return { success: false, error: error.message };
+  }
+};
 
 // Email sending function using webhook
 const sendItineraryEmail = async (itineraryData) => {
@@ -453,6 +695,46 @@ const server = http.createServer(async (req, res) => {
         
         // Send email
         const emailResult = await sendItineraryEmail(itineraryData);
+        
+        // Evaluate itinerary with AI and send SMS
+        if (itineraryData.phone && itineraryData.name) {
+          try {
+            // Get price estimates
+            const priceEstimates = await evaluateItineraryWithAI(itineraryData);
+            
+            // Extract airport codes
+            const fromCode = extractAirportCode(itineraryData.from);
+            const toCode = extractAirportCode(itineraryData.to);
+            const routeDisplay = fromCode && toCode 
+              ? formatRouteDisplay(fromCode, toCode)
+              : `${itineraryData.from} → ${itineraryData.to}`;
+            
+            // Format SMS message
+            const firstName = itineraryData.name.split(' ')[0];
+            const message = `Hi ${firstName}, here's an indicative estimate based on current market rates. Once an operator confirms aircraft availability and final pricing, I'll send over the official contract and payment link.
+
+${routeDisplay} (${itineraryData.passengers} passenger${itineraryData.passengers > 1 ? 's' : ''})
+
+Light Jet: ${formatPrice(priceEstimates.lightJet.min)}–${formatPrice(priceEstimates.lightJet.max)}
+
+Mid Jet: ${formatPrice(priceEstimates.midJet.min)}–${formatPrice(priceEstimates.midJet.max)}
+
+Super Mid: ${formatPrice(priceEstimates.superMid.min)}–${formatPrice(priceEstimates.superMid.max)}
+
+Want me to secure operator-confirmed pricing?
+
+– Zach
+
+NoAirlines.com`;
+            
+            // Send SMS
+            const smsResult = await sendSMS(itineraryData.phone, message);
+            console.log('SMS result:', smsResult);
+          } catch (smsError) {
+            console.error('Error sending SMS:', smsError);
+            // Don't fail the request if SMS fails
+          }
+        }
         
         res.writeHead(200, { 
           'Content-Type': 'application/json',

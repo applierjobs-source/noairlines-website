@@ -452,66 +452,69 @@ const createTuvoliContact = async (itineraryData) => {
         console.log('Proceeding after waiting period...');
       };
 
-      // Navigate to Tuvoli login page with better redirect handling
-      const loginUrl = `${TUVOLI_URL}/login?returnURL=%2Fhome`;
-      console.log(`Navigating to Tuvoli login: ${loginUrl}`);
+      // Navigate to Tuvoli login page
+      // The subdomain might require authentication, so try the main domain login first
+      // Or the login form might be on the homepage
+      console.log('Attempting to access Tuvoli login...');
       
-      // Try multiple navigation strategies to bypass redirects
+      // Strategy 1: Try subdomain login directly
+      const loginUrl = `${TUVOLI_URL}/login?returnURL=%2Fhome`;
       let navigationSuccess = false;
       
-      // Strategy 1: Direct navigation with referer
       try {
-        await page.setExtraHTTPHeaders({
-          'Referer': TUVOLI_URL
-        });
+        console.log(`Strategy 1: Direct navigation to ${loginUrl}`);
         await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 60000 });
         const url1 = page.url();
+        console.log(`After navigation, URL: ${url1}`);
         if (url1.includes('noairlines.tuvoli.com') && url1.includes('/login')) {
           navigationSuccess = true;
-          console.log('Successfully navigated to login page (Strategy 1)');
+          console.log('✓ Successfully navigated to subdomain login page');
         }
       } catch (e) {
         console.log('Strategy 1 failed:', e.message);
       }
       
-      // Strategy 2: If redirected, try setting cookies and navigating again
+      // Strategy 2: If redirected, try main domain login page
       if (!navigationSuccess) {
         try {
-          console.log('Trying Strategy 2: Setting cookies and retrying...');
-          await page.setCookie({
-            name: 'subdomain',
-            value: 'noairlines',
-            domain: '.tuvoli.com',
-            path: '/'
-          });
-          await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+          console.log('Strategy 2: Trying main domain login page...');
+          await page.goto('https://tuvoli.com/login', { waitUntil: 'networkidle2', timeout: 60000 });
+          await delay(3000);
           const url2 = page.url();
-          if (url2.includes('noairlines.tuvoli.com') && url2.includes('/login')) {
+          console.log(`After main domain login, URL: ${url2}`);
+          // Check if we're on a login page (either domain)
+          if (url2.includes('/login')) {
             navigationSuccess = true;
-            console.log('Successfully navigated to login page (Strategy 2)');
+            console.log('✓ Found login page on main domain');
           }
         } catch (e) {
           console.log('Strategy 2 failed:', e.message);
         }
       }
       
-      // Strategy 3: Use evaluate to navigate (bypasses some redirects)
+      // Strategy 3: Try app.tuvoli.com (common pattern)
       if (!navigationSuccess) {
         try {
-          console.log('Trying Strategy 3: JavaScript navigation...');
-          await page.goto('https://tuvoli.com', { waitUntil: 'networkidle2', timeout: 30000 });
-          await page.evaluate((url) => {
-            window.location.replace(url);
-          }, loginUrl);
-          await delay(8000); // Wait longer for JS navigation
+          console.log('Strategy 3: Trying app.tuvoli.com...');
+          await page.goto('https://app.tuvoli.com/login', { waitUntil: 'networkidle2', timeout: 60000 });
+          await delay(3000);
           const url3 = page.url();
-          if (url3.includes('noairlines.tuvoli.com') && url3.includes('/login')) {
+          console.log(`After app domain, URL: ${url3}`);
+          if (url3.includes('/login')) {
             navigationSuccess = true;
-            console.log('Successfully navigated to login page (Strategy 3)');
+            console.log('✓ Found login page on app domain');
           }
         } catch (e) {
           console.log('Strategy 3 failed:', e.message);
         }
+      }
+      
+      // Strategy 4: If all else fails, stay on homepage and look for login form there
+      if (!navigationSuccess) {
+        console.log('Strategy 4: Checking homepage for embedded login form...');
+        await page.goto('https://tuvoli.com', { waitUntil: 'networkidle2', timeout: 60000 });
+        await delay(3000);
+        // We'll look for login fields on whatever page we're on
       }
 
       // Tuvoli login fields take at least 6 seconds to load
@@ -584,116 +587,9 @@ const createTuvoliContact = async (itineraryData) => {
       const pageTitle = await page.title();
       const pageUrl = page.url();
       console.log(`Page loaded - Title: ${pageTitle}, URL: ${pageUrl}`);
-
-      // Check if we're on the homepage instead of login page
-      // If so, look for and click the login link
-      const isHomepage = !pageUrl.includes('/login') && 
-                        !pageUrl.includes('/signin') && 
-                        !pageUrl.includes('/sign-in') && 
-                        !pageUrl.includes('/auth') &&
-                        (pageUrl === 'https://tuvoli.com/' || 
-                         pageUrl === 'https://www.tuvoli.com/' ||
-                         pageUrl.includes('tuvoli.com') && pageUrl.split('/').length <= 4);
       
-      if (isHomepage) {
-        console.log('Detected homepage, looking for login link or subdomain access...');
-        
-        // First, try to find login links on the page that might go to the subdomain
-        const loginLinkSelectors = [
-          'a[href*="noairlines.tuvoli.com"]',
-          'a[href*="login"]',
-          'a[href*="signin"]',
-          'a[href*="sign-in"]',
-          'a:has-text("Login")',
-          'a:has-text("Sign In")',
-          'a:has-text("Log in")',
-          'button:has-text("Login")',
-          'button:has-text("Sign In")',
-          '[data-testid*="login"]',
-          'a[href="/login"]',
-          'a[href="/signin"]',
-          'nav a[href*="login"]',
-          'header a[href*="login"]'
-        ];
-
-        let loginLinkFound = false;
-        for (const selector of loginLinkSelectors) {
-          try {
-            const element = await page.$(selector);
-            if (element) {
-              const href = await page.evaluate(el => el.href, element);
-              console.log(`Found login link with selector: ${selector}, href: ${href}`);
-              await element.click();
-              await delay(5000); // Wait longer for navigation and redirects
-              loginLinkFound = true;
-              const newUrl = page.url();
-              console.log(`After clicking login link, URL: ${newUrl}`);
-              
-              // If we're still on homepage, the link didn't work
-              if (newUrl.includes('tuvoli.com') && !newUrl.includes('/login') && !newUrl.includes('/signin')) {
-                loginLinkFound = false;
-                continue;
-              } else {
-                break;
-              }
-            }
-          } catch (e) {
-            continue;
-          }
-        }
-
-        // If no login link found on page, try accessing subdomain with different approaches
-        if (!loginLinkFound) {
-          console.log('Login link not found on page, trying subdomain access methods...');
-          
-          // Try setting cookies or headers that might allow subdomain access
-          // First, try navigating directly but handle redirects
-          try {
-            console.log(`Attempting to access subdomain: ${TUVOLI_URL}/login?returnURL=%2Fhome`);
-            
-            // Try with different navigation options
-            await page.goto(`${TUVOLI_URL}/login?returnURL=%2Fhome`, { 
-              waitUntil: 'networkidle2', 
-              timeout: 30000,
-              referer: TUVOLI_URL
-            });
-            
-            await delay(3000);
-            const currentUrl = page.url();
-            console.log(`After navigation, current URL: ${currentUrl}`);
-            
-            // If redirected to homepage, try JavaScript navigation
-            if (currentUrl.includes('tuvoli.com') && !currentUrl.includes('/login') && !currentUrl.includes('noairlines')) {
-              console.log('Redirected to homepage, trying JavaScript navigation...');
-              
-              // Try using JavaScript to navigate (might bypass some redirects)
-              await page.evaluate((url) => {
-                window.location.href = url;
-              }, `${TUVOLI_URL}/login?returnURL=%2Fhome`);
-              
-              await delay(6000); // Wait for page to load
-              const jsNavUrl = page.url();
-              console.log(`After JavaScript navigation, URL: ${jsNavUrl}`);
-              
-              // If still redirected, the subdomain might require authentication first
-              if (jsNavUrl.includes('tuvoli.com') && !jsNavUrl.includes('/login') && !jsNavUrl.includes('noairlines')) {
-                console.log('Subdomain appears to require authentication. Trying to find login form on homepage...');
-                // The login form might actually be on the homepage
-                // Continue with finding fields on current page
-              }
-            }
-          } catch (e) {
-            console.log(`Navigation failed: ${e.message}`);
-          }
-        }
-        
-        // Update URL after navigation attempts
-        const finalUrl = page.url();
-        console.log(`Final URL after login navigation attempts: ${finalUrl}`);
-        
-        // If we're still on homepage, the login form might be embedded there
-        // We'll proceed to look for login fields on whatever page we're on
-      }
+      // At this point, we're on some Tuvoli page - either login page or homepage
+      // We'll look for login fields on whatever page we're on
 
       // AI-powered element finding: Use AI to intelligently find username field with retries
       // Tuvoli uses "Enter Username" not email

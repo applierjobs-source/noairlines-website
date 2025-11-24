@@ -4852,8 +4852,6 @@ NoAirlines.com`;
   });
 });
 
-});
-
 // Handle server errors
 server.on('error', (err) => {
   console.error('SERVER ERROR:', err);

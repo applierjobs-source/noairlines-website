@@ -643,8 +643,20 @@ IMPORTANT NAVIGATION RULES:
      * Use selector: input[type="tel"] or input[placeholder*="Primary Phone" i]
      * Fill with the phone from the goal (extract from "Phone: [value]" in goal)
    - Individual Account checkbox: input[type="checkbox"] near "Individual Account" text (REQUIRED - checking this bypasses the "Account *" required field)
-     * MUST be checked before submitting
-     * Use selector: input[type="checkbox"] near text "Individual Account" or label containing "Individual Account"
+     * MUST be checked before submitting - this is critical!
+     * The checkbox might be:
+       - Inside a label with text "Individual Account"
+       - Next to text "Individual Account" 
+       - Has id/name containing "individual" or "account"
+     * Try these selectors in order:
+       1. label:has-text("Individual Account") input[type="checkbox"]
+       2. //label[contains(text(), 'Individual Account')]//input[@type='checkbox']
+       3. input[type="checkbox"][id*="individual" i]
+       4. input[type="checkbox"][name*="individual" i]
+       5. //input[@type='checkbox'][following-sibling::text()[contains(., 'Individual Account')]]
+       6. Look for checkbox near any text containing "Individual Account" - use XPath to find it
+     * If checkbox is found but already checked, that's fine - just verify it's checked
+     * If you can't find it, look for ANY checkbox on the form and check if its label contains "Individual" or "Account"
    - Create button: button with text "Create" or "Save"
      * Use selector: button[type="submit"] with text "Create" or //button[contains(text(), 'Create')]
      * Click this AFTER filling all fields and checking Individual Account checkbox
@@ -3346,19 +3358,126 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       );
       
       // Check "Individual Account" checkbox to bypass Account requirement
-      console.log('Checking Individual Account checkbox...');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('Checking Individual Account checkbox (REQUIRED)...');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       let checkboxChecked = false;
+      
+      // Strategy 1: AI Vision selector
       if (visionFormSelectors && visionFormSelectors.individualAccountCheckbox) {
         try {
-          await page.waitForSelector(visionFormSelectors.individualAccountCheckbox, { timeout: 5000 });
-          await page.click(visionFormSelectors.individualAccountCheckbox);
-          checkboxChecked = true;
-          console.log('✓ Checked Individual Account checkbox using AI Vision selector');
+          const selector = visionFormSelectors.individualAccountCheckbox;
+          console.log(`Trying AI Vision selector: ${selector}`);
+          await page.waitForSelector(selector, { timeout: 5000, visible: true });
+          const isChecked = await page.$eval(selector, checkbox => checkbox.checked);
+          if (!isChecked) {
+            await page.click(selector);
+            console.log('✓ Checked Individual Account checkbox using AI Vision selector');
+            checkboxChecked = true;
+          } else {
+            console.log('✓ Individual Account checkbox already checked (AI Vision selector)');
+            checkboxChecked = true;
+          }
         } catch (e) {
-          console.log('AI Vision checkbox selector failed, trying fallbacks...');
+          console.log(`AI Vision checkbox selector failed: ${e.message}, trying fallbacks...`);
         }
       }
       
+      // Strategy 2: XPath - find label with "Individual Account" text, then find checkbox
+      if (!checkboxChecked) {
+        try {
+          console.log('Trying XPath: label containing "Individual Account" -> checkbox');
+          const checkboxes = await page.$x("//label[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'individual account')]//input[@type='checkbox']");
+          if (checkboxes.length === 0) {
+            // Try alternative XPath - checkbox followed by text
+            const checkboxes2 = await page.$x("//input[@type='checkbox'][following-sibling::text()[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'individual account')]]");
+            if (checkboxes2.length > 0) {
+              const isChecked = await page.evaluate(cb => cb.checked, checkboxes2[0]);
+              if (!isChecked) {
+                await checkboxes2[0].click();
+                console.log('✓ Checked Individual Account checkbox using XPath (following-sibling)');
+                checkboxChecked = true;
+              } else {
+                console.log('✓ Individual Account checkbox already checked (XPath)');
+                checkboxChecked = true;
+              }
+            }
+          } else {
+            const isChecked = await page.evaluate(cb => cb.checked, checkboxes[0]);
+            if (!isChecked) {
+              await checkboxes[0].click();
+              console.log('✓ Checked Individual Account checkbox using XPath (label)');
+              checkboxChecked = true;
+            } else {
+              console.log('✓ Individual Account checkbox already checked (XPath)');
+              checkboxChecked = true;
+            }
+          }
+        } catch (e) {
+          console.log(`XPath checkbox search failed: ${e.message}`);
+        }
+      }
+      
+      // Strategy 3: Find all checkboxes and check which one is near "Individual Account" text
+      if (!checkboxChecked) {
+        try {
+          console.log('Trying strategy: Find all checkboxes and check labels...');
+          const checkboxInfo = await page.evaluate(() => {
+            const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+            return checkboxes.map((cb, index) => {
+              // Find label for this checkbox
+              let labelText = '';
+              if (cb.id) {
+                const label = document.querySelector(`label[for="${cb.id}"]`);
+                if (label) labelText = label.textContent || '';
+              }
+              // Check parent label
+              let parent = cb.parentElement;
+              while (parent && parent.tagName !== 'BODY') {
+                if (parent.tagName === 'LABEL') {
+                  labelText = parent.textContent || '';
+                  break;
+                }
+                parent = parent.parentElement;
+              }
+              // Check nearby text
+              const nearbyText = cb.parentElement?.textContent || '';
+              
+              return {
+                index,
+                id: cb.id || '',
+                name: cb.name || '',
+                checked: cb.checked,
+                labelText: labelText.trim(),
+                nearbyText: nearbyText.substring(0, 100),
+                hasIndividual: (labelText + nearbyText).toLowerCase().includes('individual')
+              };
+            });
+          });
+          
+          console.log('Found checkboxes:', JSON.stringify(checkboxInfo, null, 2));
+          
+          const individualCheckbox = checkboxInfo.find(cb => cb.hasIndividual);
+          if (individualCheckbox) {
+            const allCheckboxes = await page.$$('input[type="checkbox"]');
+            if (allCheckboxes[individualCheckbox.index]) {
+              const isChecked = await page.evaluate(cb => cb.checked, allCheckboxes[individualCheckbox.index]);
+              if (!isChecked) {
+                await allCheckboxes[individualCheckbox.index].click();
+                console.log(`✓ Checked Individual Account checkbox (found by label text: "${individualCheckbox.labelText}")`);
+                checkboxChecked = true;
+              } else {
+                console.log('✓ Individual Account checkbox already checked (found by label)');
+                checkboxChecked = true;
+              }
+            }
+          }
+        } catch (e) {
+          console.log(`Checkbox search by label failed: ${e.message}`);
+        }
+      }
+      
+      // Strategy 4: Fallback selectors
       if (!checkboxChecked) {
         const checkboxSelectors = [
           'input[type="checkbox"]:near(label:has-text("Individual Account"))',

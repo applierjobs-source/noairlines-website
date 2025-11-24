@@ -1920,6 +1920,29 @@ Return JSON:
                 }
               }
               
+              // Learn waffle button navigation pattern
+              if (actionPlan.action === 'click' && actionPlan.selector && 
+                  (actionPlan.selector.includes('menu') || actionPlan.selector.includes('waffle') || 
+                   actionPlan.selector.includes('hamburger') || actionPlan.reasoning?.toLowerCase().includes('waffle') ||
+                   actionPlan.reasoning?.toLowerCase().includes('menu'))) {
+                const fact = 'Waffle button (menu) navigation works: Click waffle button, then click "Client Management" in menu to reach contact management';
+                if (!reasoningMemory.learnedFacts.includes(fact)) {
+                  reasoningMemory.learnedFacts.push(fact);
+                  console.log(`🧠 Knowledge Base Update: Learned fact about waffle button navigation`);
+                }
+              }
+              
+              // Learn Client Management menu click
+              if (actionPlan.action === 'click' && actionPlan.selector && 
+                  (actionPlan.reasoning?.toLowerCase().includes('client management') ||
+                   actionPlan.reasoning?.toLowerCase().includes('contact management'))) {
+                const fact = 'Clicking "Client Management" in menu navigates to contact management page';
+                if (!reasoningMemory.learnedFacts.includes(fact)) {
+                  reasoningMemory.learnedFacts.push(fact);
+                  console.log(`🧠 Knowledge Base Update: Learned fact about Client Management menu navigation`);
+                }
+              }
+              
               // Remove from invalidated if it was there (maybe it works now)
               const invalidatedIndex = reasoningMemory.invalidatedStrategies.indexOf(actionPlan.action);
               if (invalidatedIndex !== -1) {

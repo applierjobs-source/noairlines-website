@@ -941,23 +941,26 @@ const createTuvoliContact = async (itineraryData) => {
           submitButtonFound = true;
           console.log(`✓ Successfully used AI Vision selector for submit button`);
         } catch (e) {
-          console.log(`AI Vision selector didn't work, trying other methods...`);
+          console.log(`AI Vision selector didn't work (${e.message}), trying other methods...`);
         }
       }
       
       // Fallback to traditional selectors
       if (!submitButtonFound) {
         const loginSubmitSelectors = [
+          'button[type="submit"]',
           'button:has-text("Sign in")',
           'button:has-text("Sign In")',
-          'button[type="submit"]',
+          'button:has-text("Signin")',
           'button:has-text("Login")',
           'button:has-text("Log in")',
           'input[type="submit"]',
-          'form button',
+          'form button[type="submit"]',
           'button[class*="submit" i]',
           'button[class*="login" i]',
-          'button[class*="sign" i]'
+          'button[class*="sign" i]',
+          'form button:first-of-type',
+          'button:first-of-type'
         ];
 
         for (const selector of loginSubmitSelectors) {
@@ -974,9 +977,17 @@ const createTuvoliContact = async (itineraryData) => {
       }
 
       if (!submitButtonFound) {
-        // Try pressing Enter as fallback
-        console.log('Submit button not found, trying Enter key...');
-        await page.keyboard.press('Enter');
+        // Try pressing Enter as fallback (often works for forms)
+        console.log('Submit button not found, trying Enter key on password field...');
+        // Focus on password field and press Enter
+        if (passwordSelector) {
+          await page.focus(passwordSelector);
+          await page.keyboard.press('Enter');
+          submitButtonFound = true; // Assume it worked
+        } else {
+          // Last resort: press Enter anywhere
+          await page.keyboard.press('Enter');
+        }
       }
       
       // Wait for navigation after login

@@ -3616,8 +3616,64 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         }
       }
       
+      // If add button not found, try looking near the Account field
       if (!addButtonClicked) {
-        console.log('⚠ WARNING: Could not find add (+) button - continuing anyway');
+        console.log('Trying to find add button near Account field...');
+        const addButtonNearAccount = await page.evaluate(() => {
+          // Find Account field
+          const accountField = document.querySelector('input[placeholder*="account" i]') ||
+                              document.querySelector('input[placeholder*="Select an account" i]') ||
+                              document.querySelector('input[type="search"][placeholder*="account" i]');
+          
+          if (accountField) {
+            // Look for button in same container/parent
+            let container = accountField.parentElement;
+            while (container && container.tagName !== 'BODY') {
+              const buttons = container.querySelectorAll('button, [role="button"], a[role="button"]');
+              for (const btn of buttons) {
+                const text = btn.textContent?.trim() || btn.getAttribute('aria-label') || '';
+                const hasPlus = text.includes('+') || text.toLowerCase().includes('add');
+                const hasPlusIcon = btn.querySelector('i.fa-plus, i.fas.fa-plus, .fa-plus, .fa-add');
+                const isNearAccount = container.contains(accountField);
+                
+                if ((hasPlus || hasPlusIcon) && isNearAccount) {
+                  btn.click();
+                  return { found: true, text: text.substring(0, 30), method: 'near_account_field' };
+                }
+              }
+              container = container.parentElement;
+            }
+            
+            // Look for button immediately after Account field
+            let next = accountField.nextElementSibling;
+            while (next) {
+              if (next.tagName === 'BUTTON' || next.getAttribute('role') === 'button') {
+                const text = next.textContent?.trim() || next.getAttribute('aria-label') || '';
+                if (text.includes('+') || text.toLowerCase().includes('add') || next.querySelector('i.fa-plus, .fa-plus')) {
+                  next.click();
+                  return { found: true, text: text.substring(0, 30), method: 'after_account_field' };
+                }
+              }
+              next = next.nextElementSibling;
+            }
+          }
+          
+          return { found: false };
+        });
+        
+        if (addButtonNearAccount.found) {
+          console.log(`✓ Clicked add (+) button ${addButtonNearAccount.method}: "${addButtonNearAccount.text}"`);
+          addButtonClicked = true;
+          await delay(1000); // Wait longer after clicking add button
+        }
+      }
+      
+      if (!addButtonClicked) {
+        console.log('⚠ WARNING: Could not find add (+) button - trying to continue anyway');
+        console.log('⚠ The Account field may need the add button clicked to be accepted');
+      } else {
+        console.log('✅ Add (+) button clicked successfully');
+        await saveScreenshot('after-add-button-click');
       }
       
       // Fill notes field if available
@@ -3635,33 +3691,12 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         'Notes'
       );
 
-      // NUCLEAR FINAL VERIFICATION: Check checkbox MULTIPLE times right before submit
+      // Final verification before submit
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('🔍 NUCLEAR FINAL VERIFICATION: Ensuring checkbox stays checked...');
+      console.log('🔍 Final verification before submit...');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       
-      // Check it 3 times with delays to ensure it stays checked
-      for (let i = 0; i < 3; i++) {
-        await delay(300);
-        const checkResult = await forceCheckIndividualAccount();
-        if (checkResult.found && checkResult.checked) {
-          console.log(`✓ Check ${i + 1}/3: Checkbox is checked`);
-          checkboxChecked = true;
-        } else if (checkResult.found && !checkResult.checked) {
-          console.log(`⚠ Check ${i + 1}/3: Checkbox found but NOT checked - forcing again...`);
-          // Force it again
-          await forceCheckIndividualAccount();
-        } else {
-          console.log(`⚠ Check ${i + 1}/3: Checkbox not found`);
-        }
-      }
-      
-      // Final state check
       const finalCheck = await page.evaluate(() => {
-        const checkbox = document.getElementById('individual-account') || 
-                        document.querySelector('input[name="individual-account"]') ||
-                        document.querySelector('input[formcontrolname="individualAccount"]');
-        
         const firstName = document.getElementById('first-name') || 
                          document.querySelector('input[name="first-name"]');
         const lastName = document.getElementById('last-name') || 
@@ -3669,23 +3704,25 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         const email = document.getElementById('account-email') || 
                      document.querySelector('input[name="account-email"]') ||
                      document.querySelector('input[type="email"]');
+        const accountField = document.querySelector('input[placeholder*="account" i]') ||
+                            document.querySelector('input[placeholder*="Select an account" i]') ||
+                            document.querySelector('input[type="search"][placeholder*="account" i]');
         
         return {
-          checkboxExists: !!checkbox,
-          checkboxChecked: checkbox ? checkbox.checked : false,
-          checkboxId: checkbox?.id || checkbox?.name || 'not found',
           firstNameFilled: firstName ? firstName.value.trim() !== '' : false,
           lastNameFilled: lastName ? lastName.value.trim() !== '' : false,
           emailFilled: email ? email.value.trim() !== '' : false,
+          accountFilled: accountField ? accountField.value.trim() !== '' : false,
+          accountValue: accountField ? accountField.value.trim() : '',
         };
       });
       
       console.log('Final form state:', JSON.stringify(finalCheck, null, 2));
       
-      if (finalCheck.checkboxExists && finalCheck.checkboxChecked) {
-        console.log('✅ CHECKBOX IS CHECKED - READY TO SUBMIT');
+      if (finalCheck.accountFilled) {
+        console.log(`✅ ACCOUNT FIELD IS FILLED: "${finalCheck.accountValue}" - READY TO SUBMIT`);
       } else {
-        console.log('⚠⚠⚠ WARNING: CHECKBOX MAY NOT BE CHECKED - SUBMITTING ANYWAY ⚠⚠⚠');
+        console.log('⚠⚠⚠ WARNING: ACCOUNT FIELD MAY NOT BE FILLED - SUBMITTING ANYWAY ⚠⚠⚠');
       }
       
       // Submit the form - look for "Create" button

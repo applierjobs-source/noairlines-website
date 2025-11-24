@@ -677,6 +677,10 @@ IMPORTANT NAVIGATION RULES:
    - Once form is open, you'll see: "First Name *", "Last Name *", "Primary Phone", "Primary Email *", "Account *" field (REQUIRED), and "Create" button
    - NOTE: "Individual Account" checkbox is NOT required - ignore it completely
    - If you see these fields, you're in the right place - fill them and submit!
+   - **CRITICAL RULE: If the contact form is open (you see First Name, Last Name fields), NEVER navigate away!**
+   - **Navigation will close/break the form and prevent contact creation**
+   - **If form is open, your ONLY actions should be: type (fill fields), click (add button, Create button), or wait**
+   - **NEVER use navigate, navigate_js, or navigate_root_then when form is open**
    - **Form detection**: If page state shows "hasContactForm: true" or you see input fields with names like "first-name", "last-name", "account-email", the form is OPEN - skip clicking "Add New Contact"
 
 6. CONTACT FORM FIELDS (from screenshot analysis):
@@ -1842,38 +1846,46 @@ Return JSON:
             }
           }
           
-          // If AI keeps trying to navigate to the same URL, check if we're already where we need to be
-          if (actionPlan.action === 'navigate' && actionPlan.url === currentUrl) {
-            // Check if we're on contact management with form open
-            const isOnTargetPage = currentUrl.includes('contact-management') || 
-                                  currentUrl.includes('contacts') ||
-                                  await page.evaluate(() => !!document.querySelector('input[name*="first" i], input[id*="first-name" i]'));
-            
-            if (isOnTargetPage) {
-              console.log('✓ Already on target page with form open - changing action to wait instead of navigate');
+          // CRITICAL: Block ALL navigation if we're on contact management page with form open
+          const isOnContactManagementWithForm = await page.evaluate(() => {
+            const url = window.location.href;
+            const hasForm = !!document.querySelector('input[name*="first" i], input[id*="first-name" i], input[id*="first-name"]');
+            const isContactPage = url.includes('contact-management') || url.includes('contacts');
+            return isContactPage && hasForm;
+          });
+          
+          if (isOnContactManagementWithForm) {
+            // We're on the right page with form open - BLOCK any navigation attempts
+            if (actionPlan.action === 'navigate' || actionPlan.action === 'navigate_js' || actionPlan.action === 'navigate_root_then') {
+              console.log('🚫 BLOCKING NAVIGATION: Already on contact management page with form open!');
+              console.log('🚫 Navigation would break the form and prevent contact creation!');
+              console.log('🚫 Changing navigation action to wait - AI should fill form fields instead');
               actionPlan.action = 'wait';
-              actionPlan.waitTime = 1000;
-              actionPlan.reasoning = 'Already on contact management page with form open - no navigation needed';
-            } else {
+              actionPlan.waitTime = 500;
+              actionPlan.reasoning = 'CRITICAL: Already on contact management page with form open. Do NOT navigate - it will break the form. Fill the remaining form fields instead (Phone, Account field, add button, Create button).';
+            }
+          } else {
+            // Not on contact management with form - allow navigation but check for loops
+            if (actionPlan.action === 'navigate' && actionPlan.url === currentUrl) {
               console.log('⚠ AI trying to navigate to current URL, forcing wait instead...');
               actionPlan.action = 'wait';
               actionPlan.waitTime = 6000;
               actionPlan.reasoning = 'Waiting for page to fully load and fields to appear';
             }
-          }
-          
-          // If AI tries to navigate to contact-management but we're already there with form open, change to wait
-          if (actionPlan.action === 'navigate' && actionPlan.url && 
-              (actionPlan.url.includes('contact-management') || actionPlan.url.includes('contacts'))) {
-            const isAlreadyThere = currentUrl.includes('contact-management') || 
-                                   currentUrl.includes('contacts') ||
-                                   await page.evaluate(() => !!document.querySelector('input[name*="first" i], input[id*="first-name" i]'));
             
-            if (isAlreadyThere) {
-              console.log('✓ Already on contact management page - changing navigation to wait');
-              actionPlan.action = 'wait';
-              actionPlan.waitTime = 1000;
-              actionPlan.reasoning = 'Already on contact management page - no navigation needed, proceed with form filling';
+            // If AI tries to navigate to contact-management but we're already there with form open, change to wait
+            if (actionPlan.action === 'navigate' && actionPlan.url && 
+                (actionPlan.url.includes('contact-management') || actionPlan.url.includes('contacts'))) {
+              const isAlreadyThere = currentUrl.includes('contact-management') || 
+                                     currentUrl.includes('contacts') ||
+                                     await page.evaluate(() => !!document.querySelector('input[name*="first" i], input[id*="first-name" i]'));
+              
+              if (isAlreadyThere) {
+                console.log('✓ Already on contact management page - changing navigation to wait');
+                actionPlan.action = 'wait';
+                actionPlan.waitTime = 1000;
+                actionPlan.reasoning = 'Already on contact management page - no navigation needed, proceed with form filling';
+              }
             }
           }
           

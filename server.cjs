@@ -934,14 +934,40 @@ const createTuvoliContact = async (itineraryData) => {
       
       // First, try using vision-detected selector if available
       if (page._visionSelectors && page._visionSelectors.submitSelector) {
-        try {
-          console.log(`Trying AI Vision-detected selector: ${page._visionSelectors.submitSelector}`);
-          await page.waitForSelector(page._visionSelectors.submitSelector, { timeout: 10000 });
-          await page.click(page._visionSelectors.submitSelector);
-          submitButtonFound = true;
-          console.log(`✓ Successfully used AI Vision selector for submit button`);
-        } catch (e) {
-          console.log(`AI Vision selector didn't work (${e.message}), trying other methods...`);
+        let visionSelector = page._visionSelectors.submitSelector;
+        
+        // Fix invalid CSS selectors from AI Vision (like :contains which doesn't exist in CSS)
+        // Convert to XPath or valid CSS
+        if (visionSelector.includes(':contains(')) {
+          // Extract text from :contains('text')
+          const textMatch = visionSelector.match(/:contains\(['"]([^'"]+)['"]\)/);
+          if (textMatch) {
+            const buttonText = textMatch[1];
+            console.log(`AI Vision suggested :contains selector, converting to XPath for text: "${buttonText}"`);
+            try {
+              // Use XPath to find button with text
+              const xpath = `//button[contains(text(), '${buttonText}')]`;
+              const button = await page.$x(xpath);
+              if (button.length > 0) {
+                await button[0].click();
+                submitButtonFound = true;
+                console.log(`✓ Successfully clicked button using XPath`);
+              }
+            } catch (e) {
+              console.log(`XPath didn't work: ${e.message}`);
+            }
+          }
+        } else {
+          // Try the selector as-is (might be valid CSS)
+          try {
+            console.log(`Trying AI Vision-detected selector: ${visionSelector}`);
+            await page.waitForSelector(visionSelector, { timeout: 10000 });
+            await page.click(visionSelector);
+            submitButtonFound = true;
+            console.log(`✓ Successfully used AI Vision selector for submit button`);
+          } catch (e) {
+            console.log(`AI Vision selector didn't work (${e.message}), trying other methods...`);
+          }
         }
       }
       
@@ -949,13 +975,13 @@ const createTuvoliContact = async (itineraryData) => {
       if (!submitButtonFound) {
         const loginSubmitSelectors = [
           'button[type="submit"]',
+          'input[type="submit"]',
+          'form button[type="submit"]',
           'button:has-text("Sign in")',
           'button:has-text("Sign In")',
           'button:has-text("Signin")',
           'button:has-text("Login")',
           'button:has-text("Log in")',
-          'input[type="submit"]',
-          'form button[type="submit"]',
           'button[class*="submit" i]',
           'button[class*="login" i]',
           'button[class*="sign" i]',
@@ -975,6 +1001,21 @@ const createTuvoliContact = async (itineraryData) => {
           }
         }
       }
+      
+      // Try XPath for "Sign in" button text
+      if (!submitButtonFound) {
+        try {
+          console.log('Trying XPath to find "Sign in" button...');
+          const signInButtons = await page.$x("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'sign in')]");
+          if (signInButtons.length > 0) {
+            await signInButtons[0].click();
+            submitButtonFound = true;
+            console.log('✓ Found and clicked "Sign in" button using XPath');
+          }
+        } catch (e) {
+          console.log(`XPath search failed: ${e.message}`);
+        }
+      }
 
       if (!submitButtonFound) {
         // Try pressing Enter as fallback (often works for forms)
@@ -982,11 +1023,14 @@ const createTuvoliContact = async (itineraryData) => {
         // Focus on password field and press Enter
         if (passwordSelector) {
           await page.focus(passwordSelector);
+          await delay(500);
           await page.keyboard.press('Enter');
           submitButtonFound = true; // Assume it worked
+          console.log('✓ Pressed Enter on password field to submit form');
         } else {
           // Last resort: press Enter anywhere
           await page.keyboard.press('Enter');
+          console.log('✓ Pressed Enter as last resort');
         }
       }
       

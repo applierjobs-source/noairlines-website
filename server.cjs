@@ -350,8 +350,18 @@ const createTuvoliContact = async (itineraryData) => {
 
       // Check if we're on the homepage instead of login page
       // If so, look for and click the login link
-      if (pageUrl.includes('tuvoli.com') && !pageUrl.includes('/login') && !pageUrl.includes('/signin') && !pageUrl.includes('/auth')) {
+      const isHomepage = !pageUrl.includes('/login') && 
+                        !pageUrl.includes('/signin') && 
+                        !pageUrl.includes('/sign-in') && 
+                        !pageUrl.includes('/auth') &&
+                        (pageUrl === 'https://tuvoli.com/' || 
+                         pageUrl === 'https://www.tuvoli.com/' ||
+                         pageUrl.includes('tuvoli.com') && pageUrl.split('/').length <= 4);
+      
+      if (isHomepage) {
         console.log('Detected homepage, looking for login link...');
+        
+        // First, try to find login links on the page
         const loginLinkSelectors = [
           'a[href*="login"]',
           'a[href*="signin"]',
@@ -363,51 +373,66 @@ const createTuvoliContact = async (itineraryData) => {
           'button:has-text("Sign In")',
           '[data-testid*="login"]',
           'a[href="/login"]',
-          'a[href="/signin"]'
+          'a[href="/signin"]',
+          'nav a[href*="login"]',
+          'header a[href*="login"]'
         ];
 
         let loginLinkFound = false;
         for (const selector of loginLinkSelectors) {
           try {
-            await page.waitForSelector(selector, { timeout: 3000 });
-            console.log(`Found login link with selector: ${selector}`);
-            await page.click(selector);
-            await delay(3000); // Wait for navigation
-            loginLinkFound = true;
-            const newUrl = page.url();
-            console.log(`After clicking login link, URL: ${newUrl}`);
-            break;
+            const element = await page.$(selector);
+            if (element) {
+              console.log(`Found login link with selector: ${selector}`);
+              await element.click();
+              await delay(3000); // Wait for navigation
+              loginLinkFound = true;
+              const newUrl = page.url();
+              console.log(`After clicking login link, URL: ${newUrl}`);
+              break;
+            }
           } catch (e) {
             continue;
           }
         }
 
+        // If no login link found on page, try alternative login URLs directly
         if (!loginLinkFound) {
-          // Try alternative login URLs
-          console.log('Login link not found, trying alternative login URLs...');
+          console.log('Login link not found on page, trying alternative login URLs...');
           const alternativeUrls = [
+            `${TUVOLI_URL}/login`,
             `${TUVOLI_URL}/signin`,
             `${TUVOLI_URL}/sign-in`,
             `${TUVOLI_URL}/auth/login`,
             `https://app.tuvoli.com/login`,
-            `https://app.tuvoli.com/signin`
+            `https://app.tuvoli.com/signin`,
+            `https://noairlines.tuvoli.com/login`,
+            `https://noairlines.tuvoli.com/signin`
           ];
 
           for (const url of alternativeUrls) {
             try {
-              console.log(`Trying: ${url}`);
+              console.log(`Trying direct navigation to: ${url}`);
               await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
               await delay(2000);
               const currentUrl = page.url();
               console.log(`Navigated to: ${currentUrl}`);
+              
+              // Check if we're now on a login page
               if (currentUrl.includes('/login') || currentUrl.includes('/signin') || currentUrl.includes('/auth')) {
+                console.log('Successfully navigated to login page');
                 break;
               }
             } catch (e) {
+              console.log(`Failed to navigate to ${url}: ${e.message}`);
               continue;
             }
           }
         }
+        
+        // Update URL after navigation attempts
+        const finalUrl = page.url();
+        console.log(`Final URL after login navigation attempts: ${finalUrl}`);
       }
 
       // Try to find email field with multiple strategies

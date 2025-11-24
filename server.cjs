@@ -333,6 +333,66 @@ const createTuvoliContact = async (itineraryData) => {
       page.setDefaultNavigationTimeout(60000);
       page.setDefaultTimeout(60000);
 
+      // Make Puppeteer look like a real browser to avoid bot detection
+      // This prevents redirects from noairlines.tuvoli.com to tuvoli.com
+      console.log('Configuring browser to avoid bot detection...');
+      
+      // Set realistic user agent (not HeadlessChrome)
+      await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      
+      // Set realistic headers
+      await page.setExtraHTTPHeaders({
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0'
+      });
+
+      // Override webdriver property (major bot detection signal)
+      await page.evaluateOnNewDocument(() => {
+        // Remove webdriver property
+        Object.defineProperty(navigator, 'webdriver', {
+          get: () => false,
+        });
+        
+        // Override plugins to look like a real browser
+        Object.defineProperty(navigator, 'plugins', {
+          get: () => [1, 2, 3, 4, 5],
+        });
+        
+        // Override languages
+        Object.defineProperty(navigator, 'languages', {
+          get: () => ['en-US', 'en'],
+        });
+        
+        // Override permissions
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+          parameters.name === 'notifications' ?
+            Promise.resolve({ state: Notification.permission }) :
+            originalQuery(parameters)
+        );
+        
+        // Chrome runtime
+        window.chrome = {
+          runtime: {},
+        };
+        
+        // Override permissions
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+          parameters.name === 'notifications' ?
+            Promise.resolve({ state: Notification.permission }) :
+            originalQuery(parameters)
+        );
+      });
+
       // Helper function to delay (replacement for deprecated waitForTimeout)
       const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 

@@ -410,6 +410,12 @@ CURRENT STATE:
 KNOWLEDGE FROM PREVIOUS SUCCESSFUL ATTEMPTS:
 1. LOGIN PAGE NAVIGATION: To reach the login page at https://noairlines.tuvoli.com/login?returnURL=%2Fhome, use Strategy 3 (navigation with custom headers). The page may redirect initially, but custom headers help bypass redirects.
 
+IMPORTANT: If you're already on the login page (URL contains '/login'), DO NOT navigate again. Instead:
+- Wait 6+ seconds for fields to load (login fields take time to appear)
+- Check if login fields are visible before trying to fill them
+- If fields aren't visible yet, use action "wait" with waitTime: 6000
+- Only navigate if you're NOT on the login page
+
 2. LOGIN FORM FIELDS (PROVEN WORKING):
    - Username field: input[placeholder='Enter Username'] (this has worked successfully)
    - Password field: input[placeholder='Enter Password'] (this has worked successfully)
@@ -443,6 +449,13 @@ KNOWLEDGE FROM PREVIOUS SUCCESSFUL ATTEMPTS:
    - Wait 6+ seconds after navigating to login page for fields to load
    - Wait 2-3 seconds after clicking buttons for modals/forms to open
    - Wait 1-2 seconds after typing in fields
+   - If you're on the login page but don't see fields, ALWAYS wait 6+ seconds before trying to interact
+
+8. NAVIGATION LOOP PREVENTION:
+   - If current URL already contains '/login', DO NOT navigate again
+   - Check the current URL in the page state before deciding to navigate
+   - If you keep trying to navigate to the same URL, use "wait" action instead
+   - Only navigate if the current URL is different from the target URL
 
 Analyze the screenshot and current state. Use the knowledge above to determine the EXACT next action needed to progress toward the goal.
 
@@ -696,9 +709,44 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
         }
         
         // AI-guided loop: Keep asking AI what to do next until goal is complete
+        let lastUrl = '';
+        let navigationLoopCount = 0;
+        const maxNavigationLoops = 3;
+        
         while (aiAttempts < maxAIAttempts) {
           aiAttempts++;
           console.log(`\n🤖 AI Reasoning Step ${aiAttempts}/${maxAIAttempts}`);
+          
+          // Get current URL to detect navigation loops
+          const currentUrl = page.url();
+          if (currentUrl === lastUrl && lastUrl !== '') {
+            navigationLoopCount++;
+            console.log(`⚠ Navigation loop detected (${navigationLoopCount}/${maxNavigationLoops}) - same URL: ${currentUrl}`);
+            if (navigationLoopCount >= maxNavigationLoops) {
+              console.log('⚠ Too many navigation loops, forcing wait and field detection...');
+              // Force AI to wait and check for fields instead of navigating
+              await delay(6000); // Wait for login fields to load
+              await saveScreenshot('after-wait-for-fields');
+              // Skip AI reasoning this time and go straight to checking for login fields
+              const hasLoginFields = await page.evaluate(() => {
+                return !!document.querySelector('input[type="password"]') && 
+                       !!document.querySelector('input[placeholder*="Username" i], input[placeholder*="Email" i]');
+              });
+              if (hasLoginFields) {
+                console.log('✓ Login fields detected! Proceeding to fill them...');
+                navigationLoopCount = 0; // Reset counter
+                lastUrl = ''; // Reset to allow navigation again
+                // Continue with AI reasoning but it should now see the fields
+              } else {
+                console.log('⚠ Still no login fields after wait, falling back to manual approach');
+                aiGuidedMode = false;
+                break;
+              }
+            }
+          } else {
+            navigationLoopCount = 0; // Reset if URL changed
+          }
+          lastUrl = currentUrl;
           
           const actionPlan = await aiReasonNextAction(mainGoal, {});
           
@@ -712,6 +760,14 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
             console.log('✅ AI reports goal is complete!');
             await saveScreenshot('ai-complete');
             break;
+          }
+          
+          // If AI keeps trying to navigate to the same URL, force it to wait instead
+          if (actionPlan.action === 'navigate' && actionPlan.url === currentUrl) {
+            console.log('⚠ AI trying to navigate to current URL, forcing wait instead...');
+            actionPlan.action = 'wait';
+            actionPlan.waitTime = 6000;
+            actionPlan.reasoning = 'Waiting for page to fully load and fields to appear';
           }
           
           const success = await executeAIAction(actionPlan);

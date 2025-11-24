@@ -310,15 +310,51 @@ const createTuvoliContact = async (itineraryData) => {
       await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 });
       console.log('Logged into Tuvoli successfully');
 
-      // Navigate to contacts page or new contact form
-      console.log('Navigating to contacts...');
-      await page.goto(`${TUVOLI_URL}/contacts/new`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {
-        // Try alternative URL
-        return page.goto(`${TUVOLI_URL}/contacts`, { waitUntil: 'networkidle2', timeout: 30000 });
-      });
+      // Navigate to contact management page
+      console.log('Navigating to contact management...');
+      await page.goto(`${TUVOLI_URL}/contact-management`, { waitUntil: 'networkidle2', timeout: 30000 });
 
       // Wait a moment for page to load
       await page.waitForTimeout(2000);
+
+      // Look for "Add Contact" or "New Contact" button and click it
+      console.log('Looking for add contact button...');
+      const addButtonSelectors = [
+        'button:has-text("Add Contact")',
+        'button:has-text("New Contact")',
+        'button:has-text("Create Contact")',
+        'a:has-text("Add Contact")',
+        'a:has-text("New Contact")',
+        'a[href*="contact"]:has-text("Add")',
+        'button[aria-label*="Add"]',
+        'button[aria-label*="New"]',
+        '.add-contact',
+        '#add-contact',
+        '[data-testid="add-contact"]'
+      ];
+      
+      let formOpened = false;
+      for (const selector of addButtonSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 3000 });
+          await page.click(selector);
+          await page.waitForTimeout(2000); // Wait for form to open
+          formOpened = true;
+          console.log('Add contact button clicked, form should be open');
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (!formOpened) {
+        // If no button found, try navigating directly to new contact URL
+        console.log('Button not found, trying direct navigation...');
+        await page.goto(`${TUVOLI_URL}/contact-management/new`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {
+          return page.goto(`${TUVOLI_URL}/contact-management/create`, { waitUntil: 'networkidle2', timeout: 30000 });
+        });
+        await page.waitForTimeout(2000);
+      }
 
       // Fill in contact form
       console.log('Filling contact form...');

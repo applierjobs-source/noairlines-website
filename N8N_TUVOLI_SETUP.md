@@ -14,39 +14,55 @@ noairlines.com → Node.js Server → Webhook → n8n → Tuvoli (Puppeteer)
 
 ## Step 1: Deploy n8n
 
-### Option A: Deploy n8n on Railway (Recommended)
+### Option A: Add n8n to Your Existing Railway Project (Recommended)
 
-1. **Create a new Railway project:**
-   - Go to [Railway.app](https://railway.app)
-   - Click "New Project"
-   - Select "Deploy from GitHub repo" OR "Empty Project"
+**Why add to existing project?**
+- ✅ Same project = easier management
+- ✅ Shared environment variables if needed
+- ✅ Single billing/project view
+- ✅ Can use same domain/subdomain
+
+1. **Go to your existing Railway project:**
+   - Open your NoAirlines project on [Railway.app](https://railway.app)
+   - Click **"New"** button (top right)
+   - Select **"Empty Service"** or **"Deploy from GitHub repo"**
 
 2. **Add n8n service:**
-   - If using Empty Project, click "New" → "GitHub Repo"
-   - Search for `n8nio/n8n` or use this Dockerfile approach:
+   - Click **"New"** → **"Empty Service"**
+   - Click the service → **"Settings"** tab
+   - Under **"Source"**, click **"Deploy from Docker image"**
+   - Enter: `n8nio/n8n:latest`
+   - OR use Railway's template:
+     - Click **"New"** → **"Template"**
+     - Search for **"n8n"** and select it
 
-   **Create `n8n.Dockerfile` in your project:**
-   ```dockerfile
-   FROM n8nio/n8n:latest
-   ```
-
-   **Or use Railway's one-click deploy:**
-   - Railway has n8n in their template library
-   - Search for "n8n" and deploy
-
-3. **Set Environment Variables in Railway:**
-   ```
-   N8N_BASIC_AUTH_ACTIVE=true
-   N8N_BASIC_AUTH_USER=admin
-   N8N_BASIC_AUTH_PASSWORD=your_secure_password_here
-   N8N_HOST=0.0.0.0
-   N8N_PORT=5678
-   NODE_ENV=production
-   ```
+3. **Set Environment Variables:**
+   - Click on the n8n service
+   - Go to **"Variables"** tab
+   - Add these variables:
+     ```
+     N8N_BASIC_AUTH_ACTIVE=true
+     N8N_BASIC_AUTH_USER=admin
+     N8N_BASIC_AUTH_PASSWORD=your_secure_password_here
+     N8N_HOST=0.0.0.0
+     N8N_PORT=5678
+     NODE_ENV=production
+     TUVOLI_EMAIL=your_tuvoli_email@example.com
+     TUVOLI_PASSWORD=your_tuvoli_password
+     ```
 
 4. **Deploy and get your n8n URL:**
-   - Railway will provide a URL like: `https://your-n8n-app.railway.app`
+   - Railway will automatically generate a URL
+   - Click **"Settings"** → **"Generate Domain"** if needed
+   - URL will be like: `https://n8n-production-xxxx.up.railway.app`
    - Access it and log in with your basic auth credentials
+
+### Option B: Separate Railway Project (Alternative)
+
+If you prefer to keep n8n separate:
+1. Create a **new Railway project**
+2. Follow same steps as Option A, but in the new project
+3. This keeps n8n isolated from your main app
 
 ### Option B: Self-Hosted (Docker)
 

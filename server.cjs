@@ -1535,7 +1535,62 @@ Return JSON:
         }
         
         if (!initialNavSuccess) {
-          console.log('⚠ Initial navigation strategies failed, AI will investigate and try alternatives');
+          console.log('⚠ Initial navigation strategies failed, trying browser manipulation...');
+          
+          // Theory of Mind: If all navigation failed, we're being detected/redirected
+          // Try aggressive browser manipulation to change fingerprint
+          try {
+            console.log('🔧 Attempting browser fingerprint change...');
+            
+            // Change user agent to something more realistic
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+            
+            // Clear cookies for fresh start
+            const client = await page.target().createCDPSession();
+            await client.send('Network.clearBrowserCookies');
+            await client.send('Network.clearBrowserCache');
+            console.log('✓ Cleared cookies and cache');
+            
+            // Change viewport
+            await page.setViewport({ width: 1920, height: 1080 });
+            
+            // Set different headers
+            await page.setExtraHTTPHeaders({
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+              'Referer': 'https://noairlines.tuvoli.com/',
+              'Origin': 'https://noairlines.tuvoli.com'
+            });
+            
+            await delay(2000);
+            
+            // Try navigation again with new fingerprint
+            console.log('Trying navigation with new browser fingerprint...');
+            await page.goto(`${TUVOLI_URL}/login?returnURL=%2Fhome`, { 
+              waitUntil: 'domcontentloaded', 
+              timeout: 30000 
+            });
+            await delay(3000);
+            
+            const urlAfterManip = page.url();
+            console.log(`After browser manipulation, URL: ${urlAfterManip}`);
+            
+            if (urlAfterManip.includes('noairlines.tuvoli.com') && urlAfterManip.includes('login')) {
+              initialNavSuccess = true;
+              console.log('✓ Browser manipulation succeeded!');
+            } else {
+              console.log('⚠ Browser manipulation also redirected, AI will need to try more creative approaches');
+            }
+          } catch (e) {
+            console.log(`Browser manipulation failed: ${e.message}`);
+          }
+        }
+        
+        if (!initialNavSuccess) {
+          console.log('⚠ All initial navigation strategies failed, AI will investigate and try alternatives');
+          // Mark navigation strategies as potentially invalidated
+          reasoningMemory.invalidatedStrategies.push('navigate', 'navigate_js', 'navigate_root_then');
+          console.log('🧠 Knowledge Base: Marking standard navigation strategies as invalidated - they keep redirecting');
         }
         
         await saveScreenshot('initial-page-state');

@@ -357,7 +357,10 @@ const createTuvoliContact = async (itineraryData) => {
         failedStrategies: [],
         detectedProblems: [],
         successfulActions: [],
-        currentUnderstanding: null
+        currentUnderstanding: null,
+        knowledgeBaseFailures: [], // Track when knowledge base strategies fail
+        validatedStrategies: [], // Strategies we've actually tested and confirmed work
+        invalidatedStrategies: [] // Strategies from knowledge base that don't work
       };
       
       // Theory of Mind: Analyze why we're stuck
@@ -489,6 +492,14 @@ Use these insights to make a more informed decision.`
 - Detected Problems: ${reasoningMemory.detectedProblems.join('; ') || 'None'}
 - Current Understanding: ${situation.problem ? `${situation.problem} (${situation.likelyCause})` : 'Analyzing...'}
 - Recommended Approach: ${situation.recommendedApproach || 'Standard navigation'}
+- Validated Strategies (actually tested and work): ${reasoningMemory.validatedStrategies.join(', ') || 'None yet'}
+- Invalidated Strategies (from knowledge base, but don't work): ${reasoningMemory.invalidatedStrategies.join(', ') || 'None'}
+
+⚠ KNOWLEDGE BASE VALIDATION:
+- If a strategy from the knowledge base fails 2+ times, it's probably wrong for this situation
+- Don't trust the knowledge base blindly - verify everything
+- If knowledge base says "Strategy X works" but it doesn't, add it to invalidated strategies
+- Prefer strategies you've validated yourself over untested knowledge base claims
 
 Use this knowledge to avoid repeating failed strategies.`
             : '';
@@ -513,6 +524,15 @@ You can see what's happening and understand why. Think about:
 3. What patterns do I see in my failed attempts?
 4. What would a human do differently?
 5. What browser characteristics might be causing redirects?
+6. **Is the knowledge base wrong?** If recommended strategies keep failing, the knowledge base may be outdated or incorrect.
+
+CRITICAL: QUESTION THE KNOWLEDGE BASE
+- The knowledge base above may contain errors or outdated information
+- If a "proven" strategy fails multiple times, it's probably wrong for this situation
+- Don't blindly follow knowledge base - test and validate
+- If knowledge base says "Strategy X works" but it doesn't, Strategy X is wrong for now
+- Be willing to try completely different approaches than what knowledge base suggests
+- The knowledge base is a starting point, not a rulebook
 
 If you're stuck on tuvoli.com (main site) instead of noairlines.tuvoli.com (subdomain):
 - The server is likely detecting automation and redirecting
@@ -520,6 +540,7 @@ If you're stuck on tuvoli.com (main site) instead of noairlines.tuvoli.com (subd
 - Try manipulate_browser action to change characteristics, THEN navigate
 - Or use JavaScript navigation which sometimes bypasses server-side redirects
 - Consider that cookies/session might be needed - try accessing root first
+- **If knowledge base strategies aren't working, ignore them and experiment**
 
 KNOWLEDGE FROM PREVIOUS SUCCESSFUL ATTEMPTS:
 1. LOGIN PAGE NAVIGATION: The URL https://noairlines.tuvoli.com/login?returnURL=%2Fhome may redirect. You have multiple strategies available:
@@ -1651,6 +1672,17 @@ Return JSON:
               if (reasoningMemory.failedStrategies.length > 5) {
                 reasoningMemory.failedStrategies.shift();
               }
+              
+              // Check if this was a knowledge base recommended strategy
+              const kbStrategies = ['navigate', 'navigate_js', 'navigate_root_then'];
+              if (kbStrategies.includes(actionPlan.action)) {
+                const failureCount = reasoningMemory.failedStrategies.filter(s => s === actionPlan.action).length;
+                if (failureCount >= 2 && !reasoningMemory.invalidatedStrategies.includes(actionPlan.action)) {
+                  reasoningMemory.invalidatedStrategies.push(actionPlan.action);
+                  console.log(`🧠 Knowledge Base Validation: Strategy "${actionPlan.action}" from knowledge base has failed ${failureCount} times - marking as invalidated`);
+                  console.log(`   The knowledge base may be wrong about this strategy. Try something different.`);
+                }
+              }
             }
             
             // Theory of Mind: Detect the problem
@@ -1697,6 +1729,19 @@ Return JSON:
               // Keep only last 3 successful actions
               if (reasoningMemory.successfulActions.length > 3) {
                 reasoningMemory.successfulActions.shift();
+              }
+              
+              // Validate this strategy actually works
+              if (!reasoningMemory.validatedStrategies.includes(actionPlan.action)) {
+                reasoningMemory.validatedStrategies.push(actionPlan.action);
+                console.log(`🧠 Knowledge Base Validation: Strategy "${actionPlan.action}" actually works - validated!`);
+              }
+              
+              // Remove from invalidated if it was there (maybe it works now)
+              const invalidatedIndex = reasoningMemory.invalidatedStrategies.indexOf(actionPlan.action);
+              if (invalidatedIndex !== -1) {
+                reasoningMemory.invalidatedStrategies.splice(invalidatedIndex, 1);
+                console.log(`🧠 Knowledge Base Update: Strategy "${actionPlan.action}" now works - removing from invalidated list`);
               }
             }
             console.log(`✅ Success! Strategy that worked: ${actionPlan.action}`);

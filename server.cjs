@@ -3380,6 +3380,15 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         'First Name'
       );
       
+      // Re-check checkbox after filling first name (Angular might have reset it)
+      if (!checkboxChecked) {
+        const checkAfterFirstName = await forceCheckIndividualAccount();
+        if (checkAfterFirstName.found && checkAfterFirstName.checked) {
+          console.log('✓ Checkbox checked after filling First Name');
+          checkboxChecked = true;
+        }
+      }
+      
       await fillField(
         { 
           visionSelector: 'lastName',

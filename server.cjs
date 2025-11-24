@@ -3437,87 +3437,132 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       let checkboxChecked = false;
       
-      // Strategy 0: BULLETPROOF - Try multiple simple selectors
-      const simpleSelectors = [
-        '#individual-account', // ID selector (most reliable)
-        'input[id="individual-account"]', // ID attribute selector
-        'input[name="individual-account"]', // Name selector
-        'input[type="checkbox"][id="individual-account"]', // Type + ID
-        'input[type="checkbox"][name="individual-account"]', // Type + Name
-        'input.formcontrolname="individualAccount"', // Angular form control
-        'input[formcontrolname="individualAccount"]' // Angular form control (correct syntax)
-      ];
-      
-      for (const selector of simpleSelectors) {
-        if (checkboxChecked) break;
-        
-        try {
-          console.log(`Trying selector: ${selector}`);
-          const checkbox = await page.$(selector);
+      // Strategy 0: BULLETPROOF - JavaScript-based (works even if not visible)
+      // The checkbox exists but may be visible: false, so use JavaScript to find and click it
+      try {
+        console.log('Using JavaScript to find and check Individual Account checkbox (works even if hidden)...');
+        const result = await page.evaluate(() => {
+          // Try multiple ways to find the checkbox
+          let checkbox = document.getElementById('individual-account');
+          if (!checkbox) {
+            checkbox = document.querySelector('input[name="individual-account"]');
+          }
+          if (!checkbox) {
+            checkbox = document.querySelector('input[type="checkbox"][id="individual-account"]');
+          }
+          if (!checkbox) {
+            checkbox = document.querySelector('input[formcontrolname="individualAccount"]');
+          }
+          
           if (checkbox) {
-            // Force visibility and scroll into view
-            await page.evaluate((sel) => {
+            // Force visibility
+            checkbox.style.display = 'block';
+            checkbox.style.visibility = 'visible';
+            checkbox.style.opacity = '1';
+            checkbox.removeAttribute('hidden');
+            
+            // Remove any classes that might hide it
+            checkbox.classList.remove('d-none', 'hidden', 'invisible');
+            
+            // Make parent visible too
+            let parent = checkbox.parentElement;
+            while (parent && parent.tagName !== 'BODY') {
+              parent.style.display = 'block';
+              parent.style.visibility = 'visible';
+              parent.style.opacity = '1';
+              parent.removeAttribute('hidden');
+              parent.classList.remove('d-none', 'hidden', 'invisible');
+              parent = parent.parentElement;
+            }
+            
+            // Scroll into view
+            checkbox.scrollIntoView({ behavior: 'instant', block: 'center' });
+            
+            // Check if already checked
+            if (checkbox.checked) {
+              return { found: true, checked: false, message: 'already checked' };
+            }
+            
+            // Click it via JavaScript (works even if not visible)
+            checkbox.click();
+            
+            // Verify it's now checked
+            if (checkbox.checked) {
+              return { found: true, checked: true, message: 'successfully checked' };
+            } else {
+              // Try setting checked property directly
+              checkbox.checked = true;
+              // Trigger change event
+              checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+              checkbox.dispatchEvent(new Event('click', { bubbles: true }));
+              
+              return { found: true, checked: checkbox.checked, message: checkbox.checked ? 'checked via property' : 'failed to check' };
+            }
+          }
+          
+          return { found: false, message: 'checkbox not found in DOM' };
+        });
+        
+        if (result.found) {
+          if (result.checked) {
+            console.log(`✓ Individual Account checkbox checked via JavaScript: ${result.message}`);
+            checkboxChecked = true;
+            reasoningMemory.workingSelectors['individualaccount'] = '#individual-account (JavaScript)';
+            reasoningMemory.learnedFacts.push('Individual Account checkbox can be checked via JavaScript even if not visible');
+          } else if (result.message === 'already checked') {
+            console.log('✓ Individual Account checkbox already checked');
+            checkboxChecked = true;
+            reasoningMemory.workingSelectors['individualaccount'] = '#individual-account (JavaScript)';
+          } else {
+            console.log(`⚠ Checkbox found but checking failed: ${result.message}`);
+          }
+        } else {
+          console.log(`⚠ JavaScript search: ${result.message}`);
+        }
+      } catch (e) {
+        console.log(`JavaScript checkbox search failed: ${e.message}`);
+      }
+      
+      // Strategy 0.5: Try simple selectors (in case JavaScript didn't work)
+      if (!checkboxChecked) {
+        const simpleSelectors = [
+          '#individual-account',
+          'input[id="individual-account"]',
+          'input[name="individual-account"]',
+          'input[type="checkbox"][id="individual-account"]',
+          'input[formcontrolname="individualAccount"]'
+        ];
+        
+        for (const selector of simpleSelectors) {
+          if (checkboxChecked) break;
+          
+          try {
+            console.log(`Trying selector: ${selector}`);
+            // Use evaluate to find and click (works even if not visible)
+            const result = await page.evaluate((sel) => {
               const cb = document.querySelector(sel);
               if (cb) {
                 cb.style.display = 'block';
                 cb.style.visibility = 'visible';
                 cb.style.opacity = '1';
-                cb.removeAttribute('hidden');
                 cb.scrollIntoView({ behavior: 'instant', block: 'center' });
-              }
-            }, selector);
-            await delay(300);
-            
-            const isChecked = await page.evaluate((sel) => {
-              const cb = document.querySelector(sel);
-              return cb ? cb.checked : false;
-            }, selector);
-            
-            if (!isChecked) {
-              // Try clicking the checkbox directly
-              await page.click(selector);
-              await delay(200);
-              
-              // Verify it was checked
-              const nowChecked = await page.evaluate((sel) => {
-                const cb = document.querySelector(sel);
-                return cb ? cb.checked : false;
-              }, selector);
-              
-              if (nowChecked) {
-                console.log(`✓ Checked Individual Account checkbox using: ${selector}`);
-                checkboxChecked = true;
-                reasoningMemory.workingSelectors['individualaccount'] = selector;
-                break;
-              } else {
-                // Try clicking via JavaScript
-                await page.evaluate((sel) => {
-                  const cb = document.querySelector(sel);
-                  if (cb) cb.click();
-                }, selector);
-                await delay(200);
-                
-                const jsChecked = await page.evaluate((sel) => {
-                  const cb = document.querySelector(sel);
-                  return cb ? cb.checked : false;
-                }, selector);
-                
-                if (jsChecked) {
-                  console.log(`✓ Checked Individual Account checkbox via JavaScript: ${selector}`);
-                  checkboxChecked = true;
-                  reasoningMemory.workingSelectors['individualaccount'] = selector;
-                  break;
+                if (!cb.checked) {
+                  cb.click();
                 }
+                return cb.checked;
               }
-            } else {
-              console.log(`✓ Individual Account checkbox already checked: ${selector}`);
+              return false;
+            }, selector);
+            
+            if (result) {
+              console.log(`✓ Checked Individual Account checkbox using: ${selector}`);
               checkboxChecked = true;
               reasoningMemory.workingSelectors['individualaccount'] = selector;
               break;
             }
+          } catch (e) {
+            continue;
           }
-        } catch (e) {
-          continue;
         }
       }
       

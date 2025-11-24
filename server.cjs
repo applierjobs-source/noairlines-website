@@ -3477,33 +3477,161 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         }
       }
       
-      // Strategy 4: Fallback selectors
+      // Strategy 4: JavaScript-based search and click (works even if not visible)
       if (!checkboxChecked) {
-        const checkboxSelectors = [
-          'input[type="checkbox"]:near(label:has-text("Individual Account"))',
-          'label:has-text("Individual Account") input[type="checkbox"]',
-          'input[type="checkbox"]'
-        ];
-        for (const selector of checkboxSelectors) {
-          try {
-            const checkbox = await page.$(selector);
-            if (checkbox) {
-              const isChecked = await page.evaluate(cb => cb.checked, checkbox);
-              if (!isChecked) {
-                await checkbox.click();
-                checkboxChecked = true;
-                console.log(`✓ Checked Individual Account checkbox using selector: ${selector}`);
-                break;
+        try {
+          console.log('Trying JavaScript-based checkbox search and click (works even if hidden)...');
+          const checkboxFound = await page.evaluate(() => {
+            // Find all checkboxes
+            const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+            
+            for (const checkbox of checkboxes) {
+              // Get label text
+              let labelText = '';
+              
+              // Try label[for] attribute
+              if (checkbox.id) {
+                const label = document.querySelector(`label[for="${checkbox.id}"]`);
+                if (label) labelText = label.textContent || '';
+              }
+              
+              // Try parent label
+              let parent = checkbox.parentElement;
+              while (parent && parent.tagName !== 'BODY') {
+                if (parent.tagName === 'LABEL') {
+                  labelText = parent.textContent || '';
+                  break;
+                }
+                parent = parent.parentElement;
+              }
+              
+              // Check nearby text
+              const nearbyText = checkbox.parentElement?.textContent || checkbox.closest('div')?.textContent || '';
+              const allText = (labelText + ' ' + nearbyText).toLowerCase();
+              
+              // Check if this is the Individual Account checkbox
+              if (allText.includes('individual') && allText.includes('account')) {
+                // Found it! Force visibility and check it
+                checkbox.style.display = 'block';
+                checkbox.style.visibility = 'visible';
+                checkbox.style.opacity = '1';
+                checkbox.removeAttribute('hidden');
+                
+                // Scroll into view
+                checkbox.scrollIntoView({ behavior: 'instant', block: 'center' });
+                
+                // Check it if not already checked
+                if (!checkbox.checked) {
+                  checkbox.click();
+                  return { found: true, checked: true, labelText: labelText.trim() };
+                } else {
+                  return { found: true, checked: false, labelText: labelText.trim(), message: 'already checked' };
+                }
               }
             }
-          } catch (e) {
-            continue;
+            
+            return { found: false };
+          });
+          
+          if (checkboxFound.found) {
+            if (checkboxFound.checked) {
+              console.log(`✓ Checked Individual Account checkbox via JavaScript (label: "${checkboxFound.labelText}")`);
+            } else {
+              console.log(`✓ Individual Account checkbox already checked via JavaScript (label: "${checkboxFound.labelText}")`);
+            }
+            checkboxChecked = true;
+          } else {
+            console.log('JavaScript search did not find Individual Account checkbox');
           }
+        } catch (e) {
+          console.log(`JavaScript checkbox search failed: ${e.message}`);
+        }
+      }
+      
+      // Strategy 5: Scroll form and try again
+      if (!checkboxChecked) {
+        try {
+          console.log('Scrolling form into view and retrying...');
+          await page.evaluate(() => {
+            const form = document.querySelector('form') || document.querySelector('[class*="modal"]') || document.body;
+            if (form) {
+              form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          });
+          await delay(1000);
+          
+          // Try JavaScript search again after scrolling
+          const checkboxFound = await page.evaluate(() => {
+            const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+            for (const checkbox of checkboxes) {
+              let labelText = '';
+              if (checkbox.id) {
+                const label = document.querySelector(`label[for="${checkbox.id}"]`);
+                if (label) labelText = label.textContent || '';
+              }
+              let parent = checkbox.parentElement;
+              while (parent && parent.tagName !== 'BODY') {
+                if (parent.tagName === 'LABEL') {
+                  labelText = parent.textContent || '';
+                  break;
+                }
+                parent = parent.parentElement;
+              }
+              const nearbyText = checkbox.parentElement?.textContent || '';
+              const allText = (labelText + ' ' + nearbyText).toLowerCase();
+              if (allText.includes('individual') && allText.includes('account')) {
+                checkbox.style.display = 'block';
+                checkbox.style.visibility = 'visible';
+                checkbox.style.opacity = '1';
+                checkbox.scrollIntoView({ behavior: 'instant', block: 'center' });
+                if (!checkbox.checked) {
+                  checkbox.click();
+                  return { found: true, checked: true };
+                } else {
+                  return { found: true, checked: false };
+                }
+              }
+            }
+            return { found: false };
+          });
+          
+          if (checkboxFound.found) {
+            console.log('✓ Checked Individual Account checkbox after scrolling');
+            checkboxChecked = true;
+          }
+        } catch (e) {
+          console.log(`Scroll and retry failed: ${e.message}`);
         }
       }
       
       if (!checkboxChecked) {
-        console.log('⚠ Could not find Individual Account checkbox - contact might require Account field');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('⚠ WARNING: Could not find Individual Account checkbox');
+        console.log('The form may require an Account field instead');
+        console.log('Continuing anyway - contact creation may fail');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      } else {
+        // Verify it's actually checked
+        await delay(500);
+        const isActuallyChecked = await page.evaluate(() => {
+          const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+          for (const checkbox of checkboxes) {
+            const labelText = checkbox.closest('label')?.textContent || 
+                             document.querySelector(`label[for="${checkbox.id}"]`)?.textContent || '';
+            const nearbyText = checkbox.parentElement?.textContent || '';
+            const allText = (labelText + ' ' + nearbyText).toLowerCase();
+            if (allText.includes('individual') && allText.includes('account')) {
+              return checkbox.checked;
+            }
+          }
+          return false;
+        });
+        
+        if (isActuallyChecked) {
+          console.log('✅ Verified: Individual Account checkbox is checked');
+        } else {
+          console.log('⚠ Warning: Checkbox may not be checked - verification failed');
+        }
       }
       
       // Fill notes field if available

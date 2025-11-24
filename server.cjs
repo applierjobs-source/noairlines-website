@@ -4387,14 +4387,23 @@ const mimeTypes = {
 
 const server = http.createServer(async (req, res) => {
   try {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-
-    // Healthcheck endpoint - respond immediately
-    if (req.url === '/health' || req.url === '/healthcheck') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
-      return;
+    // Healthcheck endpoint - respond immediately (before any logging)
+    if (req.url === '/health' || req.url === '/healthcheck' || req.url === '/') {
+      // For root path, check if it's a healthcheck (no Accept header or simple GET)
+      if (req.url === '/' && req.headers['user-agent'] && req.headers['user-agent'].includes('Healthcheck')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+        return;
+      }
+      // Explicit healthcheck endpoints
+      if (req.url === '/health' || req.url === '/healthcheck') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+        return;
+      }
     }
+    
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
 
     // Handle www to non-www redirect
     const host = req.headers.host;
@@ -4837,11 +4846,22 @@ NoAirlines.com`;
 
   // Serve index.html for SPA-compatible routes
   if (pathname === '/' || pathname === '') {
-    pathname = 'index.html';
-  } else {
-    pathname = pathname.replace(/^\/+/, '');
+    // For root path, serve index.html immediately for healthcheck
+    const indexPath = path.join(DIST_DIR, 'index.html');
+    fs.readFile(indexPath, (error, content) => {
+      if (error) {
+        console.error('ERROR reading index.html:', error);
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Server Error');
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(content, 'utf-8');
+    });
+    return;
   }
-
+  
+  pathname = pathname.replace(/^\/+/, '');
   let filePath = path.join(DIST_DIR, pathname);
   
   // Get file extension

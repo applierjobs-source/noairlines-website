@@ -643,6 +643,17 @@ IMPORTANT NAVIGATION RULES:
    - After successful login, navigate to: https://noairlines.tuvoli.com/contact-management
    - The login form disappearing is a sign of successful login
    - If still on /login URL but form is gone, navigate to /home first, then to /contact-management
+   
+   **IMPORTANT: WAFFLE BUTTON NAVIGATION (PROVEN METHOD):**
+   - After login, if you need to get to Client Management / Contact Management:
+     * Look for the waffle button (hamburger menu icon) - usually in the top-left or top navigation
+     * Click the waffle button to open the menu
+     * In the menu, look for "Client Management" or "Contact Management" 
+     * Click "Client Management" or "Contact Management" to navigate to that page
+   - This is a reliable way to navigate to the contact management page
+   - The waffle button may be: button[aria-label*="menu" i], button[class*="menu" i], button[class*="hamburger" i], or an icon button
+   - Use XPath: //button[contains(@class, 'menu') or contains(@aria-label, 'menu')] or //button[@aria-label[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'menu')]]
+   - After clicking waffle, wait 1-2 seconds for menu to open, then click "Client Management"
 
 5. CONTACT MANAGEMENT PAGE:
    - Look for "Add New Contact" button - it may be visible as a button or link

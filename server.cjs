@@ -250,15 +250,15 @@ const createTuvoliContact = async (itineraryData) => {
     // Check if Puppeteer is available
     let puppeteer;
     try {
-      puppeteer = require('puppeteer');
+      puppeteer = require('puppeteer-core');
     } catch (e) {
-      console.log('Puppeteer not installed. Install with: npm install puppeteer');
+      console.log('Puppeteer-core not installed. Install with: npm install puppeteer-core');
       console.log('Contact data for manual entry:', {
         name: itineraryData.name,
         email: itineraryData.email,
         phone: itineraryData.phone
       });
-      return { success: false, error: 'Puppeteer not installed' };
+      return { success: false, error: 'Puppeteer-core not installed' };
     }
 
     // Parse name into first and last name
@@ -276,9 +276,15 @@ const createTuvoliContact = async (itineraryData) => {
     const notes = `Quote request from NoAirlines.com\nRoute: ${routeDisplay}\nDate: ${itineraryData.date} at ${itineraryData.time}\nPassengers: ${itineraryData.passengers}\nTrip Type: ${itineraryData.tripType || 'one-way'}${itineraryData.returnDate ? `\nReturn: ${itineraryData.returnDate} at ${itineraryData.returnTime}` : ''}`;
 
     console.log('Launching browser to create Tuvoli contact...');
+    
+    // Determine executable path - use environment variable or default Alpine path
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+    
+    console.log(`Using Chromium executable: ${executablePath}`);
+    
     const browser = await puppeteer.launch({
       headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      executablePath: executablePath,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -286,14 +292,46 @@ const createTuvoliContact = async (itineraryData) => {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ]
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-extensions',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-breakpad',
+        '--disable-client-side-phishing-detection',
+        '--disable-default-apps',
+        '--disable-features=TranslateUI',
+        '--disable-hang-monitor',
+        '--disable-ipc-flooding-protection',
+        '--disable-popup-blocking',
+        '--disable-prompt-on-repost',
+        '--disable-renderer-backgrounding',
+        '--disable-sync',
+        '--disable-translate',
+        '--metrics-recording-only',
+        '--mute-audio',
+        '--no-default-browser-check',
+        '--no-pings',
+        '--use-fake-ui-for-media-stream',
+        '--use-fake-device-for-media-stream',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
+      ],
+      timeout: 60000,
+      ignoreHTTPSErrors: true
     });
 
     try {
+      // Wait a moment to ensure browser is fully initialized
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       const page = await browser.newPage();
       await page.setViewport({ width: 1280, height: 720 });
+      
+      // Set longer timeouts for page operations
+      page.setDefaultNavigationTimeout(60000);
+      page.setDefaultTimeout(60000);
 
       // Navigate to Tuvoli login page
       console.log('Navigating to Tuvoli login...');

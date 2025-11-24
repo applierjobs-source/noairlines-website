@@ -11,6 +11,11 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
+    ttf-opensans \
+    ttf-dejavu \
+    ttf-liberation \
+    udev \
+    ttf-opensans \
     && rm -rf /var/cache/apk/*
 
 # Set Puppeteer to use installed Chromium instead of downloading

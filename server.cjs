@@ -266,6 +266,12 @@ const createTuvoliContact = async (itineraryData) => {
     const nameParts = (itineraryData.name || '').trim().split(' ');
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
+    
+    // Store credentials for AI to use (these will be referenced in the AI prompt)
+    const tuvoliCredentials = {
+      email: TUVOLI_EMAIL,
+      password: TUVOLI_PASSWORD
+    };
 
     // Extract airport codes for route
     const fromCode = extractAirportCode(itineraryData.from);
@@ -400,12 +406,49 @@ CURRENT STATE:
 - Visible Inputs: ${JSON.stringify(pageState.visibleInputs, null, 2)}
 - Body Text Preview: ${pageState.bodyText.substring(0, 500)}
 
-Analyze the screenshot and current state. Determine the EXACT next action needed to progress toward the goal.
+KNOWLEDGE FROM PREVIOUS SUCCESSFUL ATTEMPTS:
+1. LOGIN PAGE NAVIGATION: To reach the login page at https://noairlines.tuvoli.com/login?returnURL=%2Fhome, use Strategy 3 (navigation with custom headers). The page may redirect initially, but custom headers help bypass redirects.
+
+2. LOGIN FORM FIELDS (PROVEN WORKING):
+   - Username field: input[placeholder='Enter Username'] (this has worked successfully)
+   - Password field: input[placeholder='Enter Password'] (this has worked successfully)
+   - Submit button: form button:last-of-type OR button[type='submit'] (form button:last-of-type has worked when submit button is visible)
+   - Alternative submit: XPath //button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'sign in')]
+
+3. LOGIN CREDENTIALS:
+   - Username: "${tuvoliCredentials.email}"
+   - Password: "${tuvoliCredentials.password}"
+   - After filling fields, wait 1-2 seconds for form to update before clicking submit
+
+4. POST-LOGIN NAVIGATION:
+   - After successful login, navigate to: https://noairlines.tuvoli.com/contact-management
+   - The login form disappearing is a sign of successful login
+   - If still on /login URL but form is gone, navigate to /home first, then to /contact-management
+
+5. CONTACT MANAGEMENT PAGE:
+   - Look for "Add New Contact" button - it may be visible as a button or link
+   - The button text might be "Add New Contact", "Add Contact", or "New Contact"
+   - Use XPath for text matching: //button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add new contact')]
+
+6. CONTACT FORM FIELDS (from screenshot analysis):
+   - First Name: Look for input with label "First Name *" or placeholder containing "First Name"
+   - Last Name: Look for input with label "Last Name *" or placeholder containing "Last Name"
+   - Primary Email: Look for input[type="email"] or input with label "Primary Email *"
+   - Primary Phone: Look for input[type="tel"] or input with label "Primary Phone"
+   - Individual Account checkbox: input[type="checkbox"] near "Individual Account" text (REQUIRED - checking this bypasses the "Account *" required field)
+   - Create button: button with text "Create" or "Save"
+
+7. TIMING:
+   - Wait 6+ seconds after navigating to login page for fields to load
+   - Wait 2-3 seconds after clicking buttons for modals/forms to open
+   - Wait 1-2 seconds after typing in fields
+
+Analyze the screenshot and current state. Use the knowledge above to determine the EXACT next action needed to progress toward the goal.
 
 Return JSON with this structure:
 {
   "action": "click" | "type" | "navigate" | "wait" | "complete" | "error",
-  "reasoning": "Brief explanation of why this action",
+  "reasoning": "Brief explanation of why this action, referencing which proven strategy you're using",
   "selector": "CSS selector or XPath for the element (if action is click or type)",
   "text": "Text to type (if action is type)",
   "url": "URL to navigate to (if action is navigate)",
@@ -414,12 +457,13 @@ Return JSON with this structure:
   "nextGoal": "What to do after this action"
 }
 
-Be VERY specific with selectors. Prioritize:
+Be VERY specific with selectors. Use the proven selectors from knowledge above when applicable. Prioritize:
 1. IDs: #elementId
-2. Unique classes: .unique-class
-3. Text-based XPath: //button[contains(text(), 'Add New Contact')]
-4. Attribute selectors: input[name="firstName"]
-5. Type selectors: button[type="submit"]
+2. Proven working selectors from knowledge above
+3. Unique classes: .unique-class
+4. Text-based XPath: //button[contains(text(), 'Add New Contact')]
+5. Attribute selectors: input[name="firstName"]
+6. Type selectors: button[type="submit"]
 
 If the goal is complete, set "isComplete": true and "action": "complete".
 If you can't determine the next action, set "action": "error" with reasoning.`;

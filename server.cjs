@@ -3380,15 +3380,6 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         'First Name'
       );
       
-      // Re-check checkbox after filling first name (Angular might have reset it)
-      if (!checkboxChecked) {
-        const checkAfterFirstName = await forceCheckIndividualAccount();
-        if (checkAfterFirstName.found && checkAfterFirstName.checked) {
-          console.log('✓ Checkbox checked after filling First Name');
-          checkboxChecked = true;
-        }
-      }
-      
       await fillField(
         { 
           visionSelector: 'lastName',
@@ -3407,15 +3398,6 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         'Last Name'
       );
       
-      // Re-check checkbox after filling last name
-      if (!checkboxChecked) {
-        const checkAfterLastName = await forceCheckIndividualAccount();
-        if (checkAfterLastName.found && checkAfterLastName.checked) {
-          console.log('✓ Checkbox checked after filling Last Name');
-          checkboxChecked = true;
-        }
-      }
-      
       await fillField(
         { 
           visionSelector: 'email',
@@ -3431,15 +3413,6 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         itineraryData.email || '',
         'Email'
       );
-      
-      // Re-check checkbox after filling email
-      if (!checkboxChecked) {
-        const checkAfterEmail = await forceCheckIndividualAccount();
-        if (checkAfterEmail.found && checkAfterEmail.checked) {
-          console.log('✓ Checkbox checked after filling Email');
-          checkboxChecked = true;
-        }
-      }
       
       await fillField(
         { 
@@ -3458,794 +3431,189 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         'Phone'
       );
       
-      // Re-check checkbox after filling phone
-      if (!checkboxChecked) {
-        const checkAfterPhone = await forceCheckIndividualAccount();
-        if (checkAfterPhone.found && checkAfterPhone.checked) {
-          console.log('✓ Checkbox checked after filling Phone');
-          checkboxChecked = true;
-        }
-      }
+      // Fill Account field with first name + last name (REQUIRED - checkbox is NOT required)
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('Filling Account field (REQUIRED - checkbox is NOT required)...');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      const accountValue = `${firstName} ${lastName}`.trim();
       
-      // FINAL CHECK: Ensure checkbox is checked one more time before we continue
-      console.log('🔍 Final checkbox check before continuing...');
-      const finalCheckboxCheck = await forceCheckIndividualAccount();
-      if (finalCheckboxCheck.found && finalCheckboxCheck.checked) {
-        console.log('✅ Checkbox is confirmed checked');
-        checkboxChecked = true;
-      } else if (finalCheckboxCheck.found && !finalCheckboxCheck.checked) {
-        console.log('⚠ Checkbox found but not checked - trying one more time with delay...');
-        await delay(1000);
-        const retryCheck = await forceCheckIndividualAccount();
-        if (retryCheck.found && retryCheck.checked) {
-          console.log('✅ Checkbox checked on retry');
-          checkboxChecked = true;
-        }
-      }
+      // Find Account field and type the name
+      let accountFilled = false;
+      const accountSelectors = [
+        'input[placeholder*="Account" i]',
+        'input[name*="account" i]',
+        'input[id*="account" i]',
+        'input[type="search"][placeholder*="account" i]',
+        'select[name*="account" i]',
+        'select[id*="account" i]',
+        '[role="combobox"][aria-label*="account" i]'
+      ];
       
-      // THEORY OF MIND: After 2 failed attempts, evaluate if checkbox is required
-      if (!checkboxChecked && checkboxCheckAttempts >= MAX_CHECKBOX_ATTEMPTS) {
-        console.log(`⚠ Checkbox check failed ${checkboxCheckAttempts} times - evaluating requirement and alternatives...`);
-        const evaluation = await evaluateCheckboxRequirement();
-        
-        if (!evaluation.checkboxRequired && evaluation.alternatives && evaluation.alternatives.length > 0) {
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log('✅ AI DETERMINED: Checkbox may not be required!');
-          console.log(`Alternatives found: ${evaluation.alternatives.join(', ')}`);
-          console.log(`Recommended: ${evaluation.recommendedAction}`);
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          
-          // Try alternatives
-          if (evaluation.alternatives.some(alt => alt.toLowerCase().includes('account dropdown') || alt.toLowerCase().includes('account select'))) {
-            console.log('🔍 Trying Account dropdown/select as alternative...');
-            try {
-              const accountSelect = await page.evaluate(() => {
-                const select = document.querySelector('select[name*="account" i]') ||
-                              document.querySelector('select[id*="account" i]') ||
-                              document.querySelector('input[type="search"][placeholder*="account" i]');
-                if (select) {
-                  // Try to select first option or type something
-                  if (select.tagName === 'SELECT') {
-                    if (select.options.length > 0) {
-                      select.selectedIndex = 0;
-                      select.dispatchEvent(new Event('change', { bubbles: true }));
-                      return { found: true, action: 'selected_first_option' };
-                    }
-                  } else if (select.tagName === 'INPUT') {
-                    select.value = 'Individual';
-                    select.dispatchEvent(new Event('input', { bubbles: true }));
-                    select.dispatchEvent(new Event('change', { bubbles: true }));
-                    return { found: true, action: 'typed_individual' };
-                  }
-                }
-                return { found: false };
-              });
-              
-              if (accountSelect.found) {
-                console.log(`✓ Used Account dropdown alternative: ${accountSelect.action}`);
-                checkboxChecked = true; // Mark as handled
-              }
-            } catch (e) {
-              console.log(`Account dropdown alternative failed: ${e.message}`);
-            }
-          }
-          
-          // If AI says we can submit without checkbox, mark as ready
-          if (evaluation.recommendedAction?.toLowerCase().includes('submit') || 
-              evaluation.recommendedAction?.toLowerCase().includes('try without')) {
-            console.log('✅ AI recommends submitting without checkbox - proceeding');
-            checkboxChecked = true; // Mark as handled, we'll try submitting
-          }
-        } else {
-          console.log('⚠ AI determined checkbox is required, but we cannot check it');
-          console.log('Proceeding anyway - form submission may fail');
-        }
-      }
-      
-      // Track checkbox check attempts
-      let checkboxCheckAttempts = 0;
-      const MAX_CHECKBOX_ATTEMPTS = 2;
-      
-      // Theory of Mind: Evaluate if checkbox is required and find alternatives
-      const evaluateCheckboxRequirement = async () => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🧠 THEORY OF MIND: Evaluating checkbox requirement and alternatives...');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        
-        if (!OPENAI_API_KEY || OPENAI_API_KEY === '') {
-          console.log('⚠ OpenAI API key not available, skipping AI evaluation');
-          return { checkboxRequired: true, alternatives: [] };
-        }
-        
+      for (const selector of accountSelectors) {
         try {
-          // Get comprehensive form state
-          const formAnalysis = await page.evaluate(() => {
-            const checkbox = document.getElementById('individual-account') || 
-                            document.querySelector('input[name="individual-account"]') ||
-                            document.querySelector('input[formcontrolname="individualAccount"]');
-            
-            // Look for Account dropdown/select
-            const accountSelect = document.querySelector('select[name*="account" i]') ||
-                                 document.querySelector('select[id*="account" i]') ||
-                                 document.querySelector('input[type="search"][placeholder*="account" i]') ||
-                                 document.querySelector('[role="combobox"][aria-label*="account" i]');
-            
-            // Look for required field indicators
-            const accountField = document.querySelector('input[name*="account" i]') ||
-                                document.querySelector('input[id*="account" i]') ||
-                                document.querySelector('select[name*="account" i]');
-            
-            // Check for validation messages
-            const validationMessages = Array.from(document.querySelectorAll('[class*="error" i], [class*="invalid" i], [class*="required" i]'))
-              .map(el => el.textContent?.trim())
-              .filter(text => text && text.length > 0);
-            
-            // Get all form fields
-            const allFields = Array.from(document.querySelectorAll('input, select, textarea')).map(field => ({
-              type: field.type || field.tagName.toLowerCase(),
-              name: field.name || '',
-              id: field.id || '',
-              placeholder: field.placeholder || '',
-              required: field.hasAttribute('required'),
-              value: field.value || '',
-              visible: field.offsetParent !== null,
-              label: field.closest('label')?.textContent || 
-                     document.querySelector(`label[for="${field.id}"]`)?.textContent || ''
-            }));
-            
-            // Check if form can be submitted (button state)
-            const submitButton = document.querySelector('button[type="submit"]') ||
-                                Array.from(document.querySelectorAll('button')).find(btn => 
-                                  btn.textContent?.toLowerCase().includes('create') ||
-                                  btn.textContent?.toLowerCase().includes('save') ||
-                                  btn.textContent?.toLowerCase().includes('submit')
-                                );
-            
-            const submitButtonDisabled = submitButton ? submitButton.hasAttribute('disabled') || submitButton.classList.contains('disabled') : false;
-            
-            return {
-              checkboxExists: !!checkbox,
-              checkboxChecked: checkbox ? checkbox.checked : false,
-              checkboxVisible: checkbox ? checkbox.offsetParent !== null : false,
-              checkboxDisabled: checkbox ? checkbox.hasAttribute('disabled') : false,
-              accountSelectExists: !!accountSelect,
-              accountFieldExists: !!accountField,
-              accountFieldRequired: accountField ? accountField.hasAttribute('required') : false,
-              validationMessages: validationMessages,
-              allFields: allFields,
-              submitButtonDisabled: submitButtonDisabled,
-              formHTML: document.querySelector('form')?.innerHTML?.substring(0, 2000) || ''
-            };
-          });
-          
-          // Get screenshot for AI analysis
-          const screenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
-          
-          // Ask AI to evaluate
-          const evaluationPrompt = `You are analyzing a contact form that has an "Individual Account" checkbox that we cannot reliably check. 
-
-FORM STATE:
-${JSON.stringify(formAnalysis, null, 2)}
-
-SCREENSHOT: [Base64 image provided]
-
-THEORY OF MIND QUESTIONS:
-1. Is the "Individual Account" checkbox actually REQUIRED for form submission?
-   - Look at validation messages, required attributes, form structure
-   - Check if there's an Account dropdown/select that could be used instead
-   - Analyze if the form can be submitted without the checkbox
-
-2. What are ALTERNATIVE ways to create this contact?
-   - Can we use an Account dropdown/select instead of the checkbox?
-   - Is there a way to bypass the Account requirement?
-   - Can we submit the form without the checkbox and handle validation errors?
-   - Are there other fields that could satisfy the requirement?
-
-3. If checkbox is required, why might it be failing?
-   - Is it disabled?
-   - Is it hidden?
-   - Does it need specific conditions to be enabled?
-   - Is there a dependency (e.g., must fill other fields first)?
-
-4. What should we do next?
-   - Try Account dropdown if available?
-   - Submit form anyway and see what happens?
-   - Look for alternative contact creation methods?
-
-Return JSON:
-{
-  "checkboxRequired": true/false,
-  "whyRequired": "explanation",
-  "alternatives": ["alternative 1", "alternative 2"],
-  "recommendedAction": "what to do next",
-  "confidence": "high/medium/low",
-  "reasoning": "your thought process"
-}`;
-
-          const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${OPENAI_API_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o',
-              messages: [
-                {
-                  role: 'user',
-                  content: [
-                    { type: 'text', text: evaluationPrompt },
-                    { type: 'image_url', image_url: { url: `data:image/png;base64,${screenshot}` } }
-                  ]
-                }
-              ],
-              max_tokens: 1000,
-              temperature: 0.3
-            })
-          });
-          
-          const data = await response.json();
-          const evaluationText = data.choices[0]?.message?.content || '{}';
-          
-          // Parse JSON from response (might have markdown code blocks)
-          let evaluation = {};
-          try {
-            const jsonMatch = evaluationText.match(/```json\s*([\s\S]*?)\s*```/) || 
-                             evaluationText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              evaluation = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-            } else {
-              evaluation = JSON.parse(evaluationText);
-            }
-          } catch (e) {
-            console.log('⚠ Could not parse AI evaluation, using defaults');
-            evaluation = { checkboxRequired: true, alternatives: [], recommendedAction: 'continue trying checkbox' };
+          const accountField = await page.$(selector);
+          if (accountField) {
+            await accountField.click();
+            await delay(300);
+            await page.keyboard.down('Control');
+            await page.keyboard.press('a');
+            await page.keyboard.up('Control');
+            await page.type(selector, accountValue, { delay: 50 });
+            await delay(500);
+            console.log(`✓ Filled Account field with "${accountValue}" using selector: ${selector}`);
+            accountFilled = true;
+            break;
           }
-          
-          console.log('🧠 AI EVALUATION RESULT:');
-          console.log(`  Checkbox Required: ${evaluation.checkboxRequired}`);
-          console.log(`  Why Required: ${evaluation.whyRequired || 'Not specified'}`);
-          console.log(`  Alternatives: ${evaluation.alternatives?.join(', ') || 'None found'}`);
-          console.log(`  Recommended Action: ${evaluation.recommendedAction || 'Continue'}`);
-          console.log(`  Confidence: ${evaluation.confidence || 'Unknown'}`);
-          console.log(`  Reasoning: ${evaluation.reasoning || 'Not provided'}`);
-          
-          return evaluation;
-        } catch (error) {
-          console.log(`⚠ Error during checkbox evaluation: ${error.message}`);
-          return { checkboxRequired: true, alternatives: [], recommendedAction: 'continue trying checkbox' };
+        } catch (e) {
+          continue;
         }
-      };
+      }
       
-      // NUCLEAR APPROACH: Check "Individual Account" checkbox MULTIPLE times
-      // This function will be called repeatedly to ensure it stays checked
-      const forceCheckIndividualAccount = async () => {
-        checkboxCheckAttempts++;
-        const result = await page.evaluate(() => {
-          // Find checkbox by any means necessary
-          let checkbox = document.getElementById('individual-account');
-          if (!checkbox) checkbox = document.querySelector('input[name="individual-account"]');
-          if (!checkbox) checkbox = document.querySelector('input[formcontrolname="individualAccount"]');
-          if (!checkbox) {
-            // Last resort: search all checkboxes
-            const allCheckboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
-            for (const cb of allCheckboxes) {
-              const label = cb.closest('label') || document.querySelector(`label[for="${cb.id}"]`);
-              const text = (label?.textContent || cb.parentElement?.textContent || '').toLowerCase();
-              if (text.includes('individual') && text.includes('account')) {
-                checkbox = cb;
-                break;
-              }
-            }
+      // Try XPath for Account field
+      if (!accountFilled) {
+        try {
+          const accountFields = await page.$x("//label[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'account')]//following::input[1] | //label[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'account')]//following::select[1]");
+          if (accountFields.length > 0) {
+            await accountFields[0].click();
+            await delay(300);
+            await page.keyboard.down('Control');
+            await page.keyboard.press('a');
+            await page.keyboard.up('Control');
+            await accountFields[0].type(accountValue, { delay: 50 });
+            await delay(500);
+            console.log('✓ Filled Account field using XPath');
+            accountFilled = true;
           }
-          
-          if (checkbox) {
-            // Force visibility
-            checkbox.style.display = 'block';
-            checkbox.style.visibility = 'visible';
-            checkbox.style.opacity = '1';
-            checkbox.removeAttribute('hidden');
-            checkbox.removeAttribute('disabled');
-            
-            // Make all parents visible
-            let parent = checkbox.parentElement;
-            while (parent && parent.tagName !== 'BODY') {
-              parent.style.display = 'block';
-              parent.style.visibility = 'visible';
-              parent.style.opacity = '1';
-              parent.removeAttribute('hidden');
-              parent.classList.remove('d-none', 'hidden', 'invisible', 'disabled');
-              parent = parent.parentElement;
-            }
-            
-            // Try Angular zone.run if available (for Angular change detection)
-            if (window.ng && window.ng.probe) {
-              try {
-                const elementRef = window.ng.probe(checkbox);
-                if (elementRef && elementRef.injector) {
-                  const ngZone = elementRef.injector.get(window.ng.coreTokens.NgZone || window.ng.coreTokens.ApplicationRef);
-                  if (ngZone && ngZone.run) {
-                    ngZone.run(() => {
-                      checkbox.checked = true;
-                      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-                    });
+        } catch (e) {
+          console.log(`XPath Account field search failed: ${e.message}`);
+        }
+      }
+      
+      if (!accountFilled) {
+        console.log('⚠ Could not find Account field - trying JavaScript search...');
+        const accountFound = await page.evaluate((value) => {
+          // Find all inputs/selects near "Account" label
+          const labels = Array.from(document.querySelectorAll('label'));
+          for (const label of labels) {
+            const labelText = label.textContent?.toLowerCase() || '';
+            if (labelText.includes('account') && labelText.includes('*')) {
+              // Found Account label - find associated input/select
+              let field = null;
+              if (label.getAttribute('for')) {
+                field = document.getElementById(label.getAttribute('for'));
+              }
+              if (!field) {
+                field = label.querySelector('input, select');
+              }
+              if (!field) {
+                // Look for input/select after label
+                let next = label.nextElementSibling;
+                while (next && !field) {
+                  if (next.tagName === 'INPUT' || next.tagName === 'SELECT') {
+                    field = next;
+                    break;
                   }
+                  next = next.nextElementSibling;
                 }
-              } catch (e) {
-                // Angular not available or different version, continue with regular approach
+              }
+              
+              if (field) {
+                field.focus();
+                field.value = value;
+                field.dispatchEvent(new Event('input', { bubbles: true }));
+                field.dispatchEvent(new Event('change', { bubbles: true }));
+                return { found: true, tagName: field.tagName };
               }
             }
-            
-            // Set checked property
-            checkbox.checked = true;
-            
-            // Trigger ALL possible events
-            const events = ['click', 'change', 'input', 'focus', 'blur'];
-            events.forEach(eventType => {
-              checkbox.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
-            });
-            
-            // Also try MouseEvent for click
-            checkbox.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-            
-            return { found: true, checked: checkbox.checked, id: checkbox.id || checkbox.name || 'found' };
           }
-          
+          return { found: false };
+        }, accountValue);
+        
+        if (accountFound.found) {
+          console.log(`✓ Filled Account field via JavaScript (${accountFound.tagName})`);
+          accountFilled = true;
+        }
+      }
+      
+      if (!accountFilled) {
+        console.log('⚠ WARNING: Could not find Account field');
+      }
+      
+      // Find and click the add (+) button
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('Looking for add (+) button...');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      let addButtonClicked = false;
+      
+      // Try various selectors for add button
+      const addButtonSelectors = [
+        'button[aria-label*="add" i]',
+        'button[title*="add" i]',
+        'button:has-text("+")',
+        'button:has-text("Add")',
+        '[role="button"][aria-label*="add" i]',
+        'button i.fa-plus',
+        'button i.fas.fa-plus',
+        'button .fa-plus',
+        'button[class*="add" i]'
+      ];
+      
+      for (const selector of addButtonSelectors) {
+        try {
+          const addButton = await page.$(selector);
+          if (addButton) {
+            await addButton.click();
+            await delay(500);
+            console.log(`✓ Clicked add (+) button using selector: ${selector}`);
+            addButtonClicked = true;
+            break;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      // Try XPath for add button
+      if (!addButtonClicked) {
+        try {
+          const addButtons = await page.$x("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '+')] | //button[@aria-label[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add')]]");
+          if (addButtons.length > 0) {
+            await addButtons[0].click();
+            await delay(500);
+            console.log('✓ Clicked add (+) button using XPath');
+            addButtonClicked = true;
+          }
+        } catch (e) {
+          console.log(`XPath add button search failed: ${e.message}`);
+        }
+      }
+      
+      // Try JavaScript search for add button
+      if (!addButtonClicked) {
+        const addButtonFound = await page.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll('button, [role="button"]'));
+          for (const btn of buttons) {
+            const text = btn.textContent?.trim() || btn.getAttribute('aria-label') || '';
+            const hasPlus = text.includes('+') || text.toLowerCase().includes('add');
+            const hasPlusIcon = btn.querySelector('i.fa-plus, i.fas.fa-plus, .fa-plus');
+            
+            if (hasPlus || hasPlusIcon) {
+              btn.click();
+              return { found: true, text: text.substring(0, 20) };
+            }
+          }
           return { found: false };
         });
         
-        return result;
-      };
-      
-      // Check "Individual Account" checkbox to bypass Account requirement
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('Checking Individual Account checkbox (REQUIRED - NUCLEAR APPROACH)...');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      let checkboxChecked = false;
-      
-      // Try checking it immediately
-      const initialCheck = await forceCheckIndividualAccount();
-      if (initialCheck.found && initialCheck.checked) {
-        console.log(`✓ Checkbox checked immediately: ${initialCheck.id}`);
-        checkboxChecked = true;
-      }
-      
-      // Strategy 0: BULLETPROOF - JavaScript-based (works even if not visible)
-      // The checkbox exists but may be visible: false, so use JavaScript to find and click it
-      try {
-        console.log('Using JavaScript to find and check Individual Account checkbox (works even if hidden)...');
-        const result = await page.evaluate(() => {
-          // Try multiple ways to find the checkbox
-          let checkbox = document.getElementById('individual-account');
-          if (!checkbox) {
-            checkbox = document.querySelector('input[name="individual-account"]');
-          }
-          if (!checkbox) {
-            checkbox = document.querySelector('input[type="checkbox"][id="individual-account"]');
-          }
-          if (!checkbox) {
-            checkbox = document.querySelector('input[formcontrolname="individualAccount"]');
-          }
-          
-          if (checkbox) {
-            // Force visibility
-            checkbox.style.display = 'block';
-            checkbox.style.visibility = 'visible';
-            checkbox.style.opacity = '1';
-            checkbox.removeAttribute('hidden');
-            
-            // Remove any classes that might hide it
-            checkbox.classList.remove('d-none', 'hidden', 'invisible');
-            
-            // Make parent visible too
-            let parent = checkbox.parentElement;
-            while (parent && parent.tagName !== 'BODY') {
-              parent.style.display = 'block';
-              parent.style.visibility = 'visible';
-              parent.style.opacity = '1';
-              parent.removeAttribute('hidden');
-              parent.classList.remove('d-none', 'hidden', 'invisible');
-              parent = parent.parentElement;
-            }
-            
-            // Scroll into view
-            checkbox.scrollIntoView({ behavior: 'instant', block: 'center' });
-            
-            // Check if already checked
-            if (checkbox.checked) {
-              return { found: true, checked: false, message: 'already checked' };
-            }
-            
-            // Click it via JavaScript (works even if not visible)
-            checkbox.click();
-            
-            // Verify it's now checked
-            if (checkbox.checked) {
-              return { found: true, checked: true, message: 'successfully checked' };
-            } else {
-              // Try setting checked property directly
-              checkbox.checked = true;
-              // Trigger change event
-              checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-              checkbox.dispatchEvent(new Event('click', { bubbles: true }));
-              
-              return { found: true, checked: checkbox.checked, message: checkbox.checked ? 'checked via property' : 'failed to check' };
-            }
-          }
-          
-          return { found: false, message: 'checkbox not found in DOM' };
-        });
-        
-        if (result.found) {
-          if (result.checked) {
-            console.log(`✓ Individual Account checkbox checked via JavaScript: ${result.message}`);
-            checkboxChecked = true;
-            reasoningMemory.workingSelectors['individualaccount'] = '#individual-account (JavaScript)';
-            reasoningMemory.learnedFacts.push('Individual Account checkbox can be checked via JavaScript even if not visible');
-          } else if (result.message === 'already checked') {
-            console.log('✓ Individual Account checkbox already checked');
-            checkboxChecked = true;
-            reasoningMemory.workingSelectors['individualaccount'] = '#individual-account (JavaScript)';
-          } else {
-            console.log(`⚠ Checkbox found but checking failed: ${result.message}`);
-          }
-        } else {
-          console.log(`⚠ JavaScript search: ${result.message}`);
-        }
-      } catch (e) {
-        console.log(`JavaScript checkbox search failed: ${e.message}`);
-      }
-      
-      // Strategy 0.5: Try simple selectors (in case JavaScript didn't work)
-      if (!checkboxChecked) {
-        const simpleSelectors = [
-          '#individual-account',
-          'input[id="individual-account"]',
-          'input[name="individual-account"]',
-          'input[type="checkbox"][id="individual-account"]',
-          'input[formcontrolname="individualAccount"]'
-        ];
-        
-        for (const selector of simpleSelectors) {
-          if (checkboxChecked) break;
-          
-          try {
-            console.log(`Trying selector: ${selector}`);
-            // Use evaluate to find and click (works even if not visible)
-            const result = await page.evaluate((sel) => {
-              const cb = document.querySelector(sel);
-              if (cb) {
-                cb.style.display = 'block';
-                cb.style.visibility = 'visible';
-                cb.style.opacity = '1';
-                cb.scrollIntoView({ behavior: 'instant', block: 'center' });
-                if (!cb.checked) {
-                  cb.click();
-                }
-                return cb.checked;
-              }
-              return false;
-            }, selector);
-            
-            if (result) {
-              console.log(`✓ Checked Individual Account checkbox using: ${selector}`);
-              checkboxChecked = true;
-              reasoningMemory.workingSelectors['individualaccount'] = selector;
-              break;
-            }
-          } catch (e) {
-            continue;
-          }
+        if (addButtonFound.found) {
+          console.log(`✓ Clicked add (+) button via JavaScript: "${addButtonFound.text}"`);
+          addButtonClicked = true;
+          await delay(500);
         }
       }
       
-      // Strategy 0.5: Try clicking the label (which is linked to the checkbox)
-      if (!checkboxChecked) {
-        try {
-          console.log('Trying label click: label[for="individual-account"]');
-          const label = await page.$('label[for="individual-account"]');
-          if (label) {
-            await label.click();
-            await delay(300);
-            
-            // Verify checkbox is now checked
-            const isChecked = await page.evaluate(() => {
-              const cb = document.getElementById('individual-account');
-              return cb ? cb.checked : false;
-            });
-            
-            if (isChecked) {
-              console.log('✓ Checked Individual Account checkbox by clicking label');
-              checkboxChecked = true;
-              reasoningMemory.workingSelectors['individualaccount'] = 'label[for="individual-account"]';
-            }
-          }
-        } catch (e) {
-          console.log(`Label click failed: ${e.message}`);
-        }
-      }
-      
-      // Strategy 1: AI Vision selector
-      if (visionFormSelectors && visionFormSelectors.individualAccountCheckbox) {
-        try {
-          const selector = visionFormSelectors.individualAccountCheckbox;
-          console.log(`Trying AI Vision selector: ${selector}`);
-          await page.waitForSelector(selector, { timeout: 5000, visible: true });
-          const isChecked = await page.$eval(selector, checkbox => checkbox.checked);
-          if (!isChecked) {
-            await page.click(selector);
-            console.log('✓ Checked Individual Account checkbox using AI Vision selector');
-            checkboxChecked = true;
-          } else {
-            console.log('✓ Individual Account checkbox already checked (AI Vision selector)');
-            checkboxChecked = true;
-          }
-        } catch (e) {
-          console.log(`AI Vision checkbox selector failed: ${e.message}, trying fallbacks...`);
-        }
-      }
-      
-      // Strategy 2: XPath - find label with "Individual Account" text, then find checkbox
-      if (!checkboxChecked) {
-        try {
-          console.log('Trying XPath: label containing "Individual Account" -> checkbox');
-          const checkboxes = await page.$x("//label[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'individual account')]//input[@type='checkbox']");
-          if (checkboxes.length === 0) {
-            // Try alternative XPath - checkbox followed by text
-            const checkboxes2 = await page.$x("//input[@type='checkbox'][following-sibling::text()[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'individual account')]]");
-            if (checkboxes2.length > 0) {
-              const isChecked = await page.evaluate(cb => cb.checked, checkboxes2[0]);
-              if (!isChecked) {
-                await checkboxes2[0].click();
-                console.log('✓ Checked Individual Account checkbox using XPath (following-sibling)');
-                checkboxChecked = true;
-              } else {
-                console.log('✓ Individual Account checkbox already checked (XPath)');
-                checkboxChecked = true;
-              }
-            }
-          } else {
-            const isChecked = await page.evaluate(cb => cb.checked, checkboxes[0]);
-            if (!isChecked) {
-              await checkboxes[0].click();
-              console.log('✓ Checked Individual Account checkbox using XPath (label)');
-              checkboxChecked = true;
-            } else {
-              console.log('✓ Individual Account checkbox already checked (XPath)');
-              checkboxChecked = true;
-            }
-          }
-        } catch (e) {
-          console.log(`XPath checkbox search failed: ${e.message}`);
-        }
-      }
-      
-      // Strategy 3: Find all checkboxes and check which one is near "Individual Account" text
-      if (!checkboxChecked) {
-        try {
-          console.log('Trying strategy: Find all checkboxes and check labels...');
-          const checkboxInfo = await page.evaluate(() => {
-            const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
-            return checkboxes.map((cb, index) => {
-              // Find label for this checkbox
-              let labelText = '';
-              if (cb.id) {
-                const label = document.querySelector(`label[for="${cb.id}"]`);
-                if (label) labelText = label.textContent || '';
-              }
-              // Check parent label
-              let parent = cb.parentElement;
-              while (parent && parent.tagName !== 'BODY') {
-                if (parent.tagName === 'LABEL') {
-                  labelText = parent.textContent || '';
-                  break;
-                }
-                parent = parent.parentElement;
-              }
-              // Check nearby text
-              const nearbyText = cb.parentElement?.textContent || '';
-              
-              return {
-                index,
-                id: cb.id || '',
-                name: cb.name || '',
-                checked: cb.checked,
-                labelText: labelText.trim(),
-                nearbyText: nearbyText.substring(0, 100),
-                hasIndividual: (labelText + nearbyText).toLowerCase().includes('individual')
-              };
-            });
-          });
-          
-          console.log('Found checkboxes:', JSON.stringify(checkboxInfo, null, 2));
-          
-          const individualCheckbox = checkboxInfo.find(cb => cb.hasIndividual);
-          if (individualCheckbox) {
-            const allCheckboxes = await page.$$('input[type="checkbox"]');
-            if (allCheckboxes[individualCheckbox.index]) {
-              const isChecked = await page.evaluate(cb => cb.checked, allCheckboxes[individualCheckbox.index]);
-              if (!isChecked) {
-                await allCheckboxes[individualCheckbox.index].click();
-                console.log(`✓ Checked Individual Account checkbox (found by label text: "${individualCheckbox.labelText}")`);
-                checkboxChecked = true;
-              } else {
-                console.log('✓ Individual Account checkbox already checked (found by label)');
-                checkboxChecked = true;
-              }
-            }
-          }
-        } catch (e) {
-          console.log(`Checkbox search by label failed: ${e.message}`);
-        }
-      }
-      
-      // Strategy 4: JavaScript-based search and click (works even if not visible)
-      if (!checkboxChecked) {
-        try {
-          console.log('Trying JavaScript-based checkbox search and click (works even if hidden)...');
-          const checkboxFound = await page.evaluate(() => {
-            // Find all checkboxes
-            const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
-            
-            for (const checkbox of checkboxes) {
-              // Get label text
-              let labelText = '';
-              
-              // Try label[for] attribute
-              if (checkbox.id) {
-                const label = document.querySelector(`label[for="${checkbox.id}"]`);
-                if (label) labelText = label.textContent || '';
-              }
-              
-              // Try parent label
-              let parent = checkbox.parentElement;
-              while (parent && parent.tagName !== 'BODY') {
-                if (parent.tagName === 'LABEL') {
-                  labelText = parent.textContent || '';
-                  break;
-                }
-                parent = parent.parentElement;
-              }
-              
-              // Check nearby text
-              const nearbyText = checkbox.parentElement?.textContent || checkbox.closest('div')?.textContent || '';
-              const allText = (labelText + ' ' + nearbyText).toLowerCase();
-              
-              // Check if this is the Individual Account checkbox
-              if (allText.includes('individual') && allText.includes('account')) {
-                // Found it! Force visibility and check it
-                checkbox.style.display = 'block';
-                checkbox.style.visibility = 'visible';
-                checkbox.style.opacity = '1';
-                checkbox.removeAttribute('hidden');
-                
-                // Scroll into view
-                checkbox.scrollIntoView({ behavior: 'instant', block: 'center' });
-                
-                // Check it if not already checked
-                if (!checkbox.checked) {
-                  checkbox.click();
-                  return { found: true, checked: true, labelText: labelText.trim() };
-                } else {
-                  return { found: true, checked: false, labelText: labelText.trim(), message: 'already checked' };
-                }
-              }
-            }
-            
-            return { found: false };
-          });
-          
-          if (checkboxFound.found) {
-            if (checkboxFound.checked) {
-              console.log(`✓ Checked Individual Account checkbox via JavaScript (label: "${checkboxFound.labelText}")`);
-            } else {
-              console.log(`✓ Individual Account checkbox already checked via JavaScript (label: "${checkboxFound.labelText}")`);
-            }
-            checkboxChecked = true;
-          } else {
-            console.log('JavaScript search did not find Individual Account checkbox');
-          }
-        } catch (e) {
-          console.log(`JavaScript checkbox search failed: ${e.message}`);
-        }
-      }
-      
-      // Strategy 5: Scroll form and try again
-      if (!checkboxChecked) {
-        try {
-          console.log('Scrolling form into view and retrying...');
-          await page.evaluate(() => {
-            const form = document.querySelector('form') || document.querySelector('[class*="modal"]') || document.body;
-            if (form) {
-              form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          });
-          await delay(1000);
-          
-          // Try JavaScript search again after scrolling
-          const checkboxFound = await page.evaluate(() => {
-            const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
-            for (const checkbox of checkboxes) {
-              let labelText = '';
-              if (checkbox.id) {
-                const label = document.querySelector(`label[for="${checkbox.id}"]`);
-                if (label) labelText = label.textContent || '';
-              }
-              let parent = checkbox.parentElement;
-              while (parent && parent.tagName !== 'BODY') {
-                if (parent.tagName === 'LABEL') {
-                  labelText = parent.textContent || '';
-                  break;
-                }
-                parent = parent.parentElement;
-              }
-              const nearbyText = checkbox.parentElement?.textContent || '';
-              const allText = (labelText + ' ' + nearbyText).toLowerCase();
-              if (allText.includes('individual') && allText.includes('account')) {
-                checkbox.style.display = 'block';
-                checkbox.style.visibility = 'visible';
-                checkbox.style.opacity = '1';
-                checkbox.scrollIntoView({ behavior: 'instant', block: 'center' });
-                if (!checkbox.checked) {
-                  checkbox.click();
-                  return { found: true, checked: true };
-                } else {
-                  return { found: true, checked: false };
-                }
-              }
-            }
-            return { found: false };
-          });
-          
-          if (checkboxFound.found) {
-            console.log('✓ Checked Individual Account checkbox after scrolling');
-            checkboxChecked = true;
-          }
-        } catch (e) {
-          console.log(`Scroll and retry failed: ${e.message}`);
-        }
-      }
-      
-      if (!checkboxChecked) {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('⚠ WARNING: Could not find Individual Account checkbox');
-        console.log('The form may require an Account field instead');
-        console.log('Continuing anyway - contact creation may fail');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      } else {
-        // Verify it's actually checked
-        await delay(500);
-        const isActuallyChecked = await page.evaluate(() => {
-          const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
-          for (const checkbox of checkboxes) {
-            const labelText = checkbox.closest('label')?.textContent || 
-                             document.querySelector(`label[for="${checkbox.id}"]`)?.textContent || '';
-            const nearbyText = checkbox.parentElement?.textContent || '';
-            const allText = (labelText + ' ' + nearbyText).toLowerCase();
-            if (allText.includes('individual') && allText.includes('account')) {
-              return checkbox.checked;
-            }
-          }
-          return false;
-        });
-        
-        if (isActuallyChecked) {
-          console.log('✅ Verified: Individual Account checkbox is checked');
-          
-          // Update knowledge base with working approach
-          const checkboxApproach = 'javascript_checkbox_search_with_force_visibility';
-          if (!reasoningMemory.workingApproaches.includes(checkboxApproach)) {
-            reasoningMemory.workingApproaches.push(checkboxApproach);
-            console.log(`🧠 Knowledge Base Update: Checkbox approach "${checkboxApproach}" works - added to knowledge base`);
-          }
-          
-          const fact = 'Individual Account checkbox can be found and checked using JavaScript search of all checkboxes by label text';
-          if (!reasoningMemory.learnedFacts.includes(fact)) {
-            reasoningMemory.learnedFacts.push(fact);
-          }
-        } else {
-          console.log('⚠ Warning: Checkbox may not be checked - verification failed');
-        }
+      if (!addButtonClicked) {
+        console.log('⚠ WARNING: Could not find add (+) button - continuing anyway');
       }
       
       // Fill notes field if available

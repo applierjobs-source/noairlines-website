@@ -337,8 +337,10 @@ const createTuvoliContact = async (itineraryData) => {
       const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
       // Navigate to Tuvoli login page
-      console.log('Navigating to Tuvoli login...');
-      await page.goto(`${TUVOLI_URL}/login`, { waitUntil: 'networkidle2', timeout: 60000 });
+      // Use the correct login URL: https://noairlines.tuvoli.com/login
+      const loginUrl = `${TUVOLI_URL}/login`;
+      console.log(`Navigating to Tuvoli login: ${loginUrl}`);
+      await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 60000 });
 
       // Wait a moment for page to fully render
       await delay(3000);
@@ -396,18 +398,19 @@ const createTuvoliContact = async (itineraryData) => {
           }
         }
 
-        // If no login link found on page, try alternative login URLs directly
+          // If no login link found on page, try alternative login URLs directly
         if (!loginLinkFound) {
           console.log('Login link not found on page, trying alternative login URLs...');
           const alternativeUrls = [
             `${TUVOLI_URL}/login`,
+            `${TUVOLI_URL}/login?returnURL=%2Fhome`,
             `${TUVOLI_URL}/signin`,
             `${TUVOLI_URL}/sign-in`,
             `${TUVOLI_URL}/auth/login`,
-            `https://app.tuvoli.com/login`,
-            `https://app.tuvoli.com/signin`,
             `https://noairlines.tuvoli.com/login`,
-            `https://noairlines.tuvoli.com/signin`
+            `https://noairlines.tuvoli.com/login?returnURL=%2Fhome`,
+            `https://app.tuvoli.com/login`,
+            `https://app.tuvoli.com/signin`
           ];
 
           for (const url of alternativeUrls) {

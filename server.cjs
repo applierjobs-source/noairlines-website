@@ -4864,6 +4864,9 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`✓ Serving from: ${DIST_DIR}`);
   console.log(`✓ Environment: ${process.env.NODE_ENV || 'production'}`);
   console.log(`✓ Ready to accept connections`);
+}).on('error', (err) => {
+  console.error('SERVER LISTEN ERROR:', err);
+  process.exit(1);
 });
 
 // Handle process termination

@@ -626,14 +626,36 @@ IMPORTANT NAVIGATION RULES:
    - Look for "Add New Contact" button - it may be visible as a button or link
    - The button text might be "Add New Contact", "Add Contact", or "New Contact"
    - Use XPath for text matching: //button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add new contact')]
+   - Once form is open, you'll see: "First Name *", "Last Name *", "Primary Phone", "Primary Email *", "Individual Account" checkbox, and "Create" button
+   - If you see these fields, you're in the right place - fill them and submit!
 
 6. CONTACT FORM FIELDS (from screenshot analysis):
    - First Name: Look for input with label "First Name *" or placeholder containing "First Name"
+     * Use selector: input[placeholder*="First Name" i] or input near label containing "First Name"
+     * Fill with: "${firstName}"
    - Last Name: Look for input with label "Last Name *" or placeholder containing "Last Name"
+     * Use selector: input[placeholder*="Last Name" i] or input near label containing "Last Name"
+     * Fill with: "${lastName}"
    - Primary Email: Look for input[type="email"] or input with label "Primary Email *"
+     * Use selector: input[type="email"] or input[placeholder*="Primary Email" i]
+     * Fill with: "${itineraryData.email || ''}"
    - Primary Phone: Look for input[type="tel"] or input with label "Primary Phone"
+     * Use selector: input[type="tel"] or input[placeholder*="Primary Phone" i]
+     * Fill with: "${itineraryData.phone || ''}"
    - Individual Account checkbox: input[type="checkbox"] near "Individual Account" text (REQUIRED - checking this bypasses the "Account *" required field)
+     * MUST be checked before submitting
+     * Use selector: input[type="checkbox"] near text "Individual Account" or label containing "Individual Account"
    - Create button: button with text "Create" or "Save"
+     * Use selector: button[type="submit"] with text "Create" or //button[contains(text(), 'Create')]
+     * Click this AFTER filling all fields and checking Individual Account checkbox
+   
+   FORM FILLING ORDER:
+   1. Fill First Name
+   2. Fill Last Name
+   3. Fill Primary Email
+   4. Fill Primary Phone (optional but recommended)
+   5. Check "Individual Account" checkbox (REQUIRED)
+   6. Click "Create" button
 
 7. TIMING:
    - Wait 6+ seconds after navigating to login page for fields to load

@@ -24,7 +24,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies needed for build)
-RUN npm ci
+# Using npm install instead of npm ci to handle lock file updates
+RUN npm install --legacy-peer-deps
 
 # Copy all source files
 COPY . .

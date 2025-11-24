@@ -345,6 +345,224 @@ const createTuvoliContact = async (itineraryData) => {
         }
       };
       
+      // AI Reasoning System - Uses OpenAI to figure out what to do next
+      const aiReasonNextAction = async (goal, currentState, maxAttempts = 10) => {
+        if (!OPENAI_API_KEY || OPENAI_API_KEY === '') {
+          console.log('⚠ OpenAI API key not available, skipping AI reasoning');
+          return null;
+        }
+        
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🤖 AI REASONING: Analyzing current state and determining next action');
+        console.log(`Goal: ${goal}`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        try {
+          // Get current page state
+          const screenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
+          const pageState = await page.evaluate(() => {
+            return {
+              url: window.location.href,
+              title: document.title,
+              bodyText: document.body?.innerText?.substring(0, 1000) || '',
+              visibleButtons: Array.from(document.querySelectorAll('button, a[role="button"]')).map(btn => ({
+                text: btn.innerText?.trim() || btn.textContent?.trim() || '',
+                visible: btn.offsetParent !== null,
+                tagName: btn.tagName,
+                className: btn.className,
+                id: btn.id,
+                href: btn.href || ''
+              })).filter(btn => btn.visible && btn.text.length > 0).slice(0, 20),
+              visibleInputs: Array.from(document.querySelectorAll('input, textarea')).map(input => ({
+                type: input.type,
+                name: input.name,
+                id: input.id,
+                placeholder: input.placeholder || '',
+                visible: input.offsetParent !== null,
+                value: input.value || ''
+              })).filter(input => input.visible).slice(0, 10),
+              hasLoginForm: !!document.querySelector('input[type="password"]'),
+              hasContactForm: document.body?.innerText?.toLowerCase().includes('first name') || 
+                            document.body?.innerText?.toLowerCase().includes('last name') || false
+            };
+          });
+          
+          const reasoningPrompt = `You are an expert web automation agent. Your mission is to accomplish this goal:
+
+GOAL: ${goal}
+
+CURRENT STATE:
+- URL: ${pageState.url}
+- Page Title: ${pageState.title}
+- Has Login Form: ${pageState.hasLoginForm}
+- Has Contact Form: ${pageState.hasContactForm}
+- Visible Buttons: ${JSON.stringify(pageState.visibleButtons, null, 2)}
+- Visible Inputs: ${JSON.stringify(pageState.visibleInputs, null, 2)}
+- Body Text Preview: ${pageState.bodyText.substring(0, 500)}
+
+Analyze the screenshot and current state. Determine the EXACT next action needed to progress toward the goal.
+
+Return JSON with this structure:
+{
+  "action": "click" | "type" | "navigate" | "wait" | "complete" | "error",
+  "reasoning": "Brief explanation of why this action",
+  "selector": "CSS selector or XPath for the element (if action is click or type)",
+  "text": "Text to type (if action is type)",
+  "url": "URL to navigate to (if action is navigate)",
+  "waitTime": "Milliseconds to wait (if action is wait)",
+  "isComplete": true/false,
+  "nextGoal": "What to do after this action"
+}
+
+Be VERY specific with selectors. Prioritize:
+1. IDs: #elementId
+2. Unique classes: .unique-class
+3. Text-based XPath: //button[contains(text(), 'Add New Contact')]
+4. Attribute selectors: input[name="firstName"]
+5. Type selectors: button[type="submit"]
+
+If the goal is complete, set "isComplete": true and "action": "complete".
+If you can't determine the next action, set "action": "error" with reasoning.`;
+
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are an expert web automation agent. Analyze screenshots and page state to determine the exact next action needed. Always return valid JSON.'
+                },
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: reasoningPrompt
+                    },
+                    {
+                      type: 'image_url',
+                      image_url: {
+                        url: `data:image/png;base64,${screenshot}`
+                      }
+                    }
+                  ]
+                }
+              ],
+              max_tokens: 1000,
+              temperature: 0.3
+            })
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.log(`✗ AI reasoning API error: ${response.status} - ${errorText}`);
+            return null;
+          }
+
+          const data = await response.json();
+          const content = data.choices[0]?.message?.content || '';
+          
+          // Extract JSON from response
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            console.log('✗ Could not parse AI reasoning response');
+            return null;
+          }
+          
+          const actionPlan = JSON.parse(jsonMatch[0]);
+          console.log('🤖 AI Reasoning Result:');
+          console.log(`  Action: ${actionPlan.action}`);
+          console.log(`  Reasoning: ${actionPlan.reasoning}`);
+          if (actionPlan.selector) console.log(`  Selector: ${actionPlan.selector}`);
+          if (actionPlan.text) console.log(`  Text: ${actionPlan.text}`);
+          if (actionPlan.url) console.log(`  URL: ${actionPlan.url}`);
+          console.log(`  Is Complete: ${actionPlan.isComplete || false}`);
+          
+          return actionPlan;
+        } catch (e) {
+          console.log(`✗ AI reasoning failed: ${e.message}`);
+          return null;
+        }
+      };
+      
+      // Execute AI-determined action
+      const executeAIAction = async (actionPlan) => {
+        if (!actionPlan) return false;
+        
+        try {
+          switch (actionPlan.action) {
+            case 'click':
+              if (actionPlan.selector) {
+                // Check if it's XPath
+                if (actionPlan.selector.startsWith('//') || actionPlan.selector.startsWith('(//')) {
+                  const elements = await page.$x(actionPlan.selector);
+                  if (elements.length > 0) {
+                    await elements[0].click();
+                    console.log(`✓ Clicked element using XPath: ${actionPlan.selector}`);
+                    await delay(2000);
+                    return true;
+                  }
+                } else {
+                  // CSS selector
+                  await page.waitForSelector(actionPlan.selector, { timeout: 5000, visible: true });
+                  await page.click(actionPlan.selector);
+                  console.log(`✓ Clicked element using CSS: ${actionPlan.selector}`);
+                  await delay(2000);
+                  return true;
+                }
+              }
+              break;
+              
+            case 'type':
+              if (actionPlan.selector && actionPlan.text) {
+                await page.waitForSelector(actionPlan.selector, { timeout: 5000, visible: true });
+                await page.click(actionPlan.selector);
+                await page.keyboard.down('Control');
+                await page.keyboard.press('a');
+                await page.keyboard.up('Control');
+                await page.type(actionPlan.selector, actionPlan.text, { delay: 50 });
+                console.log(`✓ Typed "${actionPlan.text}" into ${actionPlan.selector}`);
+                await delay(1000);
+                return true;
+              }
+              break;
+              
+            case 'navigate':
+              if (actionPlan.url) {
+                await page.goto(actionPlan.url, { waitUntil: 'networkidle2', timeout: 30000 });
+                console.log(`✓ Navigated to: ${actionPlan.url}`);
+                await delay(2000);
+                return true;
+              }
+              break;
+              
+            case 'wait':
+              const waitTime = actionPlan.waitTime || 2000;
+              console.log(`⏳ Waiting ${waitTime}ms...`);
+              await delay(waitTime);
+              return true;
+              
+            case 'complete':
+              console.log('✓ Goal completed!');
+              return true;
+              
+            case 'error':
+              console.log(`✗ AI reported error: ${actionPlan.reasoning}`);
+              return false;
+          }
+        } catch (e) {
+          console.log(`✗ Failed to execute action: ${e.message}`);
+          return false;
+        }
+        
+        return false;
+      };
+      
       // Set longer timeouts for page operations
       page.setDefaultNavigationTimeout(60000);
       page.setDefaultTimeout(60000);
@@ -2023,7 +2241,15 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         console.log('⚠ Contact creation status unclear - may need manual verification');
       }
       
-      console.log('Contact creation process completed');
+      // If we're in AI-guided mode and it completed, we're done
+      if (aiGuidedMode && aiAttempts < maxAIAttempts) {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('✅ AI-GUIDED AUTOMATION COMPLETED SUCCESSFULLY');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      } else {
+        console.log('Contact creation process completed');
+      }
+      
       await saveScreenshot('final-state');
 
       if (TUVOLI_DEBUG) {

@@ -351,6 +351,67 @@ const createTuvoliContact = async (itineraryData) => {
         }
       };
       
+      // Theory of Mind: Track what we've tried and why it might have failed
+      const reasoningMemory = {
+        navigationAttempts: [],
+        failedStrategies: [],
+        detectedProblems: [],
+        successfulActions: [],
+        currentUnderstanding: null
+      };
+      
+      // Theory of Mind: Analyze why we're stuck
+      const analyzeSituation = async () => {
+        const currentUrl = page.url();
+        const pageState = await page.evaluate(() => {
+          return {
+            url: window.location.href,
+            title: document.title,
+            hasLoginForm: !!document.querySelector('input[type="password"]'),
+            isMainSite: window.location.hostname === 'tuvoli.com',
+            isSubdomain: window.location.hostname.includes('noairlines.tuvoli.com'),
+            redirectCount: window.history.length,
+            cookies: document.cookie ? document.cookie.split(';').length : 0
+          };
+        });
+        
+        // Reason about the situation
+        let understanding = {
+          problem: null,
+          likelyCause: null,
+          confidence: 'low',
+          recommendedApproach: null
+        };
+        
+        // If we're on main site but need subdomain
+        if (pageState.isMainSite && !pageState.isSubdomain) {
+          understanding.problem = 'Redirected to main site instead of subdomain';
+          understanding.likelyCause = 'Bot detection or session/cookie issue preventing subdomain access';
+          understanding.confidence = 'high';
+          understanding.recommendedApproach = 'Try browser manipulation (clear cookies, change user agent) or use JavaScript navigation with specific headers';
+        }
+        
+        // If we've tried navigation multiple times
+        if (reasoningMemory.navigationAttempts.length >= 3) {
+          understanding.problem = 'Multiple navigation attempts failed';
+          understanding.likelyCause = 'Redirects are being enforced, need to bypass detection';
+          understanding.confidence = 'medium';
+          understanding.recommendedApproach = 'Use manipulate_browser to change browser fingerprint, then navigate';
+        }
+        
+        // If we're in a loop
+        const uniqueUrls = new Set(reasoningMemory.navigationAttempts.map(a => a.url));
+        if (reasoningMemory.navigationAttempts.length >= 5 && uniqueUrls.size <= 2) {
+          understanding.problem = 'Navigation loop detected';
+          understanding.likelyCause = 'Server is redirecting based on browser characteristics';
+          understanding.confidence = 'high';
+          understanding.recommendedApproach = 'Change browser characteristics (user agent, viewport, headers) before navigating';
+        }
+        
+        reasoningMemory.currentUnderstanding = understanding;
+        return understanding;
+      };
+      
       // AI Reasoning System - Uses OpenAI to figure out what to do next
       // Note: tuvoliCredentials is available in closure scope
       const aiReasonNextAction = async (goal, currentState, maxAttempts = 10) => {
@@ -359,9 +420,22 @@ const createTuvoliContact = async (itineraryData) => {
           return null;
         }
         
+        // Theory of Mind: Analyze the situation first
+        const situation = await analyzeSituation();
+        if (situation.problem) {
+          console.log('🧠 THEORY OF MIND ANALYSIS:');
+          console.log(`  Problem: ${situation.problem}`);
+          console.log(`  Likely Cause: ${situation.likelyCause}`);
+          console.log(`  Confidence: ${situation.confidence}`);
+          console.log(`  Recommended: ${situation.recommendedApproach}`);
+        }
+        
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('🤖 AI REASONING: Analyzing current state and determining next action');
         console.log(`Goal: ${goal}`);
+        if (reasoningMemory.failedStrategies.length > 0) {
+          console.log(`Failed Strategies: ${reasoningMemory.failedStrategies.join(', ')}`);
+        }
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         try {
@@ -407,7 +481,19 @@ const createTuvoliContact = async (itineraryData) => {
 Use these insights to make a more informed decision.`
             : '';
           
-          const reasoningPrompt = `You are an expert web automation agent. Your mission is to accomplish this goal:
+          // Build context about what we've learned
+          const learnedContext = reasoningMemory.failedStrategies.length > 0
+            ? `\nLEARNED FROM PREVIOUS ATTEMPTS:
+- Failed Strategies: ${reasoningMemory.failedStrategies.join(', ')}
+- Navigation Attempts: ${reasoningMemory.navigationAttempts.length}
+- Detected Problems: ${reasoningMemory.detectedProblems.join('; ') || 'None'}
+- Current Understanding: ${situation.problem ? `${situation.problem} (${situation.likelyCause})` : 'Analyzing...'}
+- Recommended Approach: ${situation.recommendedApproach || 'Standard navigation'}
+
+Use this knowledge to avoid repeating failed strategies.`
+            : '';
+          
+          const reasoningPrompt = `You are an expert web automation agent with theory of mind - you can reason about why things fail and adapt your strategy. Your mission is to accomplish this goal:
 
 GOAL: ${goal}
 
@@ -418,7 +504,22 @@ CURRENT STATE:
 - Has Contact Form: ${pageState.hasContactForm}
 - Visible Buttons: ${JSON.stringify(pageState.visibleButtons, null, 2)}
 - Visible Inputs: ${JSON.stringify(pageState.visibleInputs, null, 2)}
-- Body Text Preview: ${pageState.bodyText.substring(0, 500)}${investigationContext}
+- Body Text Preview: ${pageState.bodyText.substring(0, 500)}${investigationContext}${learnedContext}
+
+THEORY OF MIND REASONING:
+You can see what's happening and understand why. Think about:
+1. Why am I on this page instead of where I need to be?
+2. What has prevented me from reaching the login page?
+3. What patterns do I see in my failed attempts?
+4. What would a human do differently?
+5. What browser characteristics might be causing redirects?
+
+If you're stuck on tuvoli.com (main site) instead of noairlines.tuvoli.com (subdomain):
+- The server is likely detecting automation and redirecting
+- You need to change your browser "fingerprint" (user agent, headers, viewport)
+- Try manipulate_browser action to change characteristics, THEN navigate
+- Or use JavaScript navigation which sometimes bypasses server-side redirects
+- Consider that cookies/session might be needed - try accessing root first
 
 KNOWLEDGE FROM PREVIOUS SUCCESSFUL ATTEMPTS:
 1. LOGIN PAGE NAVIGATION: The URL https://noairlines.tuvoli.com/login?returnURL=%2Fhome may redirect. You have multiple strategies available:
@@ -611,6 +712,15 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
           if (actionPlan.text) console.log(`  Text: ${actionPlan.text}`);
           if (actionPlan.url) console.log(`  URL: ${actionPlan.url}`);
           console.log(`  Is Complete: ${actionPlan.isComplete || false}`);
+          
+          // Theory of Mind: Remember this attempt
+          if (actionPlan.url) {
+            reasoningMemory.navigationAttempts.push({
+              url: actionPlan.url,
+              action: actionPlan.action,
+              timestamp: Date.now()
+            });
+          }
           
           return actionPlan;
         } catch (e) {
@@ -1533,10 +1643,27 @@ Return JSON:
           
           if (!success) {
             consecutiveNavigationFailures++;
+            
+            // Theory of Mind: Remember what failed
+            if (actionPlan.action) {
+              reasoningMemory.failedStrategies.push(actionPlan.action);
+              // Keep only last 5 failed strategies
+              if (reasoningMemory.failedStrategies.length > 5) {
+                reasoningMemory.failedStrategies.shift();
+              }
+            }
+            
+            // Theory of Mind: Detect the problem
+            const currentUrl = page.url();
+            if (currentUrl.includes('tuvoli.com') && !currentUrl.includes('noairlines.tuvoli.com')) {
+              reasoningMemory.detectedProblems.push('Redirected to main site');
+            }
+            
             console.log(`⚠ Action failed (consecutive failures: ${consecutiveNavigationFailures}/${maxConsecutiveFailures})`);
+            console.log(`🧠 Learning: This strategy (${actionPlan.action}) didn't work. Failed strategies so far: ${reasoningMemory.failedStrategies.join(', ')}`);
             
             if (consecutiveNavigationFailures >= maxConsecutiveFailures) {
-              console.log('⚠ Too many consecutive failures, investigating...');
+              console.log('⚠ Too many consecutive failures, investigating with theory of mind...');
               const investigationResult = await investigateAndRetry(actionPlan);
               if (investigationResult && typeof investigationResult === 'object' && investigationResult.solution) {
                 consecutiveNavigationFailures = 0; // Reset on successful investigation
@@ -1545,11 +1672,35 @@ Return JSON:
               // Investigation phase: Analyze why action failed and try alternative
               await investigateAndRetry(actionPlan);
             }
+            
+            // Theory of Mind: If we're stuck, force a creative solution
+            if (consecutiveNavigationFailures >= 2 && actionPlan.action === 'navigate') {
+              console.log('🧠 Theory of Mind: Standard navigation keeps failing, forcing creative approach...');
+              // Force browser manipulation before next navigation
+              const browserManipAction = {
+                action: 'manipulate_browser',
+                browserAction: 'clear_cookies',
+                reasoning: 'Clearing cookies to reset session, then will try navigation with different user agent'
+              };
+              await executeAIAction(browserManipAction);
+              await delay(1000);
+              // Next iteration will try navigation again with fresh session
+            }
+            
             // Continue the loop to let AI try again
             continue;
           } else {
-            // Success - reset failure counter
+            // Success - reset failure counter and remember what worked
             consecutiveNavigationFailures = 0;
+            if (actionPlan.action) {
+              reasoningMemory.successfulActions.push(actionPlan.action);
+              // Keep only last 3 successful actions
+              if (reasoningMemory.successfulActions.length > 3) {
+                reasoningMemory.successfulActions.shift();
+              }
+            }
+            console.log(`✅ Success! Strategy that worked: ${actionPlan.action}`);
+            
             // Take success screenshot periodically
             if (aiAttempts % 5 === 0) {
               await saveScreenshot(`success-checkpoint-${aiAttempts}`);

@@ -1183,19 +1183,94 @@ const createTuvoliContact = async (itineraryData) => {
       
       // Wait for navigation after login
       console.log('Waiting for navigation after login...');
+      
+      // Wait a moment for login to process
+      await delay(3000);
+      
+      // Check for error messages first
+      const errorMessage = await page.evaluate(() => {
+        const errorSelectors = [
+          '.error',
+          '.alert',
+          '[role="alert"]',
+          '.message-error',
+          '.invalid-feedback',
+          '[class*="error" i]',
+          '[class*="invalid" i]'
+        ];
+        for (const selector of errorSelectors) {
+          const element = document.querySelector(selector);
+          if (element && element.textContent) {
+            return element.textContent.trim();
+          }
+        }
+        return null;
+      });
+      
+      if (errorMessage) {
+        console.log(`⚠ Error message detected on page: ${errorMessage}`);
+        // Don't throw error yet - might still work
+      }
+      
+      // Check if we're still on login page
+      let currentUrl = page.url();
+      console.log(`Current URL after login click: ${currentUrl}`);
+      
+      // Try waiting for navigation
       try {
-        await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 });
+        await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 });
+        currentUrl = page.url();
         console.log('Navigation detected after login');
       } catch (e) {
-        // If navigation doesn't happen, wait a bit and check URL
-        console.log('No navigation detected, checking current URL...');
+        // If navigation doesn't happen immediately, wait longer and check again
+        console.log('No immediate navigation, waiting longer...');
         await delay(5000);
-        const currentUrl = page.url();
-        console.log(`After login attempt, current URL: ${currentUrl}`);
-        if (currentUrl.includes('/login')) {
-          throw new Error('Still on login page after login attempt');
+        currentUrl = page.url();
+        console.log(`URL after waiting: ${currentUrl}`);
+        
+        // Check if URL changed even if it still contains /login
+        if (currentUrl !== loginUrl) {
+          console.log('URL changed (even if still contains /login), login might be processing...');
         }
       }
+      
+      // Check if we're still on login page
+      if (currentUrl.includes('/login')) {
+        // Check if there are any success indicators or if page content changed
+        const pageContent = await page.evaluate(() => {
+          return {
+            title: document.title,
+            hasLoginForm: !!document.querySelector('input[type="password"]'),
+            hasDashboard: !!document.querySelector('[class*="dashboard" i], [id*="dashboard" i]'),
+            bodyText: document.body?.innerText?.substring(0, 200) || ''
+          };
+        });
+        
+        console.log('Page content check:', JSON.stringify(pageContent, null, 2));
+        
+        // If login form is gone, we might have logged in successfully
+        if (!pageContent.hasLoginForm) {
+          console.log('Login form disappeared - login likely successful!');
+        } else if (errorMessage) {
+          throw new Error(`Login failed: ${errorMessage}`);
+        } else {
+          // Try waiting a bit more - sometimes login takes time
+          console.log('Still on login page, waiting a bit more for login to process...');
+          await delay(5000);
+          currentUrl = page.url();
+          
+          if (currentUrl.includes('/login')) {
+            // Check one more time if form is gone
+            const stillHasForm = await page.evaluate(() => !!document.querySelector('input[type="password"]'));
+            if (!stillHasForm) {
+              console.log('Login form disappeared after additional wait - login successful!');
+            } else {
+              throw new Error('Still on login page after login attempt - login may have failed');
+            }
+          }
+        }
+      }
+      
       console.log('Logged into Tuvoli successfully');
       
       // Wait a moment for the page to fully load after login

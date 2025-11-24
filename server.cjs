@@ -422,57 +422,6 @@ const sendItineraryEmail = async (itineraryData) => {
   }
 };
 
-// Send SMS using Twilio
-const sendSMS = async (phoneNumber, message) => {
-  try {
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-      console.log('Twilio not configured. SMS message would be:', message);
-      return { success: true, message: 'SMS logged (Twilio not configured)' };
-    }
-
-    // Format phone number (ensure it starts with +)
-    let formattedPhone = phoneNumber.trim();
-    if (!formattedPhone.startsWith('+')) {
-      // Remove any non-digit characters except +
-      formattedPhone = formattedPhone.replace(/\D/g, '');
-      if (formattedPhone.length === 10) {
-        formattedPhone = '+1' + formattedPhone; // US number
-      } else if (formattedPhone.length === 11 && formattedPhone.startsWith('1')) {
-        formattedPhone = '+' + formattedPhone;
-      } else {
-        formattedPhone = '+' + formattedPhone;
-      }
-    }
-
-    const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
-    
-    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${auth}`
-      },
-      body: new URLSearchParams({
-        From: TWILIO_PHONE_NUMBER,
-        To: formattedPhone,
-        Body: message
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Twilio API error:', response.status, errorText);
-      return { success: false, error: `Twilio API error: ${response.status}` };
-    }
-
-    const data = await response.json();
-    console.log('SMS sent successfully:', data.sid);
-    return { success: true, messageSid: data.sid };
-  } catch (error) {
-    console.error('Error sending SMS:', error);
-    return { success: false, error: error.message };
-  }
-};
 
           // Additional US-based charter companies (expanded list)
           { id: 7900, name: "American Air Charter" },

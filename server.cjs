@@ -4237,18 +4237,6 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         await delay(30000); // Keep browser open for 30 seconds in debug mode
       }
 
-      await browser.close();
-      return { success: true, message: 'Contact created in Tuvoli via browser automation' };
-    } catch (error) {
-      await browser.close();
-      throw error;
-    }
-  } catch (error) {
-    console.error('Error creating Tuvoli contact via browser automation:', error);
-    return { success: false, error: error.message };
-  }
-};
-
 // Send SMS using Twilio
 const sendSMS = async (phoneNumber, message) => {
   try {

@@ -683,7 +683,7 @@ IMPORTANT NAVIGATION RULES:
      * If checkbox is found but already checked, that's fine - just verify it's checked
    - Create button: button with text "Create" or "Save"
      * Use selector: button[type="submit"] with text "Create" or //button[contains(text(), 'Create')]
-     * Click this AFTER filling all fields and checking Individual Account checkbox
+     * Click this AFTER filling all fields, Account field, and clicking add (+) button
    
    FORM FILLING ORDER:
    1. Fill First Name (extract value from goal)

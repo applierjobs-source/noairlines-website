@@ -632,16 +632,16 @@ IMPORTANT NAVIGATION RULES:
 6. CONTACT FORM FIELDS (from screenshot analysis):
    - First Name: Look for input with label "First Name *" or placeholder containing "First Name"
      * Use selector: input[placeholder*="First Name" i] or input near label containing "First Name"
-     * Fill with: "${firstName}"
+     * Fill with the first name from the goal (extract from "First Name: [value]" in goal)
    - Last Name: Look for input with label "Last Name *" or placeholder containing "Last Name"
      * Use selector: input[placeholder*="Last Name" i] or input near label containing "Last Name"
-     * Fill with: "${lastName}"
+     * Fill with the last name from the goal (extract from "Last Name: [value]" in goal)
    - Primary Email: Look for input[type="email"] or input with label "Primary Email *"
      * Use selector: input[type="email"] or input[placeholder*="Primary Email" i]
-     * Fill with: "${itineraryData.email || ''}"
+     * Fill with the email from the goal (extract from "Email: [value]" in goal)
    - Primary Phone: Look for input[type="tel"] or input with label "Primary Phone"
      * Use selector: input[type="tel"] or input[placeholder*="Primary Phone" i]
-     * Fill with: "${itineraryData.phone || ''}"
+     * Fill with the phone from the goal (extract from "Phone: [value]" in goal)
    - Individual Account checkbox: input[type="checkbox"] near "Individual Account" text (REQUIRED - checking this bypasses the "Account *" required field)
      * MUST be checked before submitting
      * Use selector: input[type="checkbox"] near text "Individual Account" or label containing "Individual Account"
@@ -650,12 +650,14 @@ IMPORTANT NAVIGATION RULES:
      * Click this AFTER filling all fields and checking Individual Account checkbox
    
    FORM FILLING ORDER:
-   1. Fill First Name
-   2. Fill Last Name
-   3. Fill Primary Email
-   4. Fill Primary Phone (optional but recommended)
+   1. Fill First Name (extract value from goal)
+   2. Fill Last Name (extract value from goal)
+   3. Fill Primary Email (extract value from goal)
+   4. Fill Primary Phone (extract value from goal, optional but recommended)
    5. Check "Individual Account" checkbox (REQUIRED)
    6. Click "Create" button
+   
+   IMPORTANT: Extract the actual values from the GOAL string above. The goal contains "First Name: [value]", "Last Name: [value]", etc. Use those values.
 
 7. TIMING:
    - Wait 6+ seconds after navigating to login page for fields to load

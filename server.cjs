@@ -4879,9 +4879,11 @@ NoAirlines.com`;
   }
 });
 
-// Handle server errors
+// Handle server errors (set up before listening)
 server.on('error', (err) => {
   console.error('SERVER ERROR:', err);
+  console.error('Error code:', err.code);
+  console.error('Error message:', err.message);
   process.exit(1);
 });
 

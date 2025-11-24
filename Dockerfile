@@ -1,6 +1,22 @@
 # Use Node.js 18 Alpine image
 FROM node:18-alpine
 
+# Install Puppeteer dependencies for Chromium
+# These are required for Puppeteer to work in Alpine Linux
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    && rm -rf /var/cache/apk/*
+
+# Set Puppeteer to use installed Chromium instead of downloading
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Set working directory
 WORKDIR /app
 

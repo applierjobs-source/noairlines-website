@@ -648,7 +648,8 @@ IMPORTANT NAVIGATION RULES:
    - Look for "Add New Contact" button - it may be visible as a button or link
    - The button text might be "Add New Contact", "Add Contact", or "New Contact"
    - Use XPath for text matching: //button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add new contact')]
-   - Once form is open, you'll see: "First Name *", "Last Name *", "Primary Phone", "Primary Email *", "Individual Account" checkbox, and "Create" button
+   - Once form is open, you'll see: "First Name *", "Last Name *", "Primary Phone", "Primary Email *", "Account *" field (REQUIRED), and "Create" button
+   - NOTE: "Individual Account" checkbox is NOT required - ignore it completely
    - If you see these fields, you're in the right place - fill them and submit!
 
 6. CONTACT FORM FIELDS (from screenshot analysis):
@@ -664,7 +665,9 @@ IMPORTANT NAVIGATION RULES:
    - Primary Phone: Look for input[type="tel"] or input with label "Primary Phone"
      * Use selector: input[type="tel"] or input[placeholder*="Primary Phone" i]
      * Fill with the phone from the goal (extract from "Phone: [value]" in goal)
-   - Individual Account checkbox: input[type="checkbox"] near "Individual Account" text (REQUIRED - checking this bypasses the "Account *" required field)
+   - Account field: input or select with placeholder/label "Account *" (REQUIRED - fill with first name + last name)
+   - Add (+) button: button with "+" or "Add" text/icon (click after filling Account field)
+   - Individual Account checkbox: NOT REQUIRED - ignore it completely
      * MUST be checked before submitting - this is critical!
      * **SIMPLE SOLUTION FIRST**: The checkbox has id="individual-account" - use #individual-account or input[id="individual-account"]
      * This is a normal checkbox with a clear ID - don't overcomplicate it!
@@ -687,7 +690,8 @@ IMPORTANT NAVIGATION RULES:
    2. Fill Last Name (extract value from goal)
    3. Fill Primary Email (extract value from goal)
    4. Fill Primary Phone (extract value from goal, optional but recommended)
-   5. Check "Individual Account" checkbox (REQUIRED)
+   5. Fill "Account *" field with first name + last name (REQUIRED)
+   6. Click add (+) button (after filling Account field)
    6. Click "Create" button
    
    IMPORTANT: Extract the actual values from the GOAL string above. The goal contains "First Name: [value]", "Last Name: [value]", etc. Use those values.
@@ -1540,7 +1544,7 @@ Return JSON:
       // ============================================================
       // AI-POWERED AUTOMATION: Let AI figure out how to accomplish the goal
       // ============================================================
-      const mainGoal = `Login to ${TUVOLI_URL}, navigate to contact management, click "Add New Contact", fill in the form with First Name: "${firstName}", Last Name: "${lastName}", Email: "${itineraryData.email || ''}", Phone: "${itineraryData.phone || ''}", check "Individual Account" checkbox, and click "Create" to create a new contact.`;
+      const mainGoal = `Login to ${TUVOLI_URL}, navigate to contact management, click "Add New Contact", fill in the form with First Name: "${firstName}", Last Name: "${lastName}", Email: "${itineraryData.email || ''}", Phone: "${itineraryData.phone || ''}", fill Account field with "${firstName} ${lastName}", click add (+) button, and click "Create" to create a new contact.`;
       
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('🚀 STARTING AI-POWERED AUTOMATION');
@@ -3103,14 +3107,14 @@ Return JSON:
               messages: [
                 {
                   role: 'system',
-                  content: 'You are a web automation expert. Analyze this contact form screenshot and identify CSS selectors for: First Name, Last Name, Primary Email, Primary Phone, Individual Account checkbox, and Create button. Return JSON: {"firstName": "input...", "lastName": "input...", "email": "input...", "phone": "input...", "individualAccountCheckbox": "input[type=\'checkbox\']...", "createButton": "button..."}'
+                  content: 'You are a web automation expert. Analyze this contact form screenshot and identify CSS selectors for: First Name, Last Name, Primary Email, Primary Phone, Account field, add (+) button, and Create button. Return JSON: {"firstName": "input...", "lastName": "input...", "email": "input...", "phone": "input...", "accountField": "input...", "addButton": "button...", "createButton": "button..."}'
                 },
                 {
                   role: 'user',
                   content: [
                     {
                       type: 'text',
-                      text: 'Find the form fields: First Name *, Last Name *, Primary Email *, Primary Phone, Individual Account checkbox, and Create button. Return CSS selectors.'
+                      text: 'Find the form fields: First Name *, Last Name *, Primary Email *, Primary Phone, Account * field, add (+) button, and Create button. Return CSS selectors. Ignore Individual Account checkbox - it is not required.'
                     },
                     {
                       type: 'image_url',

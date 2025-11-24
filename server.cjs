@@ -235,43 +235,25 @@ const formatPrice = (price) => {
   return `$${price}`;
 };
 
-// Create contact in Tuvoli using browser automation (Puppeteer)
-// This approach doesn't require API access - it automates the Tuvoli website directly
+// Create contact in Tuvoli using n8n webhook automation
+// Sends webhook to n8n which handles Puppeteer browser automation
 const createTuvoliContact = async (itineraryData) => {
   try {
-    if (!TUVOLI_ENABLED || !TUVOLI_EMAIL || !TUVOLI_PASSWORD) {
-      console.log('Tuvoli automation not enabled. Contact data:', {
+    // Check if n8n webhook URL is configured
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+    if (!n8nWebhookUrl) {
+      console.log('N8N_WEBHOOK_URL not set, skipping Tuvoli automation. Contact data:', {
         name: itineraryData.name,
         email: itineraryData.email,
         phone: itineraryData.phone
       });
-      return { success: true, message: 'Tuvoli contact logged (automation not enabled)' };
-    }
-
-    // Check if Puppeteer is available
-    let puppeteer;
-    try {
-      puppeteer = require('puppeteer-core');
-    } catch (e) {
-      console.log('Puppeteer-core not installed. Install with: npm install puppeteer-core');
-      console.log('Contact data for manual entry:', {
-        name: itineraryData.name,
-        email: itineraryData.email,
-        phone: itineraryData.phone
-      });
-      return { success: false, error: 'Puppeteer-core not installed' };
+      return { success: false, error: 'N8N_WEBHOOK_URL not configured' };
     }
 
     // Parse name into first and last name
     const nameParts = (itineraryData.name || '').trim().split(' ');
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
-    
-    // Store credentials for AI to use (these will be referenced in the AI prompt)
-    const tuvoliCredentials = {
-      email: TUVOLI_EMAIL,
-      password: TUVOLI_PASSWORD
-    };
 
     // Extract airport codes for route
     const fromCode = extractAirportCode(itineraryData.from);
@@ -280,26 +262,53 @@ const createTuvoliContact = async (itineraryData) => {
       ? formatRouteDisplay(fromCode, toCode)
       : `${itineraryData.from} → ${itineraryData.to}`;
 
-    const notes = `Quote request from NoAirlines.com\nRoute: ${routeDisplay}\nDate: ${itineraryData.date} at ${itineraryData.time}\nPassengers: ${itineraryData.passengers}\nTrip Type: ${itineraryData.tripType || 'one-way'}${itineraryData.returnDate ? `\nReturn: ${itineraryData.returnDate} at ${itineraryData.returnTime}` : ''}`;
+    console.log('Sending webhook to n8n for Tuvoli contact creation...');
+    
+    // Send webhook to n8n
+    const response = await fetch(n8nWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        email: itineraryData.email || '',
+        phone: itineraryData.phone || '',
+        route: routeDisplay,
+        date: itineraryData.date || '',
+        time: itineraryData.time || '',
+        passengers: itineraryData.passengers || ''
+      }),
+      signal: AbortSignal.timeout(60000) // 60 second timeout
+    });
 
-    console.log('Launching browser to create Tuvoli contact...');
-    
-    // Determine executable path - use environment variable or default Alpine path
-    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
-    
-    console.log(`Using Chromium executable: ${executablePath}`);
-    
-    const browser = await puppeteer.launch({
-      headless: !TUVOLI_DEBUG, // Run in visible mode if debug is enabled
-      executablePath: executablePath,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
+    if (response.ok) {
+      const result = await response.json().catch(() => ({}));
+      console.log('✅ n8n webhook successful:', result);
+      return { success: true, message: 'Contact creation triggered in n8n', n8nResult: result };
+    } else {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`n8n webhook failed: ${response.status} - ${errorText}`);
+    }
+  } catch (error) {
+    console.error('Error triggering n8n workflow:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send SMS using Twilio
+const sendSMS = async (phoneNumber, message) => {
+  try {
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+      console.log('Twilio not configured. SMS message would be:', message);
+      return { success: true, message: 'SMS logged (Twilio not configured)' };
+    }
+
+    // Format phone number (ensure it starts with +)
+    let formattedPhone = phoneNumber.trim();
+    if (!formattedPhone.startsWith('+')) {
+      // Remove any non-digit characters except +
+      formattedPhone = formattedPhone.replace(/\D/g, '');
+      if (formattedPhone.length === 10) {
         '--disable-software-rasterizer',
         '--disable-extensions',
         '--disable-background-networking',
@@ -4704,10 +4713,7 @@ const server = http.createServer(async (req, res) => {
         // Send email
         const emailResult = await sendItineraryEmail(itineraryData);
         
-        // Create contact in Tuvoli via browser automation
-        // DISABLED: Tuvoli automation is currently paused - not working reliably
-        // To re-enable: Uncomment the code below and set TUVOLI_ENABLED=true in Railway
-        /*
+        // Create contact in Tuvoli via n8n webhook automation
         try {
           const tuvoliResult = await createTuvoliContact(itineraryData);
           console.log('Tuvoli contact creation result:', tuvoliResult);
@@ -4715,12 +4721,6 @@ const server = http.createServer(async (req, res) => {
           console.error('Error creating Tuvoli contact:', tuvoliError);
           // Don't fail the request if Tuvoli contact creation fails
         }
-        */
-        console.log('Tuvoli automation is disabled. Contact data logged:', {
-          name: itineraryData.name,
-          email: itineraryData.email,
-          phone: itineraryData.phone
-        });
         
         // Evaluate itinerary with AI and send SMS
         if (itineraryData.phone && itineraryData.name) {

@@ -3545,8 +3545,8 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       let addButtonClicked = false;
       
-      // Try various selectors for add button
-      const addButtonSelectors = [
+      // Try various selectors for add button (after Account field)
+      const addPlusButtonSelectors = [
         'button[aria-label*="add" i]',
         'button[title*="add" i]',
         'button:has-text("+")',
@@ -3558,7 +3558,7 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         'button[class*="add" i]'
       ];
       
-      for (const selector of addButtonSelectors) {
+      for (const selector of addPlusButtonSelectors) {
         try {
           const addButton = await page.$(selector);
           if (addButton) {

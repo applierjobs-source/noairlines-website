@@ -1003,8 +1003,29 @@ const createTuvoliContact = async (itineraryData) => {
         }
       }
       
+      // Try XPath for "Sign in" button text FIRST (most reliable since we know the text)
+      if (!submitButtonFound) {
+        console.log('Trying XPath to find "Sign in" button (prioritizing text match)...');
+        const xpathSelectors = [
+          "//button[normalize-space(text())='Sign in']", // Exact match
+          "//button[normalize-space(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'))='sign in']", // Case-insensitive exact
+          "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'sign in')]", // Contains "sign in"
+          "//button[starts-with(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'sign in')]", // Starts with "sign in"
+          "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'signin')]", // Contains "signin" (no space)
+        ];
+        
+        for (const xpath of xpathSelectors) {
+          submitButtonFound = await tryClickButton(xpath, 'XPath "Sign in"', true);
+          if (submitButtonFound) {
+            console.log(`✓ Found and clicked "Sign in" button using XPath`);
+            break;
+          }
+        }
+      }
+      
       // Fallback to traditional selectors with multiple strategies
       if (!submitButtonFound) {
+        console.log('XPath text matching failed, trying type-based selectors...');
         const loginSubmitSelectors = [
           'form button[type="submit"]', // More specific - button in form
           'button[type="submit"]', // Standard submit button
@@ -1023,22 +1044,19 @@ const createTuvoliContact = async (itineraryData) => {
         }
       }
       
-      // Try XPath for "Sign in" button text (case-insensitive)
+      // Additional XPath fallbacks for submit buttons
       if (!submitButtonFound) {
-        console.log('Trying XPath to find "Sign in" button...');
-        const xpathSelectors = [
-          "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'sign in')]",
-          "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'signin')]",
-          "//button[normalize-space(text())='Sign in']",
-          "//button[normalize-space(text())='Sign In']",
+        console.log('Trying additional XPath selectors for submit buttons...');
+        const additionalXpath = [
           "//input[@type='submit']",
-          "//button[@type='submit']"
+          "//button[@type='submit']",
+          "//form//button[@type='submit']"
         ];
         
-        for (const xpath of xpathSelectors) {
-          submitButtonFound = await tryClickButton(xpath, 'XPath', true);
+        for (const xpath of additionalXpath) {
+          submitButtonFound = await tryClickButton(xpath, 'XPath submit', true);
           if (submitButtonFound) {
-            console.log(`✓ Found and clicked button using XPath: ${xpath.substring(0, 50)}...`);
+            console.log(`✓ Found and clicked submit button using XPath`);
             break;
           }
         }
@@ -1064,19 +1082,36 @@ const createTuvoliContact = async (itineraryData) => {
           
           console.log('Available buttons on page:', JSON.stringify(buttonInfo, null, 2));
           
-          // Try to find the submit button
+          // Try to find the submit button - prioritize "Sign in" text
+          // First, look for buttons with "Sign in" text
           for (const btnInfo of buttonInfo) {
             if (btnInfo.isVisible && btnInfo.isEnabled && 
-                (btnInfo.type === 'submit' || 
-                 btnInfo.text.toLowerCase().includes('sign in') ||
-                 btnInfo.text.toLowerCase().includes('login'))) {
+                btnInfo.text.toLowerCase().includes('sign in')) {
               const selector = btnInfo.id ? `#${btnInfo.id}` : 
                               btnInfo.className ? `.${btnInfo.className.split(' ')[0]}` :
                               `${btnInfo.tagName.toLowerCase()}:nth-of-type(${btnInfo.index + 1})`;
-              submitButtonFound = await tryClickButton(selector, `Evaluated button: ${btnInfo.text}`);
+              submitButtonFound = await tryClickButton(selector, `Evaluated "Sign in" button: ${btnInfo.text}`);
               if (submitButtonFound) {
-                console.log(`✓ Clicked button found by evaluation: ${btnInfo.text}`);
+                console.log(`✓ Clicked "Sign in" button found by evaluation`);
                 break;
+              }
+            }
+          }
+          
+          // If "Sign in" not found, try other submit buttons
+          if (!submitButtonFound) {
+            for (const btnInfo of buttonInfo) {
+              if (btnInfo.isVisible && btnInfo.isEnabled && 
+                  (btnInfo.type === 'submit' || 
+                   btnInfo.text.toLowerCase().includes('login'))) {
+                const selector = btnInfo.id ? `#${btnInfo.id}` : 
+                                btnInfo.className ? `.${btnInfo.className.split(' ')[0]}` :
+                                `${btnInfo.tagName.toLowerCase()}:nth-of-type(${btnInfo.index + 1})`;
+                submitButtonFound = await tryClickButton(selector, `Evaluated button: ${btnInfo.text}`);
+                if (submitButtonFound) {
+                  console.log(`✓ Clicked button found by evaluation: ${btnInfo.text}`);
+                  break;
+                }
               }
             }
           }

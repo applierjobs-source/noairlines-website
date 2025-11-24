@@ -548,6 +548,187 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
         }
       };
       
+      // Investigation function: Analyze problems and try alternative solutions
+      const investigateAndRetry = async (failedAction = null) => {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔍 INVESTIGATION MODE: Analyzing problem and trying solutions');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        try {
+          // Get detailed page state for investigation
+          const investigationState = await page.evaluate(() => {
+            return {
+              url: window.location.href,
+              title: document.title,
+              readyState: document.readyState,
+              hasLoginForm: !!document.querySelector('input[type="password"]'),
+              hasContactForm: document.body?.innerText?.toLowerCase().includes('first name') || false,
+              allInputs: Array.from(document.querySelectorAll('input')).map(input => ({
+                type: input.type,
+                placeholder: input.placeholder || '',
+                name: input.name || '',
+                id: input.id || '',
+                visible: input.offsetParent !== null,
+                value: input.value || ''
+              })),
+              allButtons: Array.from(document.querySelectorAll('button, a[role="button"]')).map(btn => ({
+                text: btn.innerText?.trim() || btn.textContent?.trim() || '',
+                visible: btn.offsetParent !== null,
+                type: btn.type || '',
+                className: btn.className || '',
+                id: btn.id || ''
+              })),
+              bodyText: document.body?.innerText?.substring(0, 500) || '',
+              errorMessages: Array.from(document.querySelectorAll('[class*="error" i], [id*="error" i]')).map(el => el.textContent?.trim()).filter(t => t)
+            };
+          });
+          
+          console.log('Investigation State:', JSON.stringify(investigationState, null, 2));
+          
+          // Use AI to investigate the problem
+          if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
+            const investigationScreenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
+            
+            const investigationPrompt = `You are troubleshooting a web automation issue. Analyze the current state and determine what went wrong and how to fix it.
+
+CURRENT STATE:
+${JSON.stringify(investigationState, null, 2)}
+
+${failedAction ? `FAILED ACTION: ${JSON.stringify(failedAction, null, 2)}` : 'NO ACTION RETURNED FROM AI'}
+
+GOAL: ${mainGoal}
+
+Investigate:
+1. What is the current state of the page?
+2. What should be visible but isn't?
+3. What went wrong with the previous action (if any)?
+4. What alternative approaches could work?
+
+Return JSON:
+{
+  "problem": "Description of the problem",
+  "solution": "What to try next",
+  "action": "click" | "type" | "navigate" | "wait" | "retry",
+  "selector": "CSS selector or XPath",
+  "text": "Text to type (if action is type)",
+  "url": "URL to navigate to (if action is navigate)",
+  "waitTime": "Milliseconds (if action is wait)",
+  "alternativeStrategies": ["List of alternative approaches to try"]
+}`;
+
+            const investigationResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o',
+                messages: [
+                  {
+                    role: 'system',
+                    content: 'You are a web automation troubleshooting expert. Analyze problems and suggest concrete solutions with specific selectors and actions.'
+                  },
+                  {
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'text',
+                        text: investigationPrompt
+                      },
+                      {
+                        type: 'image_url',
+                        image_url: {
+                          url: `data:image/png;base64,${investigationScreenshot}`
+                        }
+                      }
+                    ]
+                  }
+                ],
+                max_tokens: 1000,
+                temperature: 0.5
+              })
+            });
+
+            if (investigationResponse.ok) {
+              const invData = await investigationResponse.json();
+              const invContent = invData.choices[0]?.message?.content || '';
+              const invJsonMatch = invContent.match(/\{[\s\S]*\}/);
+              
+              if (invJsonMatch) {
+                const investigationResult = JSON.parse(invJsonMatch[0]);
+                console.log('🔍 Investigation Result:');
+                console.log(`  Problem: ${investigationResult.problem}`);
+                console.log(`  Solution: ${investigationResult.solution}`);
+                console.log(`  Action: ${investigationResult.action}`);
+                if (investigationResult.alternativeStrategies) {
+                  console.log(`  Alternative Strategies: ${investigationResult.alternativeStrategies.join(', ')}`);
+                }
+                
+                // Try the suggested solution
+                if (investigationResult.action && investigationResult.action !== 'retry') {
+                  const solutionAction = {
+                    action: investigationResult.action,
+                    selector: investigationResult.selector,
+                    text: investigationResult.text,
+                    url: investigationResult.url,
+                    waitTime: investigationResult.waitTime
+                  };
+                  
+                  console.log('🔧 Attempting suggested solution...');
+                  const solutionSuccess = await executeAIAction(solutionAction);
+                  if (solutionSuccess) {
+                    console.log('✅ Investigation solution worked!');
+                    return true;
+                  } else {
+                    console.log('⚠ Investigation solution did not work, will try alternatives...');
+                  }
+                }
+                
+                // Try alternative strategies if provided
+                if (investigationResult.alternativeStrategies && investigationResult.alternativeStrategies.length > 0) {
+                  console.log('🔧 Trying alternative strategies...');
+                  for (const strategy of investigationResult.alternativeStrategies.slice(0, 2)) { // Try first 2 alternatives
+                    console.log(`  Trying: ${strategy}`);
+                    // Could parse strategy and try it, but for now just log it
+                    await delay(2000);
+                  }
+                }
+              }
+            }
+          }
+          
+          // Fallback: Try common fixes
+          console.log('🔧 Trying common fixes...');
+          
+          // If on login page but no fields, wait longer
+          if (investigationState.url.includes('/login') && !investigationState.hasLoginForm) {
+            console.log('  → On login page but no fields, waiting 8 seconds...');
+            await delay(8000);
+            await saveScreenshot('after-investigation-wait');
+            return true; // Indicate we tried something
+          }
+          
+          // If fields exist but aren't visible, try scrolling
+          if (investigationState.allInputs.length > 0) {
+            console.log('  → Inputs found, trying to scroll to them...');
+            await page.evaluate(() => {
+              const firstInput = document.querySelector('input[type="password"], input[placeholder*="Username" i], input[placeholder*="Email" i]');
+              if (firstInput) {
+                firstInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            });
+            await delay(2000);
+            return true;
+          }
+          
+          return false; // Investigation didn't find a solution
+        } catch (e) {
+          console.log(`✗ Investigation failed: ${e.message}`);
+          return false;
+        }
+      };
+      
       // Execute AI-determined action
       const executeAIAction = async (actionPlan) => {
         if (!actionPlan) return false;
@@ -751,9 +932,10 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
           const actionPlan = await aiReasonNextAction(mainGoal, {});
           
           if (!actionPlan) {
-            console.log('⚠ AI could not determine next action, falling back to manual approach');
-            aiGuidedMode = false;
-            break;
+            console.log('⚠ AI could not determine next action, investigating...');
+            // Investigation phase: Analyze what's wrong and try to fix it
+            await investigateAndRetry();
+            continue;
           }
           
           if (actionPlan.isComplete) {
@@ -772,10 +954,16 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
           
           const success = await executeAIAction(actionPlan);
           
-          if (!success && actionPlan.action === 'error') {
-            console.log('⚠ AI reported an error, falling back to manual approach');
-            aiGuidedMode = false;
-            break;
+          if (!success) {
+            console.log('⚠ Action failed, investigating and retrying...');
+            // Investigation phase: Analyze why action failed and try alternative
+            const investigationResult = await investigateAndRetry(actionPlan);
+            if (!investigationResult) {
+              console.log('⚠ Investigation did not resolve the issue, but continuing...');
+              // Don't break - let AI try more approaches
+            }
+            // Continue the loop to let AI try again
+            continue;
           }
           
           // Small delay between actions
@@ -783,8 +971,21 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
         }
         
         if (aiAttempts >= maxAIAttempts) {
-          console.log('⚠ Reached maximum AI attempts, falling back to manual approach');
-          aiGuidedMode = false;
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('⚠ Reached maximum AI attempts');
+          console.log('🔍 Performing final investigation before fallback...');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          
+          // Final investigation attempt
+          const finalInvestigation = await investigateAndRetry();
+          if (!finalInvestigation) {
+            console.log('⚠ Final investigation did not resolve issues, falling back to manual approach');
+            aiGuidedMode = false;
+          } else {
+            console.log('✅ Final investigation found a solution, continuing AI mode...');
+            // Reset attempt counter to give it more chances
+            aiAttempts = Math.max(0, aiAttempts - 5);
+          }
         }
       }
       

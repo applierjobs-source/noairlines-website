@@ -1252,6 +1252,8 @@ const createTuvoliContact = async (itineraryData) => {
       }
       
       // Check if we're still on login page
+      console.log(`Current URL after login attempt: ${currentUrl}`);
+      
       if (currentUrl.includes('/login')) {
         // Check if there are any success indicators or if page content changed
         const pageContent = await page.evaluate(() => {
@@ -1260,7 +1262,8 @@ const createTuvoliContact = async (itineraryData) => {
             hasLoginForm: !!document.querySelector('input[type="password"]'),
             hasDashboard: !!document.querySelector('[class*="dashboard" i], [id*="dashboard" i]'),
             bodyText: document.body?.innerText?.substring(0, 200) || '',
-            url: window.location.href
+            url: window.location.href,
+            allLinks: Array.from(document.querySelectorAll('a')).map(a => a.href).slice(0, 5)
           };
         });
         
@@ -1268,16 +1271,17 @@ const createTuvoliContact = async (itineraryData) => {
         
         // If login form is gone, we might have logged in successfully
         if (!pageContent.hasLoginForm) {
-          console.log('Login form disappeared - login likely successful!');
+          console.log('✓ Login form disappeared - login likely successful!');
           // Try navigating away from login page
           console.log('Attempting to navigate to home/dashboard...');
           try {
             await page.goto(`${TUVOLI_URL}/home`, { waitUntil: 'networkidle2', timeout: 30000 });
             await delay(2000);
             currentUrl = page.url();
-            console.log(`Navigated to: ${currentUrl}`);
+            console.log(`✓ Navigated to: ${currentUrl}`);
+            await saveScreenshot('after-navigate-to-home');
           } catch (e) {
-            console.log('Navigation to /home failed, will try contact-management directly');
+            console.log(`⚠ Navigation to /home failed: ${e.message}, will try contact-management directly`);
           }
         } else if (errorMessage) {
           throw new Error(`Login failed: ${errorMessage}`);
@@ -1286,47 +1290,74 @@ const createTuvoliContact = async (itineraryData) => {
           console.log('Still on login page, waiting a bit more for login to process...');
           await delay(5000);
           currentUrl = page.url();
+          console.log(`URL after additional wait: ${currentUrl}`);
           
           if (currentUrl.includes('/login')) {
             // Check one more time if form is gone
             const stillHasForm = await page.evaluate(() => !!document.querySelector('input[type="password"]'));
             if (!stillHasForm) {
-              console.log('Login form disappeared after additional wait - login successful!');
+              console.log('✓ Login form disappeared after additional wait - login successful!');
             } else {
               throw new Error('Still on login page after login attempt - login may have failed');
             }
           }
         }
+      } else {
+        console.log(`✓ Not on login page anymore, current URL: ${currentUrl}`);
       }
       
-      console.log('Logged into Tuvoli successfully');
+      console.log('✓ Logged into Tuvoli successfully');
       await saveScreenshot('after-login');
+      
+      // Get final URL before navigation
+      const finalUrlBeforeNav = page.url();
+      console.log(`Current URL before navigating to contact-management: ${finalUrlBeforeNav}`);
       
       // Wait a moment for the page to fully load after login
       await delay(3000);
 
       // Navigate to contact management page - MUST be on noairlines.tuvoli.com/contact-management
-      console.log('Navigating to contact management: https://noairlines.tuvoli.com/contact-management');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('STEP: Navigating to contact management');
+      console.log(`Target URL: ${TUVOLI_URL}/contact-management`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
       let contactPageLoaded = false;
       
       try {
+        console.log('Attempting navigation with networkidle2...');
         await page.goto(`${TUVOLI_URL}/contact-management`, { waitUntil: 'networkidle2', timeout: 60000 });
+        await delay(2000); // Give it time to fully load
         const contactUrl = page.url();
-        console.log(`After navigation, URL: ${contactUrl}`);
+        console.log(`✓ After navigation, current URL: ${contactUrl}`);
+        await saveScreenshot('after-navigate-to-contact-management');
         
         if (contactUrl.includes('contact-management') || contactUrl.includes('contacts')) {
           contactPageLoaded = true;
-          console.log('✓ Successfully navigated to contact management');
+          console.log('✓ Successfully navigated to contact management page');
         } else {
-          console.log('⚠ Not on contact management page, current URL:', contactUrl);
+          console.log(`⚠ Not on contact management page! Current URL: ${contactUrl}`);
+          console.log('Checking page content...');
+          const pageInfo = await page.evaluate(() => {
+            return {
+              title: document.title,
+              url: window.location.href,
+              hasContactManagement: document.body?.innerText?.toLowerCase().includes('contact') || false,
+              bodyPreview: document.body?.innerText?.substring(0, 300) || ''
+            };
+          });
+          console.log('Page info:', JSON.stringify(pageInfo, null, 2));
         }
       } catch (e) {
-        console.log(`Navigation to contact-management failed: ${e.message}`);
+        console.log(`✗ Navigation to contact-management failed: ${e.message}`);
+        console.log(`Error stack: ${e.stack}`);
       }
       
       if (!contactPageLoaded) {
         // Try alternative URLs
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('Trying alternative contact management URLs...');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         const altUrls = [
           `${TUVOLI_URL}/contact-management`,
           `${TUVOLI_URL}/contacts`,
@@ -1334,17 +1365,25 @@ const createTuvoliContact = async (itineraryData) => {
         ];
         for (const url of altUrls) {
           try {
+            console.log(`Trying: ${url}`);
             await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
             await delay(2000);
             const altUrl = page.url();
-            console.log(`Tried ${url}, current URL: ${altUrl}`);
+            console.log(`  → Result URL: ${altUrl}`);
             if (altUrl.includes('contact-management') || altUrl.includes('contacts')) {
               contactPageLoaded = true;
+              console.log(`✓ Successfully reached contact management via: ${url}`);
               break;
             }
           } catch (altError) {
+            console.log(`  ✗ Failed: ${altError.message}`);
             continue;
           }
+        }
+        
+        if (!contactPageLoaded) {
+          console.log('⚠ Could not reach contact management page. Current URL:', page.url());
+          throw new Error('Failed to navigate to contact management page');
         }
       }
 

@@ -1792,7 +1792,35 @@ Return JSON:
           if (actionPlan.isComplete) {
             console.log('✅ AI reports goal is complete!');
             await saveScreenshot('ai-complete');
-            break;
+            
+            // Verify contact was actually created before exiting
+            console.log('🔍 Verifying contact creation...');
+            await delay(3000); // Wait for form submission to process
+            const verification = await page.evaluate((contactFirstName, contactLastName) => {
+              const bodyText = document.body?.innerText?.toLowerCase() || '';
+              const contactName = `${contactFirstName} ${contactLastName}`.toLowerCase();
+              const nameInList = bodyText.includes(contactName);
+              const hasForm = !!document.querySelector('input[name*="first" i], input[id*="first-name" i]');
+              const hasModal = !!document.querySelector('[role="dialog"], .modal, [class*="modal" i]');
+              
+              return {
+                nameInList: nameInList,
+                formStillOpen: hasForm,
+                modalStillOpen: hasModal,
+                url: window.location.href
+              };
+            }, firstName, lastName);
+            
+            console.log('Verification result:', JSON.stringify(verification, null, 2));
+            
+            if (verification.nameInList || (!verification.formStillOpen && !verification.modalStillOpen)) {
+              console.log('✅✅✅ Contact creation verified - exiting AI mode ✅✅✅');
+              aiGuidedMode = false; // Mark as complete so we don't fall back to manual
+              break;
+            } else {
+              console.log('⚠ Contact creation not verified - continuing AI mode...');
+              // Don't break, let AI continue
+            }
           }
           
           // If AI keeps trying to navigate to the same URL, force it to wait instead
@@ -2004,11 +2032,35 @@ Return JSON:
         }
       }
       
+      // If AI-guided mode completed successfully, exit early
+      if (aiGuidedMode === false && aiAttempts < maxAIAttempts) {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('✅ AI-GUIDED MODE COMPLETED SUCCESSFULLY');
+        console.log('✅ Contact creation verified - skipping manual fallback');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        await browser.close();
+        return { success: true, message: 'Contact created in Tuvoli via AI-guided automation' };
+      }
+      
       // If AI-guided mode didn't complete, fall back to manual approach
       if (!aiGuidedMode || aiAttempts >= maxAIAttempts) {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('📋 FALLING BACK TO MANUAL AUTOMATION');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        // Check if already logged in before trying to login
+        const currentUrl = page.url();
+        const isAlreadyLoggedIn = !currentUrl.includes('/login') && 
+                                 (currentUrl.includes('noairlines.tuvoli.com') || 
+                                  currentUrl.includes('tuvoli.com'));
+        
+        if (isAlreadyLoggedIn) {
+          console.log(`✓ Already logged in (current URL: ${currentUrl})`);
+          console.log('Skipping login, proceeding directly to contact management...');
+          // Skip login and go directly to contact management
+        } else {
+          // Proceed with login
+        }
       }
 
         // AI-powered smart waiting: Check if page is ready using AI
@@ -2078,7 +2130,17 @@ Return JSON:
       // Navigate to Tuvoli login page - MUST be on noairlines.tuvoli.com
       // The login form only exists on the subdomain, not on tuvoli.com
       const loginUrl = `${TUVOLI_URL}/login?returnURL=%2Fhome`;
-      console.log(`Attempting to access subdomain login: ${loginUrl}`);
+      // Check if already logged in before attempting login
+      const checkUrl = page.url();
+      const alreadyLoggedIn = !checkUrl.includes('/login') && 
+                             (checkUrl.includes('noairlines.tuvoli.com') || 
+                              checkUrl.includes('tuvoli.com'));
+      
+      if (alreadyLoggedIn) {
+        console.log(`✓ Already logged in - current URL: ${checkUrl}`);
+        console.log('Skipping login, proceeding to contact management...');
+      } else {
+        console.log(`Attempting to access subdomain login: ${loginUrl}`);
       
       // Strategy 1: Try with response interception to prevent redirects
       let navigationSuccess = false;

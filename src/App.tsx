@@ -94,7 +94,8 @@ function NoAirlinesBooking() {
   const [tripType, setTripType] = useState<TripType>(null)
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
-  const [name, setName] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [returnDate, setReturnDate] = useState("")
   const [returnTime, setReturnTime] = useState("")
   const [fromSuggestions, setFromSuggestions] = useState<Airport[]>([])
@@ -151,7 +152,7 @@ function NoAirlinesBooking() {
 
   const handleBookNow = (quote: CharterQuote) => {
     setSelectedQuote(quote)
-    setStep(13)
+    setStep(14)
   }
 
   // Calculate flight time based on route and aircraft type
@@ -266,6 +267,7 @@ function NoAirlinesBooking() {
   }
 
   const handleSubmit = async () => {
+    const name = `${firstName} ${lastName}`.trim()
     const itineraryData = {
       from: fromLocation,
       to: toLocation,
@@ -356,7 +358,7 @@ function NoAirlinesBooking() {
       
       setQuotes(mockQuotes)
       setLoadingQuotes(false)
-      setStep(12)
+      setStep(13)
     }, 1500) // 1.5 second loading delay
   }
 
@@ -730,7 +732,7 @@ function NoAirlinesBooking() {
 
   // Fire Google Ads conversion event when user reaches confirmation step
   useEffect(() => {
-    if (step === 13 && typeof window !== "undefined" && typeof window.gtag === "function") {
+    if (step === 14 && typeof window !== "undefined" && typeof window.gtag === "function") {
       window.gtag("event", "conversion", {
         send_to: "AW-17710035997/ESHYCLzZsrsbEJ3o5vxB",
         value: 1.0,
@@ -782,7 +784,7 @@ function NoAirlinesBooking() {
           {/* Progress Bar - Only show when booking form is visible */}
           {showBookingForm && (
             <div className="mt-6">
-              <JetProgressBar step={step} totalSteps={13} />
+              <JetProgressBar step={step} totalSteps={14} />
             </div>
           )}
         </div>
@@ -1329,7 +1331,7 @@ function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 10: Name */}
+            {/* Step 10: First Name */}
             {step === 10 && (
               <motion.div
                 key="step10"
@@ -1343,15 +1345,15 @@ function NoAirlinesBooking() {
                 <div className="text-center space-y-4">
                   <Users className="h-16 w-16 mx-auto text-blue-600" />
                   <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
-                    What's your name?
+                    What's your first name?
                   </h1>
                 </div>
                 <div className="space-y-4">
                   <Input
                     type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your full name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Enter your first name"
                     className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
                     autoFocus
                   />
@@ -1364,7 +1366,7 @@ function NoAirlinesBooking() {
                     </Button>
                     <Button
                       onClick={nextStep}
-                      disabled={!name.trim()}
+                      disabled={!firstName.trim()}
                       className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Continue <ArrowRight className="ml-2 h-5 w-5" />
@@ -1374,8 +1376,53 @@ function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 11: Summary */}
+            {/* Step 11: Last Name */}
             {step === 11 && (
+              <motion.div
+                key="step11"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="space-y-8"
+              >
+                <div className="text-center space-y-4">
+                  <Users className="h-16 w-16 mx-auto text-blue-600" />
+                  <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+                    What's your last name?
+                  </h1>
+                </div>
+                <div className="space-y-4">
+                  <Input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Enter your last name"
+                    className="h-14 text-lg bg-white border-zinc-300 text-black placeholder:text-zinc-500"
+                    autoFocus
+                  />
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={prevStep}
+                      className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
+                    >
+                      <ArrowLeft className="mr-2 h-5 w-5" /> Back
+                    </Button>
+                    <Button
+                      onClick={nextStep}
+                      disabled={!lastName.trim()}
+                      className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Continue <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 12: Summary */}
+            {step === 12 && (
               <motion.div
                 key="step8"
                 variants={pageVariants}
@@ -1422,7 +1469,7 @@ function NoAirlinesBooking() {
                     </div>
                     <div>
                       <div className="text-sm text-zinc-600">Contact</div>
-                      <div className="text-lg font-semibold">{name}</div>
+                      <div className="text-lg font-semibold">{firstName} {lastName}</div>
                       <div className="text-sm text-zinc-600">{email}</div>
                       <div className="text-sm text-zinc-600">{phone}</div>
                     </div>
@@ -1446,8 +1493,8 @@ function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 12: Charter Quotes */}
-            {step === 12 && (
+            {/* Step 13: Charter Quotes */}
+            {step === 13 && (
               <motion.div
                 key="step10"
                 variants={pageVariants}
@@ -1578,8 +1625,8 @@ function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 13: Thank You Page */}
-            {step === 13 && (
+            {/* Step 14: Thank You Page */}
+            {step === 14 && (
               <motion.div
                 key="step11"
                 variants={pageVariants}

@@ -23,6 +23,7 @@ const TUVOLI_ENABLED = process.env.TUVOLI_ENABLED === 'true' || false;
 const TUVOLI_EMAIL = process.env.TUVOLI_EMAIL || '';
 const TUVOLI_PASSWORD = process.env.TUVOLI_PASSWORD || '';
 const TUVOLI_URL = process.env.TUVOLI_URL || 'https://noairlines.tuvoli.com';
+const TUVOLI_DEBUG = process.env.TUVOLI_DEBUG === 'true' || false; // Set to true to see browser in action
 
 console.log('========================================');
 console.log('Starting NoAirlines server...');
@@ -283,7 +284,7 @@ const createTuvoliContact = async (itineraryData) => {
     console.log(`Using Chromium executable: ${executablePath}`);
     
     const browser = await puppeteer.launch({
-      headless: true,
+      headless: !TUVOLI_DEBUG, // Run in visible mode if debug is enabled
       executablePath: executablePath,
       args: [
         '--no-sandbox',
@@ -328,6 +329,21 @@ const createTuvoliContact = async (itineraryData) => {
       
       const page = await browser.newPage();
       await page.setViewport({ width: 1280, height: 720 });
+      
+      // Helper to save screenshots for debugging
+      const saveScreenshot = async (name) => {
+        if (TUVOLI_DEBUG) {
+          try {
+            const screenshot = await page.screenshot({ 
+              path: `/tmp/tuvoli-${name}-${Date.now()}.png`,
+              fullPage: false 
+            });
+            console.log(`📸 Screenshot saved: tuvoli-${name}-${Date.now()}.png`);
+          } catch (e) {
+            console.log(`Could not save screenshot: ${e.message}`);
+          }
+        }
+      };
       
       // Set longer timeouts for page operations
       page.setDefaultNavigationTimeout(60000);
@@ -590,6 +606,7 @@ const createTuvoliContact = async (itineraryData) => {
 
       // Use AI vision to actually see the page and find login elements
       console.log('Using AI vision to analyze the page...');
+      await saveScreenshot('login-page');
       const screenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
       
       if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
@@ -1283,6 +1300,7 @@ const createTuvoliContact = async (itineraryData) => {
       }
       
       console.log('Logged into Tuvoli successfully');
+      await saveScreenshot('after-login');
       
       // Wait a moment for the page to fully load after login
       await delay(3000);
@@ -1334,6 +1352,7 @@ const createTuvoliContact = async (itineraryData) => {
       await waitForPageReady(page, 'contact management page');
       
       // Take screenshot to verify we're on the right page
+      await saveScreenshot('contact-management-page');
       const contactPageScreenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
       console.log('Contact management page loaded, looking for "Add New Contact" button...');
 
@@ -1479,6 +1498,7 @@ const createTuvoliContact = async (itineraryData) => {
       // Wait for modal/form to be fully loaded
       console.log('Waiting for contact form to load...');
       await delay(3000);
+      await saveScreenshot('contact-form-opened');
       
       // Use AI Vision to analyze the contact form
       console.log('Using AI Vision to analyze contact form...');
@@ -1670,6 +1690,7 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
 
       // Fill in contact form using AI Vision selectors first, then AI-determined, then fallback
       console.log('Filling contact form...');
+      await saveScreenshot('before-filling-form');
       
       const fillField = async (selectors, value, fieldName) => {
         if (!value) {
@@ -1860,6 +1881,7 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
 
       // Submit the form - look for "Create" button
       console.log('Submitting contact form...');
+      await saveScreenshot('before-submit');
       let submitted = false;
       
       // Try AI Vision selector first
@@ -1926,6 +1948,7 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       // Wait for form submission and check for success
       console.log('Waiting for contact creation to complete...');
       await delay(5000);
+      await saveScreenshot('after-submit');
       
       // Check if contact was created successfully
       const successCheck = await page.evaluate(() => {
@@ -1962,6 +1985,13 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       }
       
       console.log('Contact creation process completed');
+      await saveScreenshot('final-state');
+
+      if (TUVOLI_DEBUG) {
+        console.log('🔍 DEBUG MODE: Keeping browser open for 30 seconds so you can see the result...');
+        console.log('🔍 Set TUVOLI_DEBUG=false in Railway to run headless in production.');
+        await delay(30000); // Keep browser open for 30 seconds in debug mode
+      }
 
       await browser.close();
       return { success: true, message: 'Contact created in Tuvoli via browser automation' };

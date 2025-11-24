@@ -1777,6 +1777,11 @@ Return JSON:
                 // Add context that navigation is failing
               }
             }
+          } else if (isOnContactManagement) {
+            // We're already on contact management page - don't treat as navigation loop
+            console.log(`✓ Already on contact management page (${currentUrl}) with form open - no navigation needed`);
+            // Clear navigation attempts for this URL since we're already there
+            navigationAttempts.delete(currentUrl);
           } else {
             // URL changed, reset counters for old URL
             if (lastUrl) {

@@ -666,19 +666,18 @@ IMPORTANT NAVIGATION RULES:
      * Fill with the phone from the goal (extract from "Phone: [value]" in goal)
    - Individual Account checkbox: input[type="checkbox"] near "Individual Account" text (REQUIRED - checking this bypasses the "Account *" required field)
      * MUST be checked before submitting - this is critical!
-     * The checkbox might be:
-       - Inside a label with text "Individual Account"
-       - Next to text "Individual Account" 
-       - Has id/name containing "individual" or "account"
+     * **SIMPLE SOLUTION FIRST**: The checkbox has id="individual-account" - use #individual-account or input[id="individual-account"]
+     * This is a normal checkbox with a clear ID - don't overcomplicate it!
      * Try these selectors in order:
-       1. label:has-text("Individual Account") input[type="checkbox"]
-       2. //label[contains(text(), 'Individual Account')]//input[@type='checkbox']
-       3. input[type="checkbox"][id*="individual" i]
-       4. input[type="checkbox"][name*="individual" i]
-       5. //input[@type='checkbox'][following-sibling::text()[contains(., 'Individual Account')]]
-       6. Look for checkbox near any text containing "Individual Account" - use XPath to find it
+       1. #individual-account (SIMPLE - this should work!)
+       2. input[id="individual-account"]
+       3. input[type="checkbox"][id="individual-account"]
+       4. label:has-text("Individual Account") input[type="checkbox"]
+       5. //label[contains(text(), 'Individual Account')]//input[@type='checkbox']
+       6. input[type="checkbox"][id*="individual" i]
+       7. JavaScript search if above don't work
+     * If checkbox is found but not visible, force visibility with CSS, then click
      * If checkbox is found but already checked, that's fine - just verify it's checked
-     * If you can't find it, look for ANY checkbox on the form and check if its label contains "Individual" or "Account"
    - Create button: button with text "Create" or "Save"
      * Use selector: button[type="submit"] with text "Create" or //button[contains(text(), 'Create')]
      * Click this AFTER filling all fields and checking Individual Account checkbox
@@ -3437,6 +3436,51 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       console.log('Checking Individual Account checkbox (REQUIRED)...');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       let checkboxChecked = false;
+      
+      // Strategy 0: SIMPLE ID SELECTOR (should work - checkbox has id="individual-account")
+      try {
+        console.log('Trying simple ID selector: #individual-account');
+        const checkbox = await page.$('#individual-account');
+        if (checkbox) {
+          // Check if it's visible, if not, make it visible
+          const isVisible = await page.evaluate((cb) => {
+            const style = window.getComputedStyle(cb);
+            return style.display !== 'none' && style.visibility !== 'hidden' && cb.offsetParent !== null;
+          }, checkbox);
+          
+          if (!isVisible) {
+            console.log('Checkbox exists but not visible, forcing visibility...');
+            await page.evaluate(() => {
+              const cb = document.getElementById('individual-account');
+              if (cb) {
+                cb.style.display = 'block';
+                cb.style.visibility = 'visible';
+                cb.style.opacity = '1';
+                cb.scrollIntoView({ behavior: 'instant', block: 'center' });
+              }
+            });
+            await delay(500);
+          }
+          
+          const isChecked = await page.evaluate((cb) => cb.checked, checkbox);
+          if (!isChecked) {
+            await checkbox.click();
+            console.log('✓ Checked Individual Account checkbox using simple ID selector: #individual-account');
+            checkboxChecked = true;
+            
+            // Update knowledge base
+            if (!reasoningMemory.workingSelectors['individualaccount']) {
+              reasoningMemory.workingSelectors['individualaccount'] = '#individual-account';
+              console.log('🧠 Knowledge Base Update: Individual Account checkbox selector: #individual-account');
+            }
+          } else {
+            console.log('✓ Individual Account checkbox already checked (ID selector)');
+            checkboxChecked = true;
+          }
+        }
+      } catch (e) {
+        console.log(`ID selector failed: ${e.message}, trying other strategies...`);
+      }
       
       // Strategy 1: AI Vision selector
       if (visionFormSelectors && visionFormSelectors.individualAccountCheckbox) {

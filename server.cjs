@@ -1342,13 +1342,97 @@ const createTuvoliContact = async (itineraryData) => {
         await delay(2000);
       }
 
+      // Wait for modal/form to be fully loaded
+      console.log('Waiting for contact form to load...');
+      await delay(3000);
+      
+      // Use AI Vision to analyze the contact form
+      console.log('Using AI Vision to analyze contact form...');
+      const formScreenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
+      let visionFormSelectors = null;
+      
+      if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
+        try {
+          const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a web automation expert. Analyze this contact form screenshot and identify CSS selectors for: First Name, Last Name, Primary Email, Primary Phone, Individual Account checkbox, and Create button. Return JSON: {"firstName": "input...", "lastName": "input...", "email": "input...", "phone": "input...", "individualAccountCheckbox": "input[type=\'checkbox\']...", "createButton": "button..."}'
+                },
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: 'Find the form fields: First Name *, Last Name *, Primary Email *, Primary Phone, Individual Account checkbox, and Create button. Return CSS selectors.'
+                    },
+                    {
+                      type: 'image_url',
+                      image_url: {
+                        url: `data:image/png;base64,${formScreenshot}`
+                      }
+                    }
+                  ]
+                }
+              ],
+              max_tokens: 400
+            })
+          });
+
+          if (visionResponse.ok) {
+            const visionData = await visionResponse.json();
+            const visionContent = visionData.choices[0]?.message?.content;
+            const visionJsonMatch = visionContent.match(/\{[\s\S]*\}/);
+            if (visionJsonMatch) {
+              visionFormSelectors = JSON.parse(visionJsonMatch[0]);
+              console.log('AI Vision found form selectors:', visionFormSelectors);
+            }
+          }
+        } catch (e) {
+          console.log('AI Vision form analysis failed:', e.message);
+        }
+      }
+
       // Use AI to analyze the page and find form fields dynamically
       console.log('Using AI to analyze form structure...');
       const formHTML = await page.evaluate(() => {
-        // Get all form elements and their attributes
+        // Get all form elements and their attributes, including labels
         const forms = Array.from(document.querySelectorAll('form'));
         const inputs = Array.from(document.querySelectorAll('input, textarea, select'));
         const buttons = Array.from(document.querySelectorAll('button, input[type="submit"]'));
+        
+        // Get labels for each input
+        const getLabelForInput = (input) => {
+          // Try label[for] attribute
+          if (input.id) {
+            const label = document.querySelector(`label[for="${input.id}"]`);
+            if (label) return label.textContent?.trim() || '';
+          }
+          // Try parent label
+          let parent = input.parentElement;
+          while (parent && parent.tagName !== 'BODY') {
+            if (parent.tagName === 'LABEL') {
+              return parent.textContent?.trim() || '';
+            }
+            parent = parent.parentElement;
+          }
+          // Try previous sibling label
+          let prev = input.previousElementSibling;
+          while (prev) {
+            if (prev.tagName === 'LABEL') {
+              return prev.textContent?.trim() || '';
+            }
+            prev = prev.previousElementSibling;
+          }
+          return '';
+        };
         
         return {
           forms: forms.map(form => ({
@@ -1362,9 +1446,10 @@ const createTuvoliContact = async (itineraryData) => {
             name: input.name,
             id: input.id,
             placeholder: input.placeholder,
-            label: input.labels?.[0]?.textContent || '',
+            label: getLabelForInput(input) || input.labels?.[0]?.textContent || '',
             className: input.className,
-            tagName: input.tagName.toLowerCase()
+            tagName: input.tagName.toLowerCase(),
+            value: input.value
           })),
           buttons: buttons.map(button => ({
             type: button.type,
@@ -1449,7 +1534,7 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         }
       }
 
-      // Fill in contact form using AI-determined selectors or fallback to common selectors
+      // Fill in contact form using AI Vision selectors first, then AI-determined, then fallback
       console.log('Filling contact form...');
       
       const fillField = async (selectors, value, fieldName) => {
@@ -1458,24 +1543,50 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
           return false;
         }
         
-        // Try AI-determined selector first
+        // Try AI Vision selector first (most reliable)
+        if (visionFormSelectors && selectors.visionSelector && visionFormSelectors[selectors.visionSelector]) {
+          try {
+            const selector = visionFormSelectors[selectors.visionSelector];
+            await page.waitForSelector(selector, { timeout: 5000, visible: true });
+            // Clear field first
+            await page.click(selector);
+            await page.keyboard.down('Control');
+            await page.keyboard.press('a');
+            await page.keyboard.up('Control');
+            await page.type(selector, value, { delay: 50 });
+            console.log(`✓ Filled ${fieldName} using AI Vision selector: ${selector}`);
+            return true;
+          } catch (e) {
+            console.log(`AI Vision selector failed for ${fieldName}, trying other methods...`);
+          }
+        }
+        
+        // Try AI-determined selector
         if (fieldSelectors && selectors.aiSelector && fieldSelectors[selectors.aiSelector] && fieldSelectors[selectors.aiSelector] !== 'null') {
           try {
             const selector = fieldSelectors[selectors.aiSelector];
-            await page.waitForSelector(selector, { timeout: 3000 });
-            await page.type(selector, value);
+            await page.waitForSelector(selector, { timeout: 3000, visible: true });
+            await page.click(selector);
+            await page.keyboard.down('Control');
+            await page.keyboard.press('a');
+            await page.keyboard.up('Control');
+            await page.type(selector, value, { delay: 50 });
             console.log(`✓ Filled ${fieldName} using AI selector: ${selector}`);
             return true;
           } catch (e) {
-            console.log(`AI selector failed for ${fieldName} (${selectors.aiSelector}), trying fallbacks...`);
+            console.log(`AI selector failed for ${fieldName}, trying fallbacks...`);
           }
         }
         
         // Fallback to common selectors
         for (const selector of selectors.fallback) {
           try {
-            await page.waitForSelector(selector, { timeout: 2000 });
-            await page.type(selector, value);
+            await page.waitForSelector(selector, { timeout: 2000, visible: true });
+            await page.click(selector);
+            await page.keyboard.down('Control');
+            await page.keyboard.press('a');
+            await page.keyboard.up('Control');
+            await page.type(selector, value, { delay: 50 });
             console.log(`✓ Filled ${fieldName} using fallback selector: ${selector}`);
             return true;
           } catch (e) {
@@ -1486,53 +1597,185 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         return false;
       };
 
-      // Fill each field
+      // Fill each field - use labels from screenshot
       await fillField(
-        { aiSelector: 'firstName', fallback: ['input[name="firstName"]', 'input[name="first_name"]', 'input[id="firstName"]', 'input[placeholder*="First"]', 'input[placeholder*="first"]'] },
+        { 
+          visionSelector: 'firstName',
+          aiSelector: 'firstName', 
+          fallback: [
+            'input[placeholder*="First Name" i]',
+            'label:has-text("First Name") + input',
+            'label:has-text("First Name *") + input',
+            'input[name="firstName"]', 
+            'input[name="first_name"]', 
+            'input[id="firstName"]',
+            'input[placeholder*="First"]'
+          ] 
+        },
         firstName,
         'First Name'
       );
       
       await fillField(
-        { aiSelector: 'lastName', fallback: ['input[name="lastName"]', 'input[name="last_name"]', 'input[id="lastName"]', 'input[placeholder*="Last"]', 'input[placeholder*="last"]'] },
+        { 
+          visionSelector: 'lastName',
+          aiSelector: 'lastName', 
+          fallback: [
+            'input[placeholder*="Last Name" i]',
+            'label:has-text("Last Name") + input',
+            'label:has-text("Last Name *") + input',
+            'input[name="lastName"]', 
+            'input[name="last_name"]', 
+            'input[id="lastName"]',
+            'input[placeholder*="Last"]'
+          ] 
+        },
         lastName,
         'Last Name'
       );
       
       await fillField(
-        { aiSelector: 'email', fallback: ['input[type="email"]', 'input[name="email"]', 'input[id="email"]'] },
+        { 
+          visionSelector: 'email',
+          aiSelector: 'email', 
+          fallback: [
+            'input[placeholder*="Primary Email" i]',
+            'input[placeholder*="Email" i]',
+            'input[type="email"]', 
+            'input[name="email"]', 
+            'input[id="email"]'
+          ] 
+        },
         itineraryData.email || '',
         'Email'
       );
       
       await fillField(
-        { aiSelector: 'phone', fallback: ['input[type="tel"]', 'input[name="phone"]', 'input[name="phoneNumber"]', 'input[id="phone"]', 'input[id="phoneNumber"]'] },
+        { 
+          visionSelector: 'phone',
+          aiSelector: 'phone', 
+          fallback: [
+            'input[placeholder*="Primary Phone" i]',
+            'input[placeholder*="Phone" i]',
+            'input[type="tel"]', 
+            'input[name="phone"]', 
+            'input[name="phoneNumber"]', 
+            'input[id="phone"]'
+          ] 
+        },
         itineraryData.phone || '',
         'Phone'
       );
       
+      // Check "Individual Account" checkbox to bypass Account requirement
+      console.log('Checking Individual Account checkbox...');
+      let checkboxChecked = false;
+      if (visionFormSelectors && visionFormSelectors.individualAccountCheckbox) {
+        try {
+          await page.waitForSelector(visionFormSelectors.individualAccountCheckbox, { timeout: 5000 });
+          await page.click(visionFormSelectors.individualAccountCheckbox);
+          checkboxChecked = true;
+          console.log('✓ Checked Individual Account checkbox using AI Vision selector');
+        } catch (e) {
+          console.log('AI Vision checkbox selector failed, trying fallbacks...');
+        }
+      }
+      
+      if (!checkboxChecked) {
+        const checkboxSelectors = [
+          'input[type="checkbox"]:near(label:has-text("Individual Account"))',
+          'label:has-text("Individual Account") input[type="checkbox"]',
+          'input[type="checkbox"]'
+        ];
+        for (const selector of checkboxSelectors) {
+          try {
+            const checkbox = await page.$(selector);
+            if (checkbox) {
+              const isChecked = await page.evaluate(cb => cb.checked, checkbox);
+              if (!isChecked) {
+                await checkbox.click();
+                checkboxChecked = true;
+                console.log(`✓ Checked Individual Account checkbox using selector: ${selector}`);
+                break;
+              }
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+      
+      if (!checkboxChecked) {
+        console.log('⚠ Could not find Individual Account checkbox - contact might require Account field');
+      }
+      
+      // Fill notes field if available
       await fillField(
-        { aiSelector: 'notes', fallback: ['textarea[name="notes"]', 'textarea[name="note"]', 'textarea[id="notes"]', 'textarea[placeholder*="Note"]', 'textarea[placeholder*="note"]'] },
+        { 
+          aiSelector: 'notes', 
+          fallback: [
+            'textarea[name="notes"]', 
+            'textarea[name="note"]', 
+            'textarea[id="notes"]', 
+            'textarea[placeholder*="Note"]'
+          ] 
+        },
         notes,
         'Notes'
       );
 
-      // Submit the form
+      // Submit the form - look for "Create" button
       console.log('Submitting contact form...');
-      const submitSelectors = fieldSelectors?.submitButton && fieldSelectors.submitButton !== 'null'
-        ? [fieldSelectors.submitButton, 'button[type="submit"]', 'button:has-text("Save")', 'button:has-text("Create")', 'button:has-text("Add Contact")', 'button:has-text("Submit")']
-        : ['button[type="submit"]', 'button:has-text("Save")', 'button:has-text("Create")', 'button:has-text("Add Contact")', 'button:has-text("Submit")'];
-      
       let submitted = false;
-      for (const selector of submitSelectors) {
+      
+      // Try AI Vision selector first
+      if (visionFormSelectors && visionFormSelectors.createButton) {
         try {
-          await page.waitForSelector(selector, { timeout: 3000 });
-          await page.click(selector);
-          console.log(`✓ Clicked submit button: ${selector}`);
+          await page.waitForSelector(visionFormSelectors.createButton, { timeout: 5000, visible: true });
+          await page.click(visionFormSelectors.createButton);
           submitted = true;
-          break;
+          console.log(`✓ Clicked Create button using AI Vision selector`);
         } catch (e) {
-          continue;
+          console.log('AI Vision Create button selector failed, trying other methods...');
+        }
+      }
+      
+      // Try other selectors
+      if (!submitted) {
+        const submitSelectors = [
+          'button:has-text("Create")',
+          'button:has-text("Create Contact")',
+          fieldSelectors?.submitButton && fieldSelectors.submitButton !== 'null' ? fieldSelectors.submitButton : null,
+          'button[type="submit"]',
+          'button:has-text("Save")',
+          'button:has-text("Add Contact")',
+          'button:has-text("Submit")'
+        ].filter(s => s !== null);
+        
+        for (const selector of submitSelectors) {
+          try {
+            await page.waitForSelector(selector, { timeout: 3000, visible: true });
+            await page.click(selector);
+            console.log(`✓ Clicked submit button: ${selector}`);
+            submitted = true;
+            break;
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+      
+      // Try XPath for "Create" button
+      if (!submitted) {
+        try {
+          const createButtons = await page.$x("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'create')]");
+          if (createButtons.length > 0) {
+            await createButtons[0].click();
+            submitted = true;
+            console.log('✓ Clicked Create button using XPath');
+          }
+        } catch (e) {
+          console.log('XPath Create button search failed');
         }
       }
       
@@ -1546,8 +1789,44 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         });
       }
       
-      // Wait for confirmation
-      await delay(3000);
+      // Wait for form submission and check for success
+      console.log('Waiting for contact creation to complete...');
+      await delay(5000);
+      
+      // Check if contact was created successfully
+      const successCheck = await page.evaluate(() => {
+        // Look for success messages
+        const successIndicators = [
+          'success',
+          'created',
+          'saved',
+          'contact created',
+          'contact saved'
+        ];
+        
+        const bodyText = document.body?.innerText?.toLowerCase() || '';
+        const hasSuccessMessage = successIndicators.some(indicator => bodyText.includes(indicator));
+        
+        // Check if modal/form is gone (indicates success)
+        const hasModal = !!document.querySelector('[role="dialog"], .modal, [class*="modal" i]');
+        const hasForm = !!document.querySelector('input[type="password"], input[name*="firstName" i]');
+        
+        return {
+          hasSuccessMessage,
+          modalGone: !hasModal,
+          formGone: !hasForm,
+          currentUrl: window.location.href
+        };
+      });
+      
+      console.log('Contact creation result check:', JSON.stringify(successCheck, null, 2));
+      
+      if (successCheck.hasSuccessMessage || (successCheck.modalGone && successCheck.formGone)) {
+        console.log('✓ Contact created successfully in Tuvoli');
+      } else {
+        console.log('⚠ Contact creation status unclear - may need manual verification');
+      }
+      
       console.log('Contact creation process completed');
 
       await browser.close();

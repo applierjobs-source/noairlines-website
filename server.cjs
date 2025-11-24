@@ -3890,8 +3890,73 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         'Notes'
       );
 
+      // FINAL VERIFICATION: Ensure checkbox is checked before submitting
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🔍 FINAL VERIFICATION: Checking form state before submit...');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      const finalCheck = await page.evaluate(() => {
+        const checkbox = document.getElementById('individual-account') || 
+                        document.querySelector('input[name="individual-account"]') ||
+                        document.querySelector('input[formcontrolname="individualAccount"]');
+        
+        const firstName = document.getElementById('first-name') || 
+                         document.querySelector('input[name="first-name"]');
+        const lastName = document.getElementById('last-name') || 
+                         document.querySelector('input[name="last-name"]');
+        const email = document.getElementById('account-email') || 
+                     document.querySelector('input[name="account-email"]') ||
+                     document.querySelector('input[type="email"]');
+        
+        return {
+          checkboxExists: !!checkbox,
+          checkboxChecked: checkbox ? checkbox.checked : false,
+          checkboxId: checkbox?.id || checkbox?.name || 'not found',
+          firstNameFilled: firstName ? firstName.value.trim() !== '' : false,
+          lastNameFilled: lastName ? lastName.value.trim() !== '' : false,
+          emailFilled: email ? email.value.trim() !== '' : false,
+        };
+      });
+      
+      console.log('Form state:', JSON.stringify(finalCheck, null, 2));
+      
+      // If checkbox is not checked, force it NOW
+      if (finalCheck.checkboxExists && !finalCheck.checkboxChecked) {
+        console.log('⚠ Checkbox exists but NOT checked! Forcing check now...');
+        await page.evaluate(() => {
+          const checkbox = document.getElementById('individual-account') || 
+                          document.querySelector('input[name="individual-account"]') ||
+                          document.querySelector('input[formcontrolname="individualAccount"]');
+          if (checkbox) {
+            checkbox.checked = true;
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            checkbox.dispatchEvent(new Event('click', { bubbles: true }));
+          }
+        });
+        await delay(500);
+        
+        // Verify it's now checked
+        const verifyCheck = await page.evaluate(() => {
+          const checkbox = document.getElementById('individual-account') || 
+                          document.querySelector('input[name="individual-account"]') ||
+                          document.querySelector('input[formcontrolname="individualAccount"]');
+          return checkbox ? checkbox.checked : false;
+        });
+        
+        if (verifyCheck) {
+          console.log('✓ Checkbox is now checked! Ready to submit.');
+        } else {
+          console.log('⚠ WARNING: Checkbox still not checked after forcing!');
+        }
+      } else if (!finalCheck.checkboxExists) {
+        console.log('⚠ WARNING: Checkbox not found in DOM!');
+      } else {
+        console.log('✓ Checkbox is checked. Form ready to submit.');
+      }
+      
       // Submit the form - look for "Create" button
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('Submitting contact form...');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       await saveScreenshot('before-submit');
       let submitted = false;
       

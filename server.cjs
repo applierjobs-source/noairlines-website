@@ -3298,8 +3298,9 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
             console.log(`✓ Filled ${fieldName} using AI Vision selector: ${selector}`);
             
             // Update knowledge base with working selector
-            if (!reasoningMemory.workingSelectors[fieldName.toLowerCase()]) {
-              reasoningMemory.workingSelectors[fieldName.toLowerCase()] = selector;
+            const fieldKey = fieldName.toLowerCase().replace(/\s+/g, '');
+            if (!reasoningMemory.workingSelectors[fieldKey]) {
+              reasoningMemory.workingSelectors[fieldKey] = selector;
               console.log(`🧠 Knowledge Base Update: Working selector for ${fieldName}: ${selector}`);
             }
             
@@ -3320,6 +3321,14 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
             await page.keyboard.up('Control');
             await page.type(selector, value, { delay: 50 });
             console.log(`✓ Filled ${fieldName} using AI selector: ${selector}`);
+            
+            // Update knowledge base with working selector
+            const fieldKey = fieldName.toLowerCase().replace(/\s+/g, '');
+            if (!reasoningMemory.workingSelectors[fieldKey]) {
+              reasoningMemory.workingSelectors[fieldKey] = selector;
+              console.log(`🧠 Knowledge Base Update: Working selector for ${fieldName}: ${selector}`);
+            }
+            
             return true;
           } catch (e) {
             console.log(`AI selector failed for ${fieldName}, trying fallbacks...`);
@@ -3336,6 +3345,14 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
             await page.keyboard.up('Control');
             await page.type(selector, value, { delay: 50 });
             console.log(`✓ Filled ${fieldName} using fallback selector: ${selector}`);
+            
+            // Update knowledge base with working selector
+            const fieldKey = fieldName.toLowerCase().replace(/\s+/g, '');
+            if (!reasoningMemory.workingSelectors[fieldKey]) {
+              reasoningMemory.workingSelectors[fieldKey] = selector;
+              console.log(`🧠 Knowledge Base Update: Working selector for ${fieldName}: ${selector}`);
+            }
+            
             return true;
           } catch (e) {
             continue;

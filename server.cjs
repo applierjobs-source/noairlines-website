@@ -692,7 +692,7 @@ IMPORTANT NAVIGATION RULES:
    4. Fill Primary Phone (extract value from goal, optional but recommended)
    5. Fill "Account *" field with first name + last name (REQUIRED)
    6. Click add (+) button (after filling Account field)
-   6. Click "Create" button
+   7. Click "Create" button
    
    IMPORTANT: Extract the actual values from the GOAL string above. The goal contains "First Name: [value]", "Last Name: [value]", etc. Use those values.
 

@@ -336,14 +336,78 @@ const createTuvoliContact = async (itineraryData) => {
       // Helper function to delay (replacement for deprecated waitForTimeout)
       const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+      // AI-powered smart waiting: Check if page is ready using AI
+      const waitForPageReady = async (page, description = 'page') => {
+        if (!OPENAI_API_KEY || OPENAI_API_KEY === '') {
+          // Fallback: just wait a bit
+          await delay(3000);
+          return;
+        }
+
+        console.log(`Using AI to check if ${description} is ready...`);
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const pageState = await page.evaluate(() => {
+            return {
+              readyState: document.readyState,
+              hasInputs: document.querySelectorAll('input').length,
+              hasForms: document.querySelectorAll('form').length,
+              hasButtons: document.querySelectorAll('button').length,
+              bodyText: document.body?.innerText?.substring(0, 200) || ''
+            };
+          });
+
+          try {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [
+                  {
+                    role: 'system',
+                    content: 'You are a web automation expert. Respond with only "ready" or "not ready" based on whether the page appears to be fully loaded with interactive elements.'
+                  },
+                  {
+                    role: 'user',
+                    content: `Page state: ${JSON.stringify(pageState)}. Is this page ready for interaction? Look for login forms, input fields, or interactive elements.`
+                  }
+                ],
+                temperature: 0.1,
+                max_tokens: 10
+              })
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              const content = data.choices[0]?.message?.content?.toLowerCase();
+              if (content?.includes('ready')) {
+                console.log(`Page is ready (attempt ${attempt + 1})`);
+                return;
+              }
+            }
+          } catch (e) {
+            // If AI check fails, continue with delay
+          }
+
+          if (attempt < 4) {
+            console.log(`Page not ready yet, waiting... (attempt ${attempt + 1}/5)`);
+            await delay(2000);
+          }
+        }
+        console.log('Proceeding after waiting period...');
+      };
+
       // Navigate to Tuvoli login page
       // Use the correct login URL: https://noairlines.tuvoli.com/login
       const loginUrl = `${TUVOLI_URL}/login`;
       console.log(`Navigating to Tuvoli login: ${loginUrl}`);
       await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 60000 });
 
-      // Wait a moment for page to fully render
-      await delay(3000);
+      // Use AI to wait for page to be ready
+      await waitForPageReady(page, 'login page');
 
       // Debug: Check what's actually on the page
       const pageTitle = await page.title();
@@ -438,37 +502,114 @@ const createTuvoliContact = async (itineraryData) => {
         console.log(`Final URL after login navigation attempts: ${finalUrl}`);
       }
 
-      // Try to find email field with multiple strategies
-      console.log('Looking for email input field...');
+      // AI-powered element finding: Use AI to intelligently find email field with retries
+      console.log('Using AI to find email input field...');
       let emailFieldFound = false;
-      const emailSelectors = [
-        'input[type="email"]',
-        'input[name="email"]',
-        'input[id="email"]',
-        'input[placeholder*="email" i]',
-        'input[placeholder*="Email" i]',
-        'input[autocomplete="email"]',
-        'input[type="text"][name*="email" i]',
-        'input[type="text"][id*="email" i]'
-      ];
+      let emailSelector = null;
 
-      for (const selector of emailSelectors) {
-        try {
-          await page.waitForSelector(selector, { timeout: 5000 });
-          console.log(`Found email field with selector: ${selector}`);
-          emailFieldFound = true;
-          await page.type(selector, TUVOLI_EMAIL, { delay: 100 });
-          break;
-        } catch (e) {
-          continue;
+      if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
+        // Try AI-powered detection with retries (handles slow-loading pages)
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const pageStructure = await page.evaluate(() => {
+              const inputs = Array.from(document.querySelectorAll('input'));
+              return inputs.map(input => ({
+                type: input.type,
+                name: input.name,
+                id: input.id,
+                placeholder: input.placeholder,
+                className: input.className,
+                visible: input.offsetParent !== null,
+                label: input.labels?.[0]?.textContent || ''
+              }));
+            });
+
+            if (pageStructure.length === 0 && attempt < 2) {
+              console.log(`No inputs found yet, waiting for page to load... (attempt ${attempt + 1}/3)`);
+              await delay(2000);
+              continue;
+            }
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [
+                  {
+                    role: 'system',
+                    content: 'You are a web automation expert. Return ONLY a valid CSS selector for the email input field, or "null" if not found. Return JSON: {"selector": "input[name=\'email\']"} or {"selector": null}'
+                  },
+                  {
+                    role: 'user',
+                    content: `Find the email input field in this form structure: ${JSON.stringify(pageStructure)}. Return the best CSS selector.`
+                  }
+                ],
+                temperature: 0.1,
+                max_tokens: 100
+              })
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              const content = data.choices[0]?.message?.content;
+              const jsonMatch = content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const result = JSON.parse(jsonMatch[0]);
+                if (result.selector && result.selector !== 'null') {
+                  try {
+                    await page.waitForSelector(result.selector, { timeout: 5000 });
+                    emailSelector = result.selector;
+                    emailFieldFound = true;
+                    console.log(`AI found email field: ${result.selector}`);
+                    break;
+                  } catch (e) {
+                    console.log(`AI selector didn't work: ${result.selector}, trying again...`);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.log(`AI detection attempt ${attempt + 1} failed: ${e.message}`);
+          }
+
+          if (attempt < 2) {
+            await delay(2000);
+          }
         }
       }
 
+      // Fallback to traditional selectors if AI didn't find it
       if (!emailFieldFound) {
-        // Take a screenshot for debugging
-        const screenshot = await page.screenshot({ encoding: 'base64' });
-        console.log('Email field not found. Page screenshot saved (base64).');
-        
+        console.log('AI didn\'t find email field, trying traditional selectors...');
+        const emailSelectors = [
+          'input[type="email"]',
+          'input[name="email"]',
+          'input[id="email"]',
+          'input[placeholder*="email" i]',
+          'input[placeholder*="Email" i]',
+          'input[autocomplete="email"]',
+          'input[type="text"][name*="email" i]',
+          'input[type="text"][id*="email" i]'
+        ];
+
+        for (const selector of emailSelectors) {
+          try {
+            await page.waitForSelector(selector, { timeout: 5000 });
+            emailSelector = selector;
+            emailFieldFound = true;
+            console.log(`Found email field with selector: ${selector}`);
+            break;
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+
+      if (!emailFieldFound || !emailSelector) {
         // Get page HTML structure for debugging
         const pageContent = await page.evaluate(() => {
           const inputs = Array.from(document.querySelectorAll('input'));
@@ -481,37 +622,106 @@ const createTuvoliContact = async (itineraryData) => {
           }));
         });
         console.log('Available input fields on page:', JSON.stringify(pageContent, null, 2));
-        
         throw new Error('Could not find email input field on login page');
       }
 
-      // Find and fill password field
-      console.log('Looking for password input field...');
-      const passwordSelectors = [
-        'input[type="password"]',
-        'input[name="password"]',
-        'input[id="password"]',
-        'input[placeholder*="password" i]',
-        'input[placeholder*="Password" i]',
-        'input[autocomplete="current-password"]'
-      ];
+      // Type email into the field
+      await page.type(emailSelector, TUVOLI_EMAIL, { delay: 100 });
 
+      // AI-powered password field finding
+      console.log('Using AI to find password input field...');
       let passwordFieldFound = false;
-      for (const selector of passwordSelectors) {
+      let passwordSelector = null;
+
+      if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
         try {
-          await page.waitForSelector(selector, { timeout: 5000 });
-          console.log(`Found password field with selector: ${selector}`);
-          passwordFieldFound = true;
-          await page.type(selector, TUVOLI_PASSWORD, { delay: 100 });
-          break;
+          const pageStructure = await page.evaluate(() => {
+            const inputs = Array.from(document.querySelectorAll('input'));
+            return inputs.map(input => ({
+              type: input.type,
+              name: input.name,
+              id: input.id,
+              placeholder: input.placeholder,
+              className: input.className,
+              visible: input.offsetParent !== null
+            }));
+          });
+
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a web automation expert. Return ONLY a valid CSS selector for the password input field. Return JSON: {"selector": "input[type=\'password\']"} or {"selector": null}'
+                },
+                {
+                  role: 'user',
+                  content: `Find the password input field: ${JSON.stringify(pageStructure)}. Return the best CSS selector.`
+                }
+              ],
+              temperature: 0.1,
+              max_tokens: 100
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const content = data.choices[0]?.message?.content;
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const result = JSON.parse(jsonMatch[0]);
+              if (result.selector && result.selector !== 'null') {
+                try {
+                  await page.waitForSelector(result.selector, { timeout: 5000 });
+                  passwordSelector = result.selector;
+                  passwordFieldFound = true;
+                  console.log(`AI found password field: ${result.selector}`);
+                } catch (e) {
+                  console.log(`AI selector didn't work, trying fallbacks...`);
+                }
+              }
+            }
+          }
         } catch (e) {
-          continue;
+          console.log(`AI detection failed: ${e.message}`);
         }
       }
 
+      // Fallback to traditional selectors
       if (!passwordFieldFound) {
+        const passwordSelectors = [
+          'input[type="password"]',
+          'input[name="password"]',
+          'input[id="password"]',
+          'input[placeholder*="password" i]',
+          'input[placeholder*="Password" i]',
+          'input[autocomplete="current-password"]'
+        ];
+
+        for (const selector of passwordSelectors) {
+          try {
+            await page.waitForSelector(selector, { timeout: 5000 });
+            passwordSelector = selector;
+            passwordFieldFound = true;
+            console.log(`Found password field with selector: ${selector}`);
+            break;
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+
+      if (!passwordFieldFound || !passwordSelector) {
         throw new Error('Could not find password input field on login page');
       }
+
+      await page.type(passwordSelector, TUVOLI_PASSWORD, { delay: 100 });
 
       // Find and click submit button
       console.log('Looking for submit button...');
@@ -562,8 +772,8 @@ const createTuvoliContact = async (itineraryData) => {
       console.log('Navigating to contact management...');
       await page.goto(`${TUVOLI_URL}/contact-management`, { waitUntil: 'networkidle2', timeout: 30000 });
 
-      // Wait a moment for page to load
-      await delay(2000);
+      // Use AI to wait for page to be ready
+      await waitForPageReady(page, 'contact management page');
 
       // Look for "Add Contact" or "New Contact" button and click it
       console.log('Looking for add contact button...');

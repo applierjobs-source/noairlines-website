@@ -1,120 +1,149 @@
-# Tuvoli Integration via Zapier (No API Access Needed)
+# Tuvoli Integration via Browser Automation (No API Access Needed)
 
 ## Overview
 
-When a new submission is received on noairlines.com, the system automatically sends Tuvoli-ready contact data to your Zapier webhook. Zapier can then create the contact in your Tuvoli account without requiring paid API access.
+When a new submission is received on noairlines.com, the system automatically creates a new contact in your Tuvoli account using browser automation (Puppeteer). This approach **doesn't require paid API access** - it automates the Tuvoli website directly, just like a human would.
 
 ## How It Works
 
 1. **User submits quote request** on noairlines.com
-2. **System formats contact data** for Tuvoli:
-   - First name and last name (parsed from full name)
-   - Email address
-   - Phone number
-   - Notes with itinerary details
-3. **Data sent to Zapier webhook** (your existing WEBHOOK_URL)
-4. **Zapier creates contact in Tuvoli** automatically
+2. **System launches a browser** (headless Chrome via Puppeteer)
+3. **Logs into Tuvoli** using your credentials
+4. **Navigates to contact creation form**
+5. **Fills in contact details** (name, email, phone, notes)
+6. **Submits the form** to create the contact
+7. **Closes the browser**
 
-## Setup in Zapier
+## Required Environment Variables
 
-### Step 1: Create a Zap
+Add these to your Railway environment variables:
 
-1. Go to https://zapier.com and create a new Zap
-2. **Trigger**: Webhooks by Zapier → Catch Hook
-3. Copy the webhook URL and add it to Railway as `WEBHOOK_URL`
+```
+TUVOLI_ENABLED=true
+TUVOLI_EMAIL=your_tuvoli_email@example.com
+TUVOLI_PASSWORD=your_tuvoli_password
+TUVOLI_URL=https://noairlines.tuvoli.com
+```
 
-### Step 2: Add Tuvoli Action
+## Installation
 
-1. **Action**: Search for "Tuvoli" in Zapier
-2. If Tuvoli has a Zapier integration:
-   - Select "Create Contact" or "Add Contact"
-   - Map the fields from the webhook:
-     - First Name → `tuvoli_first_name` or `firstName`
-     - Last Name → `tuvoli_last_name` or `lastName`
-     - Email → `tuvoli_email` or `email`
-     - Phone → `tuvoli_phone` or `phone`
-     - Notes → `tuvoli_notes` or `notes`
+### Step 1: Install Puppeteer
 
-3. If Tuvoli doesn't have a Zapier integration:
-   - Use "Webhooks by Zapier" → POST
-   - Configure it to send data to Tuvoli's contact form endpoint
-   - Or use "Code by Zapier" to format and send the data
+Puppeteer needs to be installed in your project. Add it to `package.json`:
 
-### Step 3: Test the Integration
+```bash
+npm install puppeteer
+```
 
-1. Submit a test quote on noairlines.com
-2. Check Zapier to see if the webhook was received
-3. Verify the contact was created in Tuvoli
-
-## Contact Data Structure
-
-The webhook includes these fields (both Tuvoli-prefixed and standard):
+Or add it manually to `package.json`:
 
 ```json
 {
-  "tuvoli_first_name": "John",
-  "tuvoli_last_name": "Doe",
-  "tuvoli_email": "john@example.com",
-  "tuvoli_phone": "+15126363628",
-  "tuvoli_notes": "Quote request from NoAirlines.com\nRoute: AUS → DFW\nDate: 2025-12-10 at 14:30\nPassengers: 2\nTrip Type: one-way",
-  "firstName": "John",
-  "lastName": "Doe",
-  "email": "john@example.com",
-  "phone": "+15126363628",
-  "notes": "Quote request: AUS → DFW on 2025-12-10 for 2 passenger(s). Trip type: one-way."
+  "dependencies": {
+    "puppeteer": "^21.0.0"
+  }
 }
 ```
 
-## Alternative: Browser Automation
+### Step 2: Set Environment Variables in Railway
 
-If Zapier doesn't work, we can use browser automation (Puppeteer) to automatically log into Tuvoli and create contacts. This would require:
+1. Go to your Railway project
+2. Click on your service
+3. Go to **Variables** tab
+4. Add the 4 variables listed above
 
-1. Tuvoli login credentials (stored securely as environment variables)
-2. Puppeteer installed on the server
-3. Configuration for the contact creation form
+### Step 3: Deploy
 
-Let me know if you'd like to explore this option.
+Railway will automatically install Puppeteer when you deploy.
+
+## How Browser Automation Works
+
+The system uses Puppeteer to:
+- Open a headless Chrome browser
+- Navigate to Tuvoli login page
+- Enter your credentials
+- Navigate to the contact creation form
+- Fill in all contact fields
+- Submit the form
+
+**Note:** The browser automation tries multiple CSS selectors to find form fields, so it should work even if Tuvoli updates their interface slightly.
+
+## Security
+
+- **Credentials are stored securely** in Railway environment variables (encrypted)
+- **Never commit credentials** to git
+- **Browser runs in headless mode** (no visible window)
+- **Automatically closes** after creating contact
 
 ## Testing
 
 1. Submit a test quote on noairlines.com
-2. Check Railway logs for: "Webhook sent with Tuvoli contact data"
-3. Check Zapier dashboard to see if the webhook was received
-4. Verify the contact appears in your Tuvoli account
+2. Check Railway logs for:
+   - "Launching browser to create Tuvoli contact..."
+   - "Logged into Tuvoli successfully"
+   - "Contact created successfully in Tuvoli"
+3. Check your Tuvoli account to verify the contact was created
 
 ## Troubleshooting
 
-### Contact Not Created in Tuvoli?
+### Contact Not Created?
 
-1. **Check Zapier Dashboard**
-   - Go to your Zapier account
-   - Check if the webhook was received
-   - Check if the Zap ran successfully
-   - Look for any error messages
+1. **Check Railway Logs**
+   - Look for error messages
+   - Check if Puppeteer is installed
+   - Verify login was successful
 
-2. **Verify Webhook URL**
-   - Ensure `WEBHOOK_URL` in Railway matches your Zapier webhook URL
-   - Test the webhook manually using a tool like Postman
+2. **Verify Credentials**
+   - Ensure TUVOLI_EMAIL is correct
+   - Ensure TUVOLI_PASSWORD is correct
+   - Test logging into Tuvoli manually with these credentials
 
-3. **Check Field Mapping**
-   - Ensure Zapier is mapping the correct fields to Tuvoli
-   - Field names might need adjustment based on Tuvoli's requirements
+3. **Check Tuvoli URL**
+   - Ensure TUVOLI_URL is correct (should be `https://noairlines.tuvoli.com`)
+   - Verify the URL is accessible
 
-4. **Check Railway Logs**
-   - Look for "Webhook sent with Tuvoli contact data"
-   - Check for any error messages
+4. **Form Field Issues**
+   - If Tuvoli changes their form structure, we may need to update the selectors
+   - Check logs for "Filling contact form..." to see which step failed
+
+### Common Errors
+
+**"Puppeteer not installed"**
+- Solution: Add `puppeteer` to package.json dependencies and redeploy
+
+**"Navigation timeout"**
+- Solution: Tuvoli might be slow to load. We can increase timeout values.
+
+**"Element not found"**
+- Solution: Tuvoli's form structure might have changed. We can update the selectors.
+
+**"Login failed"**
+- Solution: Check your credentials are correct
 
 ## Benefits of This Approach
 
-✅ **No API costs** - Uses free Zapier integration  
-✅ **Easy to set up** - Visual Zapier interface  
-✅ **Flexible** - Can add additional actions (email notifications, etc.)  
-✅ **Reliable** - Zapier handles retries and error handling  
-✅ **Scalable** - Works with any volume of submissions
+✅ **No API costs** - Uses browser automation instead  
+✅ **Works with any website** - Doesn't require API access  
+✅ **Automatic** - Runs in background, no manual work  
+✅ **Reliable** - Tries multiple selectors to find form fields  
+✅ **Secure** - Credentials stored in environment variables
+
+## Limitations
+
+- **Slightly slower** than API (takes a few seconds to open browser and fill form)
+- **May break** if Tuvoli significantly changes their interface
+- **Requires Puppeteer** (adds ~200MB to deployment size)
+
+## Alternative: Manual Setup
+
+If browser automation doesn't work, you can:
+1. Use the webhook to send contact data to Zapier
+2. Manually create contacts in Tuvoli (data is logged in Railway)
+3. Export/import CSV files periodically
 
 ## Next Steps
 
-1. Set up your Zapier Zap with the webhook trigger
-2. Add Tuvoli action (or webhook action if no direct integration)
+1. Install Puppeteer: `npm install puppeteer`
+2. Add environment variables to Railway
 3. Test with a sample submission
-4. Monitor Zapier dashboard for successful runs
+4. Monitor logs to ensure it's working

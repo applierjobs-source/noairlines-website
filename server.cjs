@@ -18,8 +18,11 @@ const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '';
 // OpenAI configuration for AI evaluation
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
-// Tuvoli integration via Zapier webhook (no API access needed)
-// The webhook will include Tuvoli-ready contact data that Zapier can use
+// Tuvoli integration via browser automation (no API access needed)
+const TUVOLI_ENABLED = process.env.TUVOLI_ENABLED === 'true' || false;
+const TUVOLI_EMAIL = process.env.TUVOLI_EMAIL || '';
+const TUVOLI_PASSWORD = process.env.TUVOLI_PASSWORD || '';
+const TUVOLI_URL = process.env.TUVOLI_URL || 'https://noairlines.tuvoli.com';
 
 console.log('========================================');
 console.log('Starting NoAirlines server...');
@@ -231,35 +234,193 @@ const formatPrice = (price) => {
   return `$${price}`;
 };
 
-// Format contact data for Tuvoli (via Zapier webhook)
-const formatTuvoliContactData = (itineraryData) => {
-  // Parse name into first and last name
-  const nameParts = (itineraryData.name || '').trim().split(' ');
-  const firstName = nameParts[0] || '';
-  const lastName = nameParts.slice(1).join(' ') || '';
+// Create contact in Tuvoli using browser automation (Puppeteer)
+// This approach doesn't require API access - it automates the Tuvoli website directly
+const createTuvoliContact = async (itineraryData) => {
+  try {
+    if (!TUVOLI_ENABLED || !TUVOLI_EMAIL || !TUVOLI_PASSWORD) {
+      console.log('Tuvoli automation not enabled. Contact data:', {
+        name: itineraryData.name,
+        email: itineraryData.email,
+        phone: itineraryData.phone
+      });
+      return { success: true, message: 'Tuvoli contact logged (automation not enabled)' };
+    }
 
-  // Extract airport codes for route
-  const fromCode = extractAirportCode(itineraryData.from);
-  const toCode = extractAirportCode(itineraryData.to);
-  const routeDisplay = fromCode && toCode 
-    ? formatRouteDisplay(fromCode, toCode)
-    : `${itineraryData.from} → ${itineraryData.to}`;
+    // Check if Puppeteer is available
+    let puppeteer;
+    try {
+      puppeteer = require('puppeteer');
+    } catch (e) {
+      console.log('Puppeteer not installed. Install with: npm install puppeteer');
+      console.log('Contact data for manual entry:', {
+        name: itineraryData.name,
+        email: itineraryData.email,
+        phone: itineraryData.phone
+      });
+      return { success: false, error: 'Puppeteer not installed' };
+    }
 
-  return {
-    // Tuvoli contact fields
-    tuvoli_first_name: firstName,
-    tuvoli_last_name: lastName,
-    tuvoli_email: itineraryData.email || '',
-    tuvoli_phone: itineraryData.phone || '',
-    tuvoli_notes: `Quote request from NoAirlines.com\nRoute: ${routeDisplay}\nDate: ${itineraryData.date} at ${itineraryData.time}\nPassengers: ${itineraryData.passengers}\nTrip Type: ${itineraryData.tripType || 'one-way'}${itineraryData.returnDate ? `\nReturn: ${itineraryData.returnDate} at ${itineraryData.returnTime}` : ''}`,
-    
-    // Also include original fields for Zapier flexibility
-    firstName: firstName,
-    lastName: lastName,
-    email: itineraryData.email || '',
-    phone: itineraryData.phone || '',
-    notes: `Quote request: ${routeDisplay} on ${itineraryData.date} for ${itineraryData.passengers} passenger(s). Trip type: ${itineraryData.tripType || 'one-way'}.`
-  };
+    // Parse name into first and last name
+    const nameParts = (itineraryData.name || '').trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Extract airport codes for route
+    const fromCode = extractAirportCode(itineraryData.from);
+    const toCode = extractAirportCode(itineraryData.to);
+    const routeDisplay = fromCode && toCode 
+      ? formatRouteDisplay(fromCode, toCode)
+      : `${itineraryData.from} → ${itineraryData.to}`;
+
+    const notes = `Quote request from NoAirlines.com\nRoute: ${routeDisplay}\nDate: ${itineraryData.date} at ${itineraryData.time}\nPassengers: ${itineraryData.passengers}\nTrip Type: ${itineraryData.tripType || 'one-way'}${itineraryData.returnDate ? `\nReturn: ${itineraryData.returnDate} at ${itineraryData.returnTime}` : ''}`;
+
+    console.log('Launching browser to create Tuvoli contact...');
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    try {
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1280, height: 720 });
+
+      // Navigate to Tuvoli login page
+      console.log('Navigating to Tuvoli login...');
+      await page.goto(`${TUVOLI_URL}/login`, { waitUntil: 'networkidle2', timeout: 30000 });
+
+      // Login to Tuvoli
+      console.log('Logging into Tuvoli...');
+      await page.waitForSelector('input[type="email"], input[name="email"], #email', { timeout: 10000 });
+      await page.type('input[type="email"], input[name="email"], #email', TUVOLI_EMAIL);
+      await page.type('input[type="password"], input[name="password"], #password', TUVOLI_PASSWORD);
+      await page.click('button[type="submit"], button:has-text("Sign In"), button:has-text("Login")');
+      
+      // Wait for navigation after login
+      await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 });
+      console.log('Logged into Tuvoli successfully');
+
+      // Navigate to contacts page or new contact form
+      console.log('Navigating to contacts...');
+      await page.goto(`${TUVOLI_URL}/contacts/new`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {
+        // Try alternative URL
+        return page.goto(`${TUVOLI_URL}/contacts`, { waitUntil: 'networkidle2', timeout: 30000 });
+      });
+
+      // Wait a moment for page to load
+      await page.waitForTimeout(2000);
+
+      // Fill in contact form
+      console.log('Filling contact form...');
+      
+      // Try to find and fill first name field
+      const firstNameSelectors = [
+        'input[name="firstName"]',
+        'input[name="first_name"]',
+        'input[id="firstName"]',
+        'input[id="first_name"]',
+        'input[placeholder*="First"]',
+        'input[placeholder*="first"]'
+      ];
+      for (const selector of firstNameSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 2000 });
+          await page.type(selector, firstName);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      // Try to find and fill last name field
+      const lastNameSelectors = [
+        'input[name="lastName"]',
+        'input[name="last_name"]',
+        'input[id="lastName"]',
+        'input[id="last_name"]',
+        'input[placeholder*="Last"]',
+        'input[placeholder*="last"]'
+      ];
+      for (const selector of lastNameSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 2000 });
+          await page.type(selector, lastName);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      // Try to find and fill email field
+      const emailSelectors = [
+        'input[type="email"]',
+        'input[name="email"]',
+        'input[id="email"]'
+      ];
+      for (const selector of emailSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 2000 });
+          await page.type(selector, itineraryData.email || '');
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      // Try to find and fill phone field
+      const phoneSelectors = [
+        'input[type="tel"]',
+        'input[name="phone"]',
+        'input[name="phoneNumber"]',
+        'input[id="phone"]',
+        'input[id="phoneNumber"]'
+      ];
+      for (const selector of phoneSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 2000 });
+          await page.type(selector, itineraryData.phone || '');
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      // Try to find and fill notes field
+      const notesSelectors = [
+        'textarea[name="notes"]',
+        'textarea[name="note"]',
+        'textarea[id="notes"]',
+        'textarea[id="note"]',
+        'textarea[placeholder*="Note"]'
+      ];
+      for (const selector of notesSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 2000 });
+          await page.type(selector, notes);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      // Submit the form
+      console.log('Submitting contact form...');
+      await page.click('button[type="submit"], button:has-text("Save"), button:has-text("Create"), button:has-text("Add Contact")');
+      
+      // Wait for confirmation
+      await page.waitForTimeout(3000);
+      console.log('Contact created successfully in Tuvoli');
+
+      await browser.close();
+      return { success: true, message: 'Contact created in Tuvoli via browser automation' };
+    } catch (error) {
+      await browser.close();
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error creating Tuvoli contact via browser automation:', error);
+    return { success: false, error: error.message };
+  }
 };
 
 // Send SMS using Twilio
@@ -325,9 +486,6 @@ const sendItineraryEmail = async (itineraryData) => {
       ? `${emailDisplay} (Phone: ${phoneDisplay})`
       : emailDisplay;
 
-    // Format Tuvoli contact data
-    const tuvoliContactData = formatTuvoliContactData(itineraryData);
-
     const emailData = {
       customer_name: itineraryData.name || 'NoAirlines Customer',
       customer_email: emailWithPhone,
@@ -345,9 +503,7 @@ const sendItineraryEmail = async (itineraryData) => {
       trip_type: itineraryData.tripType || 'one-way',
       message: `New flight inquiry from ${itineraryData.name || 'NoAirlines Customer'} (${itineraryData.email || 'no email provided'})\nPhone: ${phoneDisplay}`,
       recipients: EMAIL_RECIPIENTS.join(', '),
-      timestamp: new Date().toISOString(),
-      // Include Tuvoli-ready contact data for Zapier integration
-      ...tuvoliContactData
+      timestamp: new Date().toISOString()
     };
 
     // If no webhook URL is configured, just log the data
@@ -732,9 +888,17 @@ const server = http.createServer(async (req, res) => {
         const itineraryData = JSON.parse(body);
         console.log('Received itinerary submission:', itineraryData);
         
-        // Send email (includes Tuvoli contact data for Zapier)
+        // Send email
         const emailResult = await sendItineraryEmail(itineraryData);
-        console.log('Webhook sent with Tuvoli contact data. Zapier can now create contact in Tuvoli.');
+        
+        // Create contact in Tuvoli via browser automation
+        try {
+          const tuvoliResult = await createTuvoliContact(itineraryData);
+          console.log('Tuvoli contact creation result:', tuvoliResult);
+        } catch (tuvoliError) {
+          console.error('Error creating Tuvoli contact:', tuvoliError);
+          // Don't fail the request if Tuvoli contact creation fails
+        }
         
         // Evaluate itinerary with AI and send SMS
         if (itineraryData.phone && itineraryData.name) {

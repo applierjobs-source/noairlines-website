@@ -1846,26 +1846,37 @@ Return JSON:
             }
           }
           
-          // CRITICAL: Block ALL navigation if we're on contact management page with form open
-          const isOnContactManagementWithForm = await page.evaluate(() => {
+          // CRITICAL: Block navigation ONLY if form is actually open (not just on the page)
+          const formState = await page.evaluate(() => {
             const url = window.location.href;
-            const hasForm = !!document.querySelector('input[name*="first" i], input[id*="first-name" i], input[id*="first-name"]');
+            const hasFormFields = !!document.querySelector('input[name*="first" i], input[id*="first-name" i], input[id="first-name"]');
+            const hasModal = !!document.querySelector('[role="dialog"], .modal, [class*="modal" i]');
             const isContactPage = url.includes('contact-management') || url.includes('contacts');
-            return isContactPage && hasForm;
+            const hasAddButton = !!document.querySelector('button:has-text("Add New Contact"), button[aria-label*="add new contact" i]');
+            
+            return {
+              isContactPage: isContactPage,
+              hasFormFields: hasFormFields,
+              hasModal: hasModal,
+              hasAddButton: hasAddButton,
+              formIsOpen: hasFormFields || hasModal // Form is open if we see form fields OR a modal
+            };
           });
           
-          if (isOnContactManagementWithForm) {
-            // We're on the right page with form open - BLOCK any navigation attempts
+          // Only block navigation if form is ACTUALLY OPEN (fields visible or modal open)
+          // Allow navigation TO contact-management if form is NOT open
+          if (formState.formIsOpen) {
+            // Form is open - BLOCK any navigation attempts (would close the form)
             if (actionPlan.action === 'navigate' || actionPlan.action === 'navigate_js' || actionPlan.action === 'navigate_root_then') {
-              console.log('🚫 BLOCKING NAVIGATION: Already on contact management page with form open!');
-              console.log('🚫 Navigation would break the form and prevent contact creation!');
+              console.log('🚫 BLOCKING NAVIGATION: Contact form is open!');
+              console.log('🚫 Navigation would close the form and prevent contact creation!');
               console.log('🚫 Changing navigation action to wait - AI should fill form fields instead');
               actionPlan.action = 'wait';
               actionPlan.waitTime = 500;
-              actionPlan.reasoning = 'CRITICAL: Already on contact management page with form open. Do NOT navigate - it will break the form. Fill the remaining form fields instead (Phone, Account field, add button, Create button).';
+              actionPlan.reasoning = 'CRITICAL: Contact form is open. Do NOT navigate - it will close the form. Fill the remaining form fields instead (Phone, Account field, add button, Create button).';
             }
           } else {
-            // Not on contact management with form - allow navigation but check for loops
+            // Form is NOT open - allow navigation, but check for unnecessary navigation
             if (actionPlan.action === 'navigate' && actionPlan.url === currentUrl) {
               console.log('⚠ AI trying to navigate to current URL, forcing wait instead...');
               actionPlan.action = 'wait';
@@ -1873,19 +1884,27 @@ Return JSON:
               actionPlan.reasoning = 'Waiting for page to fully load and fields to appear';
             }
             
-            // If AI tries to navigate to contact-management but we're already there with form open, change to wait
+            // If AI tries to navigate to contact-management but we're already there, check if we need to open form
             if (actionPlan.action === 'navigate' && actionPlan.url && 
                 (actionPlan.url.includes('contact-management') || actionPlan.url.includes('contacts'))) {
               const isAlreadyThere = currentUrl.includes('contact-management') || 
-                                     currentUrl.includes('contacts') ||
-                                     await page.evaluate(() => !!document.querySelector('input[name*="first" i], input[id*="first-name" i]'));
+                                     currentUrl.includes('contacts');
               
-              if (isAlreadyThere) {
-                console.log('✓ Already on contact management page - changing navigation to wait');
+              if (isAlreadyThere && !formState.formIsOpen) {
+                // We're on contact management page but form is NOT open - navigation won't help, need to click Add button
+                console.log('✓ Already on contact management page but form is not open');
+                console.log('✓ Changing navigation to wait - AI should click "Add New Contact" button instead');
                 actionPlan.action = 'wait';
                 actionPlan.waitTime = 1000;
-                actionPlan.reasoning = 'Already on contact management page - no navigation needed, proceed with form filling';
+                actionPlan.reasoning = 'Already on contact management page but form is not open. Do NOT navigate - click "Add New Contact" button to open the form instead.';
+              } else if (isAlreadyThere && formState.formIsOpen) {
+                // Already there with form open - definitely don't navigate
+                console.log('✓ Already on contact management page with form open - changing navigation to wait');
+                actionPlan.action = 'wait';
+                actionPlan.waitTime = 1000;
+                actionPlan.reasoning = 'Already on contact management page with form open - no navigation needed, proceed with form filling';
               }
+              // If not already there, allow navigation to proceed
             }
           }
           

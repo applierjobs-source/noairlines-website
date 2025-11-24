@@ -2241,10 +2241,11 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         console.log('⚠ Contact creation status unclear - may need manual verification');
       }
       
-      // If we're in AI-guided mode and it completed, we're done
+      // Check if AI-guided mode completed successfully
       if (aiGuidedMode && aiAttempts < maxAIAttempts) {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('✅ AI-GUIDED AUTOMATION COMPLETED SUCCESSFULLY');
+        console.log(`Completed in ${aiAttempts} AI reasoning steps`);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       } else {
         console.log('Contact creation process completed');

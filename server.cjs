@@ -469,8 +469,12 @@ const createTuvoliContact = async (itineraryData) => {
                 value: input.value || ''
               })).filter(input => input.visible).slice(0, 10),
               hasLoginForm: !!document.querySelector('input[type="password"]'),
-              hasContactForm: document.body?.innerText?.toLowerCase().includes('first name') || 
-                            document.body?.innerText?.toLowerCase().includes('last name') || false
+              hasContactForm: !!document.querySelector('input[name*="first" i], input[id*="first-name" i], input[placeholder*="first name" i]') ||
+                            !!document.querySelector('input[name*="last" i], input[id*="last-name" i], input[placeholder*="last name" i]') ||
+                            !!document.querySelector('input[name*="account-email" i], input[id*="account-email" i]') ||
+                            document.body?.innerText?.toLowerCase().includes('first name') || 
+                            document.body?.innerText?.toLowerCase().includes('last name') || false,
+              contactFormFieldsVisible: Array.from(document.querySelectorAll('input[name*="first" i], input[id*="first-name" i], input[name*="last" i], input[id*="last-name" i], input[name*="account-email" i]')).length > 0
             };
           });
           
@@ -535,9 +539,16 @@ CURRENT STATE:
 - Page Title: ${pageState.title}
 - Has Login Form: ${pageState.hasLoginForm}
 - Has Contact Form: ${pageState.hasContactForm}
+- Contact Form Fields Visible: ${pageState.contactFormFieldsVisible || false}
 - Visible Buttons: ${JSON.stringify(pageState.visibleButtons, null, 2)}
 - Visible Inputs: ${JSON.stringify(pageState.visibleInputs, null, 2)}
 - Body Text Preview: ${pageState.bodyText.substring(0, 500)}${investigationContext}${learnedContext}
+
+**CRITICAL FORM DETECTION RULE:**
+- If "Has Contact Form: true" OR "Contact Form Fields Visible: true", the contact form is ALREADY OPEN
+- If form is already open, DO NOT click "Add New Contact" - it will close the form or cause errors
+- If form is already open, proceed directly to filling fields: First Name, Last Name, Email, Phone, Account field, then add (+) button, then Create
+- Only click "Add New Contact" if form is NOT visible (Has Contact Form: false AND Contact Form Fields Visible: false)
 
 THEORY OF MIND REASONING:
 You can see what's happening and understand why. Think about:
@@ -656,12 +667,17 @@ IMPORTANT NAVIGATION RULES:
    - After clicking waffle, wait 1-2 seconds for menu to open, then click "Client Management"
 
 5. CONTACT MANAGEMENT PAGE:
+   - **CRITICAL: Check if form is already open before clicking "Add New Contact"**
+   - If you see form fields like "First Name", "Last Name", "Email", "Account" already visible on the page, the form is ALREADY OPEN
+   - If form is already open, DO NOT click "Add New Contact" - just fill the remaining fields and submit
+   - Only click "Add New Contact" if the form is NOT visible/open
    - Look for "Add New Contact" button - it may be visible as a button or link
    - The button text might be "Add New Contact", "Add Contact", or "New Contact"
    - Use XPath for text matching: //button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add new contact')]
    - Once form is open, you'll see: "First Name *", "Last Name *", "Primary Phone", "Primary Email *", "Account *" field (REQUIRED), and "Create" button
    - NOTE: "Individual Account" checkbox is NOT required - ignore it completely
    - If you see these fields, you're in the right place - fill them and submit!
+   - **Form detection**: If page state shows "hasContactForm: true" or you see input fields with names like "first-name", "last-name", "account-email", the form is OPEN - skip clicking "Add New Contact"
 
 6. CONTACT FORM FIELDS (from screenshot analysis):
    - First Name: Look for input with label "First Name *" or placeholder containing "First Name"

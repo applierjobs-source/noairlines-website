@@ -4380,16 +4380,24 @@ const mimeTypes = {
 };
 
 const server = http.createServer(async (req, res) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  try {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
 
-  // Handle www to non-www redirect
-  const host = req.headers.host;
-  if (host && host.startsWith('www.')) {
-    const redirectUrl = `https://${host.substring(4)}${req.url}`;
-    res.writeHead(301, { 'Location': redirectUrl });
-    res.end();
-    return;
-  }
+    // Healthcheck endpoint - respond immediately
+    if (req.url === '/health' || req.url === '/healthcheck') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+      return;
+    }
+
+    // Handle www to non-www redirect
+    const host = req.headers.host;
+    if (host && host.startsWith('www.')) {
+      const redirectUrl = `https://${host.substring(4)}${req.url}`;
+      res.writeHead(301, { 'Location': redirectUrl });
+      res.end();
+      return;
+    }
 
   // Handle API endpoints
   if (req.method === 'POST' && req.url === '/api/charter-quotes') {
@@ -4862,6 +4870,13 @@ NoAirlines.com`;
       res.end(content, 'utf-8');
     }
   });
+  } catch (error) {
+    console.error('Error handling request:', error);
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Internal Server Error');
+    }
+  }
 });
 
 // Handle server errors

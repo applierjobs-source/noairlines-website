@@ -364,6 +364,214 @@ const sendSMS = async (phoneNumber, message) => {
   }
 };
 
+// Email sending function using webhook
+const sendItineraryEmail = async (itineraryData) => {
+  try {
+    console.log('Sending itinerary email for:', itineraryData.email);
+    
+    const emailDisplay = (itineraryData.email && itineraryData.email.toString().trim()) || 'N/A';
+    const phoneDisplay = (itineraryData.phone && itineraryData.phone.toString().trim()) || 'N/A';
+    const emailWithPhone = phoneDisplay !== 'N/A'
+      ? `${emailDisplay} (Phone: ${phoneDisplay})`
+      : emailDisplay;
+
+    const emailData = {
+      customer_name: itineraryData.name || 'NoAirlines Customer',
+      customer_email: emailWithPhone,
+      customer_email_raw: emailDisplay,
+      customer_phone: phoneDisplay,
+      phone: phoneDisplay,
+      phone_display: phoneDisplay,
+      from_location: itineraryData.from,
+      to_location: itineraryData.to,
+      departure_date: itineraryData.date,
+      departure_time: itineraryData.time,
+      return_date: itineraryData.returnDate || 'N/A',
+      return_time: itineraryData.returnTime || 'N/A',
+      passengers: itineraryData.passengers,
+      trip_type: itineraryData.tripType || 'one-way',
+      message: `New flight inquiry from ${itineraryData.name || 'NoAirlines Customer'} (${itineraryData.email || 'no email provided'})\nPhone: ${phoneDisplay}`,
+      recipients: EMAIL_RECIPIENTS.join(', '),
+      timestamp: new Date().toISOString()
+    };
+
+    // If no webhook URL is configured, just log the data
+    if (WEBHOOK_URL.includes('YOUR_WEBHOOK_ID')) {
+      console.log('No webhook configured. Itinerary data:', emailData);
+      return { success: true, message: 'Logged locally (no email service configured)' };
+    }
+
+    const response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData)
+    });
+
+    if (response.ok) {
+      console.log('Email sent successfully via webhook');
+      return { success: true };
+    } else {
+      console.error('Webhook failed:', response.status, response.statusText);
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+  } catch (error) {
+    console.error('Email sending error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+submitted = true; // Mark as submitted even if we couldn't find button
+      }
+      
+      if (submitted) {
+        console.log('✅ Create button clicked - waiting for contact creation...');
+      } else {
+        console.log('⚠⚠⚠ WARNING: Create button may not have been clicked ⚠⚠⚠');
+      }
+      
+      // Wait for form submission and check for success
+      console.log('Waiting for contact creation to complete...');
+      await delay(5000);
+      await saveScreenshot('after-submit');
+      
+      // Check if contact was created successfully
+      const successCheck = await page.evaluate((contactFirstName, contactLastName) => {
+        // Look for success messages
+        const successIndicators = [
+          'success',
+          'created',
+          'saved',
+          'contact created',
+          'contact saved'
+        ];
+        
+        const bodyText = document.body?.innerText?.toLowerCase() || '';
+        const hasSuccessMessage = successIndicators.some(indicator => bodyText.includes(indicator));
+        
+        // Check if modal/form is gone (indicates success)
+        const hasModal = !!document.querySelector('[role="dialog"], .modal, [class*="modal" i]');
+        const hasForm = !!document.querySelector('input[name*="firstName" i], input[id*="first-name" i]');
+        
+        // Check if contact name appears in the contact list
+        const contactName = `${contactFirstName} ${contactLastName}`.toLowerCase();
+        const nameInList = bodyText.includes(contactName);
+        
+        // Check for error messages
+        const errorIndicators = ['error', 'failed', 'invalid', 'required', 'missing'];
+        const hasErrorMessage = errorIndicators.some(indicator => bodyText.includes(indicator));
+        
+        return {
+          hasSuccessMessage,
+          modalGone: !hasModal,
+          formGone: !hasForm,
+          nameInList: nameInList,
+          hasErrorMessage: hasErrorMessage,
+          currentUrl: window.location.href,
+          bodyTextPreview: bodyText.substring(0, 500)
+        };
+      }, firstName, lastName);
+      
+      console.log('Contact creation result check:', JSON.stringify(successCheck, null, 2));
+      
+      // More strict success verification - require actual evidence
+      const actuallySuccessful = successCheck.nameInList || 
+                                (successCheck.hasSuccessMessage && successCheck.modalGone && successCheck.formGone);
+      
+      if (actuallySuccessful) {
+        console.log('✅✅✅ Contact created successfully in Tuvoli ✅✅✅');
+        if (successCheck.nameInList) {
+          console.log(`✅ Contact "${firstName} ${lastName}" found in contact list!`);
+        } else if (successCheck.hasSuccessMessage) {
+          console.log('✅ Success message detected and form/modal closed');
+        }
+      } else if (successCheck.hasErrorMessage) {
+        console.log('⚠⚠⚠ ERROR: Contact creation may have failed - error message detected ⚠⚠⚠');
+        console.log('Body text preview:', successCheck.bodyTextPreview);
+        console.log('⚠ Verification: nameInList=false, hasSuccessMessage=false - contact likely NOT created');
+      } else {
+        console.log('⚠⚠⚠ Contact creation status UNCLEAR - verification failed ⚠⚠⚠');
+        console.log('⚠ nameInList:', successCheck.nameInList);
+        console.log('⚠ hasSuccessMessage:', successCheck.hasSuccessMessage);
+        console.log('⚠ modalGone:', successCheck.modalGone);
+        console.log('⚠ formGone:', successCheck.formGone);
+        console.log('⚠ Current URL:', successCheck.currentUrl);
+        console.log('⚠ Body text preview:', successCheck.bodyTextPreview);
+        console.log('⚠ Contact may NOT have been created - manual verification recommended');
+      }
+      
+      // Check if AI-guided mode completed successfully
+      if (aiGuidedMode && aiAttempts < maxAIAttempts) {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('✅ AI-GUIDED AUTOMATION COMPLETED SUCCESSFULLY');
+        console.log(`Completed in ${aiAttempts} AI reasoning steps`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      } else {
+        console.log('Contact creation process completed');
+      }
+      
+      await saveScreenshot('final-state');
+
+      if (TUVOLI_DEBUG) {
+        console.log('🔍 DEBUG MODE: Keeping browser open for 30 seconds so you can see the result...');
+        console.log('🔍 Set TUVOLI_DEBUG=false in Railway to run headless in production.');
+        await delay(30000); // Keep browser open for 30 seconds in debug mode
+      }
+
+// Send SMS using Twilio
+const sendSMS = async (phoneNumber, message) => {
+  try {
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+      console.log('Twilio not configured. SMS message would be:', message);
+      return { success: true, message: 'SMS logged (Twilio not configured)' };
+    }
+
+    // Format phone number (ensure it starts with +)
+    let formattedPhone = phoneNumber.trim();
+    if (!formattedPhone.startsWith('+')) {
+      // Remove any non-digit characters except +
+      formattedPhone = formattedPhone.replace(/\D/g, '');
+      if (formattedPhone.length === 10) {
+        formattedPhone = '+1' + formattedPhone; // US number
+      } else if (formattedPhone.length === 11 && formattedPhone.startsWith('1')) {
+        formattedPhone = '+' + formattedPhone;
+      } else {
+        formattedPhone = '+' + formattedPhone;
+      }
+    }
+
+    const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
+    
+    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${auth}`
+      },
+      body: new URLSearchParams({
+        From: TWILIO_PHONE_NUMBER,
+        To: formattedPhone,
+        Body: message
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Twilio API error:', response.status, errorText);
+      return { success: false, error: `Twilio API error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    console.log('SMS sent successfully:', data.sid);
+    return { success: true, messageSid: data.sid };
+  } catch (error) {
+    console.error('Error sending SMS:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Email sending function using webhook
 const sendItineraryEmail = async (itineraryData) => {
   try {
     console.log('Sending itinerary email for:', itineraryData.email);

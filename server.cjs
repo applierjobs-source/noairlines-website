@@ -3398,6 +3398,15 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         'Last Name'
       );
       
+      // Re-check checkbox after filling last name
+      if (!checkboxChecked) {
+        const checkAfterLastName = await forceCheckIndividualAccount();
+        if (checkAfterLastName.found && checkAfterLastName.checked) {
+          console.log('✓ Checkbox checked after filling Last Name');
+          checkboxChecked = true;
+        }
+      }
+      
       await fillField(
         { 
           visionSelector: 'email',
@@ -3413,6 +3422,15 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         itineraryData.email || '',
         'Email'
       );
+      
+      // Re-check checkbox after filling email
+      if (!checkboxChecked) {
+        const checkAfterEmail = await forceCheckIndividualAccount();
+        if (checkAfterEmail.found && checkAfterEmail.checked) {
+          console.log('✓ Checkbox checked after filling Email');
+          checkboxChecked = true;
+        }
+      }
       
       await fillField(
         { 
@@ -3431,11 +3449,122 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         'Phone'
       );
       
+      // Re-check checkbox after filling phone
+      if (!checkboxChecked) {
+        const checkAfterPhone = await forceCheckIndividualAccount();
+        if (checkAfterPhone.found && checkAfterPhone.checked) {
+          console.log('✓ Checkbox checked after filling Phone');
+          checkboxChecked = true;
+        }
+      }
+      
+      // FINAL CHECK: Ensure checkbox is checked one more time before we continue
+      console.log('🔍 Final checkbox check before continuing...');
+      const finalCheckboxCheck = await forceCheckIndividualAccount();
+      if (finalCheckboxCheck.found && finalCheckboxCheck.checked) {
+        console.log('✅ Checkbox is confirmed checked');
+        checkboxChecked = true;
+      } else if (finalCheckboxCheck.found && !finalCheckboxCheck.checked) {
+        console.log('⚠ Checkbox found but not checked - trying one more time with delay...');
+        await delay(1000);
+        const retryCheck = await forceCheckIndividualAccount();
+        if (retryCheck.found && retryCheck.checked) {
+          console.log('✅ Checkbox checked on retry');
+          checkboxChecked = true;
+        }
+      }
+      
+      // NUCLEAR APPROACH: Check "Individual Account" checkbox MULTIPLE times
+      // This function will be called repeatedly to ensure it stays checked
+      const forceCheckIndividualAccount = async () => {
+        const result = await page.evaluate(() => {
+          // Find checkbox by any means necessary
+          let checkbox = document.getElementById('individual-account');
+          if (!checkbox) checkbox = document.querySelector('input[name="individual-account"]');
+          if (!checkbox) checkbox = document.querySelector('input[formcontrolname="individualAccount"]');
+          if (!checkbox) {
+            // Last resort: search all checkboxes
+            const allCheckboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+            for (const cb of allCheckboxes) {
+              const label = cb.closest('label') || document.querySelector(`label[for="${cb.id}"]`);
+              const text = (label?.textContent || cb.parentElement?.textContent || '').toLowerCase();
+              if (text.includes('individual') && text.includes('account')) {
+                checkbox = cb;
+                break;
+              }
+            }
+          }
+          
+          if (checkbox) {
+            // Force visibility
+            checkbox.style.display = 'block';
+            checkbox.style.visibility = 'visible';
+            checkbox.style.opacity = '1';
+            checkbox.removeAttribute('hidden');
+            checkbox.removeAttribute('disabled');
+            
+            // Make all parents visible
+            let parent = checkbox.parentElement;
+            while (parent && parent.tagName !== 'BODY') {
+              parent.style.display = 'block';
+              parent.style.visibility = 'visible';
+              parent.style.opacity = '1';
+              parent.removeAttribute('hidden');
+              parent.classList.remove('d-none', 'hidden', 'invisible', 'disabled');
+              parent = parent.parentElement;
+            }
+            
+            // Try Angular zone.run if available (for Angular change detection)
+            if (window.ng && window.ng.probe) {
+              try {
+                const elementRef = window.ng.probe(checkbox);
+                if (elementRef && elementRef.injector) {
+                  const ngZone = elementRef.injector.get(window.ng.coreTokens.NgZone || window.ng.coreTokens.ApplicationRef);
+                  if (ngZone && ngZone.run) {
+                    ngZone.run(() => {
+                      checkbox.checked = true;
+                      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                  }
+                }
+              } catch (e) {
+                // Angular not available or different version, continue with regular approach
+              }
+            }
+            
+            // Set checked property
+            checkbox.checked = true;
+            
+            // Trigger ALL possible events
+            const events = ['click', 'change', 'input', 'focus', 'blur'];
+            events.forEach(eventType => {
+              checkbox.dispatchEvent(new Event(eventType, { bubbles: true, cancelable: true }));
+            });
+            
+            // Also try MouseEvent for click
+            checkbox.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            
+            return { found: true, checked: checkbox.checked, id: checkbox.id || checkbox.name || 'found' };
+          }
+          
+          return { found: false };
+        });
+        
+        return result;
+      };
+      
       // Check "Individual Account" checkbox to bypass Account requirement
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('Checking Individual Account checkbox (REQUIRED)...');
+      console.log('Checking Individual Account checkbox (REQUIRED - NUCLEAR APPROACH)...');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       let checkboxChecked = false;
+      
+      // Try checking it immediately
+      const initialCheck = await forceCheckIndividualAccount();
+      if (initialCheck.found && initialCheck.checked) {
+        console.log(`✓ Checkbox checked immediately: ${initialCheck.id}`);
+        checkboxChecked = true;
+      }
       
       // Strategy 0: BULLETPROOF - JavaScript-based (works even if not visible)
       // The checkbox exists but may be visible: false, so use JavaScript to find and click it
@@ -3890,10 +4019,28 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         'Notes'
       );
 
-      // FINAL VERIFICATION: Ensure checkbox is checked before submitting
+      // NUCLEAR FINAL VERIFICATION: Check checkbox MULTIPLE times right before submit
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('🔍 FINAL VERIFICATION: Checking form state before submit...');
+      console.log('🔍 NUCLEAR FINAL VERIFICATION: Ensuring checkbox stays checked...');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      // Check it 3 times with delays to ensure it stays checked
+      for (let i = 0; i < 3; i++) {
+        await delay(300);
+        const checkResult = await forceCheckIndividualAccount();
+        if (checkResult.found && checkResult.checked) {
+          console.log(`✓ Check ${i + 1}/3: Checkbox is checked`);
+          checkboxChecked = true;
+        } else if (checkResult.found && !checkResult.checked) {
+          console.log(`⚠ Check ${i + 1}/3: Checkbox found but NOT checked - forcing again...`);
+          // Force it again
+          await forceCheckIndividualAccount();
+        } else {
+          console.log(`⚠ Check ${i + 1}/3: Checkbox not found`);
+        }
+      }
+      
+      // Final state check
       const finalCheck = await page.evaluate(() => {
         const checkbox = document.getElementById('individual-account') || 
                         document.querySelector('input[name="individual-account"]') ||
@@ -3917,40 +4064,12 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         };
       });
       
-      console.log('Form state:', JSON.stringify(finalCheck, null, 2));
+      console.log('Final form state:', JSON.stringify(finalCheck, null, 2));
       
-      // If checkbox is not checked, force it NOW
-      if (finalCheck.checkboxExists && !finalCheck.checkboxChecked) {
-        console.log('⚠ Checkbox exists but NOT checked! Forcing check now...');
-        await page.evaluate(() => {
-          const checkbox = document.getElementById('individual-account') || 
-                          document.querySelector('input[name="individual-account"]') ||
-                          document.querySelector('input[formcontrolname="individualAccount"]');
-          if (checkbox) {
-            checkbox.checked = true;
-            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-            checkbox.dispatchEvent(new Event('click', { bubbles: true }));
-          }
-        });
-        await delay(500);
-        
-        // Verify it's now checked
-        const verifyCheck = await page.evaluate(() => {
-          const checkbox = document.getElementById('individual-account') || 
-                          document.querySelector('input[name="individual-account"]') ||
-                          document.querySelector('input[formcontrolname="individualAccount"]');
-          return checkbox ? checkbox.checked : false;
-        });
-        
-        if (verifyCheck) {
-          console.log('✓ Checkbox is now checked! Ready to submit.');
-        } else {
-          console.log('⚠ WARNING: Checkbox still not checked after forcing!');
-        }
-      } else if (!finalCheck.checkboxExists) {
-        console.log('⚠ WARNING: Checkbox not found in DOM!');
+      if (finalCheck.checkboxExists && finalCheck.checkboxChecked) {
+        console.log('✅ CHECKBOX IS CHECKED - READY TO SUBMIT');
       } else {
-        console.log('✓ Checkbox is checked. Form ready to submit.');
+        console.log('⚠⚠⚠ WARNING: CHECKBOX MAY NOT BE CHECKED - SUBMITTING ANYWAY ⚠⚠⚠');
       }
       
       // Submit the form - look for "Create" button

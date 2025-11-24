@@ -803,7 +803,9 @@ const createTuvoliContact = async (itineraryData) => {
       }
 
       // Type username/email into the field (Tuvoli uses email as username)
+      console.log('Typing username...');
       await page.type(usernameSelector, TUVOLI_EMAIL, { delay: 100 });
+      await delay(500); // Small delay after typing
 
       // AI-powered password field finding
       console.log('Using AI to find password input field...');
@@ -926,14 +928,39 @@ const createTuvoliContact = async (itineraryData) => {
         throw new Error('Could not find password input field on login page');
       }
 
+      // Type password
+      console.log('Typing password...');
       await page.type(passwordSelector, TUVOLI_PASSWORD, { delay: 100 });
+      
+      // Wait after typing password - button might appear or become enabled after fields are filled
+      console.log('Waiting for form to update after filling fields...');
+      await delay(2000);
+      
+      // Trigger any events that might show/enable the button
+      await page.keyboard.press('Tab'); // Move focus away from password field
+      await delay(500);
+      
+      // Check if button exists but is disabled
+      const buttonState = await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button, input[type="submit"]'));
+        return buttons.map(btn => ({
+          text: btn.textContent?.trim() || btn.value || '',
+          type: btn.type,
+          disabled: btn.disabled,
+          visible: btn.offsetParent !== null,
+          display: window.getComputedStyle(btn).display,
+          opacity: window.getComputedStyle(btn).opacity
+        }));
+      });
+      console.log('Button states after filling fields:', JSON.stringify(buttonState, null, 2));
 
       // Find and click submit button - make it more robust with retries
       console.log('Looking for submit button...');
       let submitButtonFound = false;
       
-      // Wait a moment for button to be fully rendered (Tuvoli loads slowly)
-      await delay(2000);
+      // Button might appear after fields are filled, so we already waited above
+      // But wait a bit more to ensure it's fully rendered
+      await delay(1000);
       
       // Helper function to try clicking a button with retries
       const tryClickButton = async (selector, description, useXPath = false) => {
@@ -1068,19 +1095,37 @@ const createTuvoliContact = async (itineraryData) => {
           console.log('Trying to find submit button by evaluating page...');
           const buttonInfo = await page.evaluate(() => {
             const buttons = Array.from(document.querySelectorAll('button, input[type="submit"]'));
-            return buttons.map((btn, idx) => ({
-              index: idx,
-              type: btn.type,
-              text: btn.textContent?.trim() || btn.value || '',
-              tagName: btn.tagName,
-              isVisible: btn.offsetParent !== null,
-              isEnabled: !btn.disabled,
-              className: btn.className,
-              id: btn.id
-            }));
+            return buttons.map((btn, idx) => {
+              const style = window.getComputedStyle(btn);
+              return {
+                index: idx,
+                type: btn.type,
+                text: btn.textContent?.trim() || btn.value || '',
+                tagName: btn.tagName,
+                isVisible: btn.offsetParent !== null,
+                isEnabled: !btn.disabled,
+                display: style.display,
+                opacity: style.opacity,
+                visibility: style.visibility,
+                className: btn.className,
+                id: btn.id,
+                ariaLabel: btn.getAttribute('aria-label') || ''
+              };
+            });
           });
           
           console.log('Available buttons on page:', JSON.stringify(buttonInfo, null, 2));
+          
+          // Check if any buttons are hidden (display: none, opacity: 0, etc.)
+          const hiddenButtons = buttonInfo.filter(btn => 
+            btn.display === 'none' || 
+            btn.opacity === '0' || 
+            btn.visibility === 'hidden' ||
+            !btn.isVisible
+          );
+          if (hiddenButtons.length > 0) {
+            console.log(`Found ${hiddenButtons.length} hidden buttons. They might appear after interaction.`);
+          }
           
           // Try to find the submit button - prioritize "Sign in" text
           // First, look for buttons with "Sign in" text

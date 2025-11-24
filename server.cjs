@@ -352,6 +352,7 @@ const createTuvoliContact = async (itineraryData) => {
       };
       
       // AI Reasoning System - Uses OpenAI to figure out what to do next
+      // Note: tuvoliCredentials is available in closure scope
       const aiReasonNextAction = async (goal, currentState, maxAttempts = 10) => {
         if (!OPENAI_API_KEY || OPENAI_API_KEY === '') {
           console.log('⚠ OpenAI API key not available, skipping AI reasoning');

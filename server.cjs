@@ -402,11 +402,15 @@ const createTuvoliContact = async (itineraryData) => {
 
       // Navigate to Tuvoli login page
       // Use the correct login URL: https://noairlines.tuvoli.com/login
-      const loginUrl = `${TUVOLI_URL}/login`;
+      const loginUrl = `${TUVOLI_URL}/login?returnURL=%2Fhome`;
       console.log(`Navigating to Tuvoli login: ${loginUrl}`);
       await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 60000 });
 
-      // Use AI to wait for page to be ready
+      // Tuvoli login fields take at least 6 seconds to load
+      console.log('Waiting for login fields to load (Tuvoli takes ~6 seconds)...');
+      await delay(6000);
+
+      // Use AI to wait for page to be ready (additional check)
       await waitForPageReady(page, 'login page');
 
       // Debug: Check what's actually on the page
@@ -509,7 +513,8 @@ const createTuvoliContact = async (itineraryData) => {
 
       if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
         // Try AI-powered detection with retries (handles slow-loading pages)
-        for (let attempt = 0; attempt < 3; attempt++) {
+        // Tuvoli fields take at least 6 seconds, so we wait longer between retries
+        for (let attempt = 0; attempt < 4; attempt++) {
           try {
             const pageStructure = await page.evaluate(() => {
               const inputs = Array.from(document.querySelectorAll('input'));
@@ -524,9 +529,9 @@ const createTuvoliContact = async (itineraryData) => {
               }));
             });
 
-            if (pageStructure.length === 0 && attempt < 2) {
-              console.log(`No inputs found yet, waiting for page to load... (attempt ${attempt + 1}/3)`);
-              await delay(2000);
+            if (pageStructure.length === 0 && attempt < 3) {
+              console.log(`No inputs found yet, waiting for Tuvoli to load... (attempt ${attempt + 1}/4)`);
+              await delay(3000); // Wait 3 seconds between retries for slow-loading Tuvoli
               continue;
             }
 
@@ -576,15 +581,15 @@ const createTuvoliContact = async (itineraryData) => {
             console.log(`AI detection attempt ${attempt + 1} failed: ${e.message}`);
           }
 
-          if (attempt < 2) {
-            await delay(2000);
+          if (attempt < 3) {
+            await delay(3000); // Wait 3 seconds between retries
           }
         }
       }
 
       // Fallback to traditional selectors if AI didn't find it
       if (!emailFieldFound) {
-        console.log('AI didn\'t find email field, trying traditional selectors...');
+        console.log('AI didn\'t find email field, trying traditional selectors with longer timeout...');
         const emailSelectors = [
           'input[type="email"]',
           'input[name="email"]',
@@ -598,7 +603,8 @@ const createTuvoliContact = async (itineraryData) => {
 
         for (const selector of emailSelectors) {
           try {
-            await page.waitForSelector(selector, { timeout: 5000 });
+            // Use longer timeout since Tuvoli takes time to load
+            await page.waitForSelector(selector, { timeout: 10000 });
             emailSelector = selector;
             emailFieldFound = true;
             console.log(`Found email field with selector: ${selector}`);
@@ -634,67 +640,82 @@ const createTuvoliContact = async (itineraryData) => {
       let passwordSelector = null;
 
       if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
-        try {
-          const pageStructure = await page.evaluate(() => {
-            const inputs = Array.from(document.querySelectorAll('input'));
-            return inputs.map(input => ({
-              type: input.type,
-              name: input.name,
-              id: input.id,
-              placeholder: input.placeholder,
-              className: input.className,
-              visible: input.offsetParent !== null
-            }));
-          });
+        // Retry logic for password field (Tuvoli loads slowly)
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const pageStructure = await page.evaluate(() => {
+              const inputs = Array.from(document.querySelectorAll('input'));
+              return inputs.map(input => ({
+                type: input.type,
+                name: input.name,
+                id: input.id,
+                placeholder: input.placeholder,
+                className: input.className,
+                visible: input.offsetParent !== null
+              }));
+            });
 
-          const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${OPENAI_API_KEY}`
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [
-                {
-                  role: 'system',
-                  content: 'You are a web automation expert. Return ONLY a valid CSS selector for the password input field. Return JSON: {"selector": "input[type=\'password\']"} or {"selector": null}'
-                },
-                {
-                  role: 'user',
-                  content: `Find the password input field: ${JSON.stringify(pageStructure)}. Return the best CSS selector.`
-                }
-              ],
-              temperature: 0.1,
-              max_tokens: 100
-            })
-          });
+            if (pageStructure.length === 0 && attempt < 2) {
+              console.log(`No inputs found yet for password, waiting... (attempt ${attempt + 1}/3)`);
+              await delay(3000);
+              continue;
+            }
 
-          if (response.ok) {
-            const data = await response.json();
-            const content = data.choices[0]?.message?.content;
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const result = JSON.parse(jsonMatch[0]);
-              if (result.selector && result.selector !== 'null') {
-                try {
-                  await page.waitForSelector(result.selector, { timeout: 5000 });
-                  passwordSelector = result.selector;
-                  passwordFieldFound = true;
-                  console.log(`AI found password field: ${result.selector}`);
-                } catch (e) {
-                  console.log(`AI selector didn't work, trying fallbacks...`);
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [
+                  {
+                    role: 'system',
+                    content: 'You are a web automation expert. Return ONLY a valid CSS selector for the password input field. Return JSON: {"selector": "input[type=\'password\']"} or {"selector": null}'
+                  },
+                  {
+                    role: 'user',
+                    content: `Find the password input field: ${JSON.stringify(pageStructure)}. Return the best CSS selector.`
+                  }
+                ],
+                temperature: 0.1,
+                max_tokens: 100
+              })
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              const content = data.choices[0]?.message?.content;
+              const jsonMatch = content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const result = JSON.parse(jsonMatch[0]);
+                if (result.selector && result.selector !== 'null') {
+                  try {
+                    await page.waitForSelector(result.selector, { timeout: 10000 });
+                    passwordSelector = result.selector;
+                    passwordFieldFound = true;
+                    console.log(`AI found password field: ${result.selector}`);
+                    break;
+                  } catch (e) {
+                    console.log(`AI selector didn't work, trying again...`);
+                  }
                 }
               }
             }
+          } catch (e) {
+            console.log(`AI detection attempt ${attempt + 1} failed: ${e.message}`);
           }
-        } catch (e) {
-          console.log(`AI detection failed: ${e.message}`);
+
+          if (attempt < 2) {
+            await delay(3000);
+          }
         }
       }
 
       // Fallback to traditional selectors
       if (!passwordFieldFound) {
+        console.log('AI didn\'t find password field, trying traditional selectors...');
         const passwordSelectors = [
           'input[type="password"]',
           'input[name="password"]',
@@ -706,7 +727,7 @@ const createTuvoliContact = async (itineraryData) => {
 
         for (const selector of passwordSelectors) {
           try {
-            await page.waitForSelector(selector, { timeout: 5000 });
+            await page.waitForSelector(selector, { timeout: 10000 });
             passwordSelector = selector;
             passwordFieldFound = true;
             console.log(`Found password field with selector: ${selector}`);

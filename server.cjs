@@ -371,14 +371,6 @@ const createTuvoliContact = async (itineraryData) => {
           get: () => ['en-US', 'en'],
         });
         
-        // Override permissions
-        const originalQuery = window.navigator.permissions.query;
-        window.navigator.permissions.query = (parameters) => (
-          parameters.name === 'notifications' ?
-            Promise.resolve({ state: Notification.permission }) :
-            originalQuery(parameters)
-        );
-        
         // Chrome runtime
         window.chrome = {
           runtime: {},

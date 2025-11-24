@@ -348,6 +348,68 @@ const createTuvoliContact = async (itineraryData) => {
       const pageUrl = page.url();
       console.log(`Page loaded - Title: ${pageTitle}, URL: ${pageUrl}`);
 
+      // Check if we're on the homepage instead of login page
+      // If so, look for and click the login link
+      if (pageUrl.includes('tuvoli.com') && !pageUrl.includes('/login') && !pageUrl.includes('/signin') && !pageUrl.includes('/auth')) {
+        console.log('Detected homepage, looking for login link...');
+        const loginLinkSelectors = [
+          'a[href*="login"]',
+          'a[href*="signin"]',
+          'a[href*="sign-in"]',
+          'a:has-text("Login")',
+          'a:has-text("Sign In")',
+          'a:has-text("Log in")',
+          'button:has-text("Login")',
+          'button:has-text("Sign In")',
+          '[data-testid*="login"]',
+          'a[href="/login"]',
+          'a[href="/signin"]'
+        ];
+
+        let loginLinkFound = false;
+        for (const selector of loginLinkSelectors) {
+          try {
+            await page.waitForSelector(selector, { timeout: 3000 });
+            console.log(`Found login link with selector: ${selector}`);
+            await page.click(selector);
+            await delay(3000); // Wait for navigation
+            loginLinkFound = true;
+            const newUrl = page.url();
+            console.log(`After clicking login link, URL: ${newUrl}`);
+            break;
+          } catch (e) {
+            continue;
+          }
+        }
+
+        if (!loginLinkFound) {
+          // Try alternative login URLs
+          console.log('Login link not found, trying alternative login URLs...');
+          const alternativeUrls = [
+            `${TUVOLI_URL}/signin`,
+            `${TUVOLI_URL}/sign-in`,
+            `${TUVOLI_URL}/auth/login`,
+            `https://app.tuvoli.com/login`,
+            `https://app.tuvoli.com/signin`
+          ];
+
+          for (const url of alternativeUrls) {
+            try {
+              console.log(`Trying: ${url}`);
+              await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+              await delay(2000);
+              const currentUrl = page.url();
+              console.log(`Navigated to: ${currentUrl}`);
+              if (currentUrl.includes('/login') || currentUrl.includes('/signin') || currentUrl.includes('/auth')) {
+                break;
+              }
+            } catch (e) {
+              continue;
+            }
+          }
+        }
+      }
+
       // Try to find email field with multiple strategies
       console.log('Looking for email input field...');
       let emailFieldFound = false;

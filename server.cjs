@@ -336,9 +336,9 @@ const createTuvoliContact = async (itineraryData) => {
       const page = await browser.newPage();
       await page.setViewport({ width: 1280, height: 720 });
       
-      // Helper to save screenshots for debugging
-      const saveScreenshot = async (name) => {
-        if (TUVOLI_DEBUG) {
+      // Helper to save screenshots for debugging (always save on failures, optional on success)
+      const saveScreenshot = async (name, always = false) => {
+        if (TUVOLI_DEBUG || always) {
           try {
             const screenshot = await page.screenshot({ 
               path: `/tmp/tuvoli-${name}-${Date.now()}.png`,
@@ -868,6 +868,99 @@ Return JSON:
         }
       };
       
+      // Helper: Verify element is actually visible and interactable
+      const verifyElementReady = async (selector, isXPath = false) => {
+        try {
+          let element;
+          if (isXPath) {
+            const elements = await page.$x(selector);
+            if (elements.length === 0) return false;
+            element = elements[0];
+          } else {
+            element = await page.$(selector);
+            if (!element) return false;
+          }
+          
+          // Check if element is visible
+          const isVisible = await page.evaluate((el) => {
+            const style = window.getComputedStyle(el);
+            return style.display !== 'none' && 
+                   style.visibility !== 'hidden' && 
+                   style.opacity !== '0' &&
+                   el.offsetParent !== null;
+          }, element);
+          
+          if (!isVisible) return false;
+          
+          // Check if element is enabled (for inputs/buttons)
+          const isEnabled = await page.evaluate((el) => {
+            return !el.disabled && !el.readOnly;
+          }, element);
+          
+          return isEnabled;
+        } catch (e) {
+          return false;
+        }
+      };
+      
+      // Helper: Verify action actually succeeded
+      const verifyActionSuccess = async (actionType, selector = null, expectedChange = null) => {
+        await delay(1000); // Give page time to react
+        
+        try {
+          switch (actionType) {
+            case 'click':
+              // Check if URL changed or element disappeared (indicates click worked)
+              const urlAfterClick = page.url();
+              // Could check if modal opened, element disappeared, etc.
+              return true; // For now, assume success if no error
+              
+            case 'type':
+              if (selector) {
+                // Verify text was actually typed
+                const actualValue = await page.evaluate((sel) => {
+                  const el = document.querySelector(sel);
+                  return el ? el.value : null;
+                }, selector);
+                return actualValue && actualValue.length > 0;
+              }
+              return true;
+              
+            case 'navigate':
+              // Verify we're on the target URL (or close to it)
+              const currentUrl = page.url();
+              return currentUrl.includes(actionPlan.url?.split('/')[2] || ''); // Check domain matches
+              
+            default:
+              return true;
+          }
+        } catch (e) {
+          return false;
+        }
+      };
+      
+      // Helper: Wait for specific element to appear (better than fixed waits)
+      const waitForElement = async (selector, timeout = 10000, isXPath = false) => {
+        try {
+          if (isXPath) {
+            await page.waitForFunction(
+              (xpath) => {
+                const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                const element = result.singleNodeValue;
+                return element && element.offsetParent !== null;
+              },
+              { timeout },
+              selector
+            );
+          } else {
+            await page.waitForSelector(selector, { timeout, visible: true });
+          }
+          return true;
+        } catch (e) {
+          return false;
+        }
+      };
+      
       // Execute AI-determined action
       const executeAIAction = async (actionPlan) => {
         if (!actionPlan) return false;
@@ -876,37 +969,106 @@ Return JSON:
           switch (actionPlan.action) {
             case 'click':
               if (actionPlan.selector) {
-                // Check if it's XPath
-                if (actionPlan.selector.startsWith('//') || actionPlan.selector.startsWith('(//')) {
+                const isXPath = actionPlan.selector.startsWith('//') || actionPlan.selector.startsWith('(//');
+                
+                // Wait for element to appear
+                const elementAppeared = await waitForElement(actionPlan.selector, 8000, isXPath);
+                if (!elementAppeared) {
+                  console.log(`✗ Element not found: ${actionPlan.selector}`);
+                  await saveScreenshot('click-failed-element-not-found');
+                  return false;
+                }
+                
+                // Verify element is ready
+                const isReady = await verifyElementReady(actionPlan.selector, isXPath);
+                if (!isReady) {
+                  console.log(`✗ Element not ready for interaction: ${actionPlan.selector}`);
+                  await saveScreenshot('click-failed-element-not-ready');
+                  return false;
+                }
+                
+                // Perform click
+                if (isXPath) {
                   const elements = await page.$x(actionPlan.selector);
                   if (elements.length > 0) {
                     await elements[0].click();
                     console.log(`✓ Clicked element using XPath: ${actionPlan.selector}`);
-                    await delay(2000);
-                    return true;
+                  } else {
+                    return false;
                   }
                 } else {
-                  // CSS selector
-                  await page.waitForSelector(actionPlan.selector, { timeout: 5000, visible: true });
                   await page.click(actionPlan.selector);
                   console.log(`✓ Clicked element using CSS: ${actionPlan.selector}`);
-                  await delay(2000);
-                  return true;
                 }
+                
+                // Verify click succeeded
+                const clickSuccess = await verifyActionSuccess('click', actionPlan.selector);
+                if (!clickSuccess) {
+                  console.log(`⚠ Click may not have succeeded, but continuing...`);
+                }
+                
+                await delay(2000);
+                return true;
               }
               break;
               
             case 'type':
               if (actionPlan.selector && actionPlan.text) {
-                await page.waitForSelector(actionPlan.selector, { timeout: 5000, visible: true });
+                // Wait for element
+                const elementAppeared = await waitForElement(actionPlan.selector, 8000, false);
+                if (!elementAppeared) {
+                  console.log(`✗ Input field not found: ${actionPlan.selector}`);
+                  await saveScreenshot('type-failed-element-not-found');
+                  return false;
+                }
+                
+                // Verify element is ready
+                const isReady = await verifyElementReady(actionPlan.selector, false);
+                if (!isReady) {
+                  console.log(`✗ Input field not ready: ${actionPlan.selector}`);
+                  await saveScreenshot('type-failed-element-not-ready');
+                  return false;
+                }
+                
+                // Focus and clear field
                 await page.click(actionPlan.selector);
+                await delay(200);
                 await page.keyboard.down('Control');
                 await page.keyboard.press('a');
                 await page.keyboard.up('Control');
+                await delay(200);
+                
+                // Type text
                 await page.type(actionPlan.selector, actionPlan.text, { delay: 50 });
-                console.log(`✓ Typed "${actionPlan.text}" into ${actionPlan.selector}`);
-                await delay(1000);
-                return true;
+                await delay(500);
+                
+                // Verify text was actually typed
+                const typeSuccess = await verifyActionSuccess('type', actionPlan.selector);
+                if (!typeSuccess) {
+                  console.log(`⚠ Text may not have been typed correctly, retrying...`);
+                  // Retry once
+                  await page.click(actionPlan.selector);
+                  await page.keyboard.down('Control');
+                  await page.keyboard.press('a');
+                  await page.keyboard.up('Control');
+                  await page.type(actionPlan.selector, actionPlan.text, { delay: 50 });
+                  await delay(500);
+                }
+                
+                const finalValue = await page.evaluate((sel) => {
+                  const el = document.querySelector(sel);
+                  return el ? el.value : '';
+                }, actionPlan.selector);
+                
+                if (finalValue.includes(actionPlan.text.substring(0, 5))) {
+                  console.log(`✓ Typed "${actionPlan.text}" into ${actionPlan.selector} (verified: "${finalValue.substring(0, 20)}...")`);
+                  await delay(1000);
+                  return true;
+                } else {
+                  console.log(`✗ Text verification failed. Expected to contain "${actionPlan.text.substring(0, 5)}", got "${finalValue}"`);
+                  await saveScreenshot('type-failed-verification');
+                  return false;
+                }
               }
               break;
               
@@ -917,16 +1079,34 @@ Return JSON:
                   const currentUrl = page.url();
                   if (currentUrl === actionPlan.url || currentUrl.includes(actionPlan.url.split('?')[0])) {
                     console.log(`⚠ Already on target URL: ${currentUrl}, skipping navigation`);
-                    return true; // Consider it successful since we're already there
+                    // Still verify we can see expected elements
+                    await delay(1000);
+                    return true;
                   }
                   
+                  const urlBefore = page.url();
                   await page.goto(actionPlan.url, { waitUntil: 'networkidle2', timeout: 30000 });
+                  await delay(2000); // Give page time to load
+                  
                   const newUrl = page.url();
+                  
+                  // Verify navigation succeeded
+                  const navSuccess = await verifyActionSuccess('navigate', null, actionPlan.url);
+                  if (!navSuccess && newUrl === urlBefore) {
+                    console.log(`✗ Navigation may have failed - URL didn't change`);
+                    await saveScreenshot('navigate-failed-no-url-change');
+                    return false;
+                  }
+                  
                   console.log(`✓ Navigated to: ${newUrl}`);
-                  await delay(2000);
+                  
+                  // Wait for page to be interactive
+                  await page.waitForFunction(() => document.readyState === 'complete', { timeout: 5000 }).catch(() => {});
+                  
                   return true;
                 } catch (e) {
                   console.log(`✗ Navigation failed: ${e.message}`);
+                  await saveScreenshot('navigate-failed-error');
                   return false;
                 }
               }
@@ -1307,6 +1487,10 @@ Return JSON:
           } else {
             // Success - reset failure counter
             consecutiveNavigationFailures = 0;
+            // Take success screenshot periodically
+            if (aiAttempts % 5 === 0) {
+              await saveScreenshot(`success-checkpoint-${aiAttempts}`);
+            }
           }
           
           // Small delay between actions

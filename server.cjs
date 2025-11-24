@@ -296,50 +296,7 @@ const createTuvoliContact = async (itineraryData) => {
 };
 
 // Send SMS using Twilio
-      headless: !TUVOLI_DEBUG, // Run in visible mode if debug is enabled
-      executablePath: executablePath,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu',
-        '--disable-software-rasterizer',
-        '--disable-extensions',
-        '--disable-background-networking',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-breakpad',
-        '--disable-client-side-phishing-detection',
-        '--disable-default-apps',
-        '--disable-features=TranslateUI',
-        '--disable-hang-monitor',
-        '--disable-ipc-flooding-protection',
-        '--disable-popup-blocking',
-        '--disable-prompt-on-repost',
-        '--disable-renderer-backgrounding',
-        '--disable-sync',
-        '--disable-translate',
-        '--metrics-recording-only',
-        '--mute-audio',
-        '--no-default-browser-check',
-        '--no-pings',
-        '--use-fake-ui-for-media-stream',
-        '--use-fake-device-for-media-stream',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
-      ],
-      timeout: 60000,
-      ignoreHTTPSErrors: true
-    });
-
-    try {
-      // Wait a moment to ensure browser is fully initialized
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const page = await browser.newPage();
+const sendSMS = async (phoneNumber, message) => {
       await page.setViewport({ width: 1280, height: 720 });
       
       // Helper to save screenshots for debugging (always save on failures, optional on success)

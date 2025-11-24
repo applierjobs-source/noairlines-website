@@ -264,12 +264,38 @@ const createTuvoliContact = async (itineraryData) => {
 
     console.log('Sending webhook to n8n for Tuvoli contact creation...');
     
-    // Determine executable path - use environment variable or default Alpine path
-    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
-    
-    console.log(`Using Chromium executable: ${executablePath}`);
-    
-    const browser = await puppeteer.launch({
+    // Send webhook to n8n
+    const response = await fetch(n8nWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        email: itineraryData.email || '',
+        phone: itineraryData.phone || '',
+        route: routeDisplay,
+        date: itineraryData.date || '',
+        time: itineraryData.time || '',
+        passengers: itineraryData.passengers || ''
+      }),
+      signal: AbortSignal.timeout(60000) // 60 second timeout
+    });
+
+    if (response.ok) {
+      const result = await response.json().catch(() => ({}));
+      console.log('✅ n8n webhook successful:', result);
+      return { success: true, message: 'Contact creation triggered in n8n', n8nResult: result };
+    } else {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`n8n webhook failed: ${response.status} - ${errorText}`);
+    }
+  } catch (error) {
+    console.error('Error triggering n8n workflow:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send SMS using Twilio
       headless: !TUVOLI_DEBUG, // Run in visible mode if debug is enabled
       executablePath: executablePath,
       args: [

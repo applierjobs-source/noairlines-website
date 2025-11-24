@@ -23,18 +23,30 @@ noairlines.com → Node.js Server → Webhook → n8n → Tuvoli (Puppeteer)
 - ✅ Can use same domain/subdomain
 
 1. **Go to your existing Railway project:**
-   - Open your NoAirlines project on [Railway.app](https://railway.app)
-   - Click **"New"** button (top right)
-   - Select **"Empty Service"** or **"Deploy from GitHub repo"**
+   - Go to [Railway.app](https://railway.app) and log in
+   - You'll see a list of your projects
+   - **Click on your "NoAirlines" project** (or whatever you named it)
+   - This opens your project dashboard
 
-2. **Add n8n service:**
-   - Click **"New"** → **"Empty Service"**
-   - Click the service → **"Settings"** tab
-   - Under **"Source"**, click **"Deploy from Docker image"**
+2. **Add n8n service - Method 1 (Using Template - Easiest):**
+   - In your project dashboard, look for a **"New"** button (usually top right or in the services list area)
+   - Click **"New"** 
+   - A dropdown/modal will appear with options
+   - Select **"Template"** or **"Deploy Template"**
+   - In the template search box, type: **"n8n"**
+   - Click on the **n8n** template when it appears
+   - Railway will create a new service with n8n pre-configured
+
+3. **Add n8n service - Method 2 (Using Docker Image):**
+   - In your project dashboard, click **"New"**
+   - Select **"Empty Service"** or **"Empty"**
+   - A new service will be created (you can rename it to "n8n")
+   - Click on the new service
+   - Go to **"Settings"** tab (left sidebar)
+   - Scroll to **"Source"** section
+   - Click **"Deploy from Docker image"** or **"Docker"**
    - Enter: `n8nio/n8n:latest`
-   - OR use Railway's template:
-     - Click **"New"** → **"Template"**
-     - Search for **"n8n"** and select it
+   - Click **"Deploy"** or **"Save"**
 
 3. **Set Environment Variables:**
    - Click on the n8n service

@@ -619,6 +619,10 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
         );
       });
 
+      // Helper function to delay (replacement for deprecated waitForTimeout)
+      // MUST be defined before AI-guided mode uses it
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
       // ============================================================
       // AI-POWERED AUTOMATION: Let AI figure out how to accomplish the goal
       // ============================================================
@@ -689,9 +693,6 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
         console.log('📋 FALLING BACK TO MANUAL AUTOMATION');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       }
-      
-      // Helper function to delay (replacement for deprecated waitForTimeout)
-      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         // AI-powered smart waiting: Check if page is ready using AI
       const waitForPageReady = async (page, description = 'page') => {

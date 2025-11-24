@@ -394,6 +394,19 @@ const createTuvoliContact = async (itineraryData) => {
             };
           });
           
+          // Include investigation insights if provided
+          const investigationContext = currentState && typeof currentState === 'object' 
+            ? `\nINVESTIGATION INSIGHTS (from proactive analysis):
+- Current State: ${currentState.currentState || 'Not provided'}
+- Ready for Action: ${currentState.readyForAction || 'Unknown'}
+- Recommended Next: ${currentState.recommendedNextAction || 'Not provided'}
+- Insights: ${currentState.insights ? currentState.insights.join(', ') : 'None'}
+- Potential Issues: ${currentState.potentialIssues ? currentState.potentialIssues.join(', ') : 'None'}
+- Confidence: ${currentState.confidence || 'Unknown'}
+- Suggested Selectors: ${currentState.suggestedSelectors ? JSON.stringify(currentState.suggestedSelectors, null, 2) : 'None'}
+Use these insights to make a more informed decision.`
+            : '';
+          
           const reasoningPrompt = `You are an expert web automation agent. Your mission is to accomplish this goal:
 
 GOAL: ${goal}
@@ -405,7 +418,7 @@ CURRENT STATE:
 - Has Contact Form: ${pageState.hasContactForm}
 - Visible Buttons: ${JSON.stringify(pageState.visibleButtons, null, 2)}
 - Visible Inputs: ${JSON.stringify(pageState.visibleInputs, null, 2)}
-- Body Text Preview: ${pageState.bodyText.substring(0, 500)}
+- Body Text Preview: ${pageState.bodyText.substring(0, 500)}${investigationContext}
 
 KNOWLEDGE FROM PREVIOUS SUCCESSFUL ATTEMPTS:
 1. LOGIN PAGE NAVIGATION: To reach the login page at https://noairlines.tuvoli.com/login?returnURL=%2Fhome, use Strategy 3 (navigation with custom headers). The page may redirect initially, but custom headers help bypass redirects.
@@ -549,10 +562,17 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
       };
       
       // Investigation function: Analyze problems and try alternative solutions
-      const investigateAndRetry = async (failedAction = null) => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🔍 INVESTIGATION MODE: Analyzing problem and trying solutions');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      // proactive = true means this is a proactive check at each step, not just error handling
+      const investigateAndRetry = async (failedAction = null, proactive = false) => {
+        if (proactive) {
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('🔍 PROACTIVE INVESTIGATION: Analyzing current state before action');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        } else {
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('🔍 INVESTIGATION MODE: Analyzing problem and trying solutions');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        }
         
         try {
           // Get detailed page state for investigation
@@ -585,11 +605,36 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
           
           console.log('Investigation State:', JSON.stringify(investigationState, null, 2));
           
-          // Use AI to investigate the problem
+          // Use AI to investigate the problem or current state
           if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
             const investigationScreenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
             
-            const investigationPrompt = `You are troubleshooting a web automation issue. Analyze the current state and determine what went wrong and how to fix it.
+            const investigationPrompt = proactive 
+              ? `You are analyzing the current state of a web page during automation. Provide insights to help determine the best next action.
+
+CURRENT STATE:
+${JSON.stringify(investigationState, null, 2)}
+
+GOAL: ${mainGoal}
+
+Analyze:
+1. What is the current state of the page?
+2. What elements are visible and ready for interaction?
+3. What should be the next action based on the goal?
+4. Are there any issues or obstacles that need to be addressed?
+5. What insights can help the AI make the right decision?
+
+Return JSON:
+{
+  "currentState": "Description of what's on the page",
+  "readyForAction": true/false,
+  "recommendedNextAction": "What action should be taken next",
+  "insights": ["Key insights about the page state"],
+  "potentialIssues": ["Any potential issues or obstacles"],
+  "suggestedSelectors": {"elementName": "selector"} - if you see specific elements that should be interacted with,
+  "confidence": "high" | "medium" | "low" - how confident you are about the state
+}`
+              : `You are troubleshooting a web automation issue. Analyze the current state and determine what went wrong and how to fix it.
 
 CURRENT STATE:
 ${JSON.stringify(investigationState, null, 2)}
@@ -657,41 +702,61 @@ Return JSON:
               
               if (invJsonMatch) {
                 const investigationResult = JSON.parse(invJsonMatch[0]);
-                console.log('🔍 Investigation Result:');
-                console.log(`  Problem: ${investigationResult.problem}`);
-                console.log(`  Solution: ${investigationResult.solution}`);
-                console.log(`  Action: ${investigationResult.action}`);
-                if (investigationResult.alternativeStrategies) {
-                  console.log(`  Alternative Strategies: ${investigationResult.alternativeStrategies.join(', ')}`);
-                }
                 
-                // Try the suggested solution
-                if (investigationResult.action && investigationResult.action !== 'retry') {
-                  const solutionAction = {
-                    action: investigationResult.action,
-                    selector: investigationResult.selector,
-                    text: investigationResult.text,
-                    url: investigationResult.url,
-                    waitTime: investigationResult.waitTime
-                  };
-                  
-                  console.log('🔧 Attempting suggested solution...');
-                  const solutionSuccess = await executeAIAction(solutionAction);
-                  if (solutionSuccess) {
-                    console.log('✅ Investigation solution worked!');
-                    return true;
-                  } else {
-                    console.log('⚠ Investigation solution did not work, will try alternatives...');
+                if (proactive) {
+                  // Proactive investigation - return insights for AI to use
+                  console.log('🔍 Proactive Investigation Insights:');
+                  console.log(`  Current State: ${investigationResult.currentState}`);
+                  console.log(`  Ready for Action: ${investigationResult.readyForAction}`);
+                  console.log(`  Recommended Next: ${investigationResult.recommendedNextAction}`);
+                  console.log(`  Confidence: ${investigationResult.confidence}`);
+                  if (investigationResult.insights) {
+                    console.log(`  Insights: ${investigationResult.insights.join(', ')}`);
                   }
-                }
-                
-                // Try alternative strategies if provided
-                if (investigationResult.alternativeStrategies && investigationResult.alternativeStrategies.length > 0) {
-                  console.log('🔧 Trying alternative strategies...');
-                  for (const strategy of investigationResult.alternativeStrategies.slice(0, 2)) { // Try first 2 alternatives
-                    console.log(`  Trying: ${strategy}`);
-                    // Could parse strategy and try it, but for now just log it
-                    await delay(2000);
+                  if (investigationResult.potentialIssues) {
+                    console.log(`  Potential Issues: ${investigationResult.potentialIssues.join(', ')}`);
+                  }
+                  
+                  // Return insights to be used by AI reasoning
+                  return investigationResult;
+                } else {
+                  // Reactive investigation - try to fix the problem
+                  console.log('🔍 Investigation Result:');
+                  console.log(`  Problem: ${investigationResult.problem}`);
+                  console.log(`  Solution: ${investigationResult.solution}`);
+                  console.log(`  Action: ${investigationResult.action}`);
+                  if (investigationResult.alternativeStrategies) {
+                    console.log(`  Alternative Strategies: ${investigationResult.alternativeStrategies.join(', ')}`);
+                  }
+                  
+                  // Try the suggested solution
+                  if (investigationResult.action && investigationResult.action !== 'retry') {
+                    const solutionAction = {
+                      action: investigationResult.action,
+                      selector: investigationResult.selector,
+                      text: investigationResult.text,
+                      url: investigationResult.url,
+                      waitTime: investigationResult.waitTime
+                    };
+                    
+                    console.log('🔧 Attempting suggested solution...');
+                    const solutionSuccess = await executeAIAction(solutionAction);
+                    if (solutionSuccess) {
+                      console.log('✅ Investigation solution worked!');
+                      return true;
+                    } else {
+                      console.log('⚠ Investigation solution did not work, will try alternatives...');
+                    }
+                  }
+                  
+                  // Try alternative strategies if provided
+                  if (investigationResult.alternativeStrategies && investigationResult.alternativeStrategies.length > 0) {
+                    console.log('🔧 Trying alternative strategies...');
+                    for (const strategy of investigationResult.alternativeStrategies.slice(0, 2)) { // Try first 2 alternatives
+                      console.log(`  Trying: ${strategy}`);
+                      // Could parse strategy and try it, but for now just log it
+                      await delay(2000);
+                    }
                   }
                 }
               }
@@ -722,9 +787,28 @@ Return JSON:
             return true;
           }
           
+          // Return null/insights based on mode
+          if (proactive) {
+            // Return basic insights even if AI investigation failed
+            return {
+              currentState: `URL: ${investigationState.url}, Has Login: ${investigationState.hasLoginForm}, Has Contact Form: ${investigationState.hasContactForm}`,
+              readyForAction: investigationState.hasLoginForm || investigationState.hasContactForm || investigationState.allInputs.length > 0,
+              insights: [`Found ${investigationState.allInputs.length} inputs, ${investigationState.allButtons.length} buttons`],
+              confidence: 'medium'
+            };
+          }
           return false; // Investigation didn't find a solution
         } catch (e) {
           console.log(`✗ Investigation failed: ${e.message}`);
+          if (proactive) {
+            // Return basic state even on error
+            return {
+              currentState: 'Investigation failed, using basic state',
+              readyForAction: false,
+              insights: ['Investigation error occurred'],
+              confidence: 'low'
+            };
+          }
           return false;
         }
       };
@@ -919,9 +1003,9 @@ Return JSON:
                 lastUrl = ''; // Reset to allow navigation again
                 // Continue with AI reasoning but it should now see the fields
               } else {
-                console.log('⚠ Still no login fields after wait, falling back to manual approach');
-                aiGuidedMode = false;
-                break;
+                console.log('⚠ Still no login fields after wait, investigating...');
+                await investigateAndRetry();
+                // Continue instead of breaking
               }
             }
           } else {
@@ -929,7 +1013,15 @@ Return JSON:
           }
           lastUrl = currentUrl;
           
-          const actionPlan = await aiReasonNextAction(mainGoal, {});
+          // ============================================================
+          // INVESTIGATION AT EVERY STEP: Analyze current state
+          // ============================================================
+          console.log('🔍 Step Investigation: Analyzing current state...');
+          const investigationInsights = await investigateAndRetry(null, true); // true = proactive investigation
+          
+          // Use investigation insights to inform AI reasoning
+          // Pass investigation insights as context to help AI make better decisions
+          const actionPlan = await aiReasonNextAction(mainGoal, investigationInsights || {});
           
           if (!actionPlan) {
             console.log('⚠ AI could not determine next action, investigating...');

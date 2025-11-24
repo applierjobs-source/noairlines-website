@@ -688,9 +688,10 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('📋 FALLING BACK TO MANUAL AUTOMATION');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        
-        // Helper function to delay (replacement for deprecated waitForTimeout)
-        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      }
+      
+      // Helper function to delay (replacement for deprecated waitForTimeout)
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         // AI-powered smart waiting: Check if page is ready using AI
       const waitForPageReady = async (page, description = 'page') => {

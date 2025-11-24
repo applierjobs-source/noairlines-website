@@ -25,6 +25,18 @@ const TUVOLI_PASSWORD = process.env.TUVOLI_PASSWORD || '';
 const TUVOLI_URL = process.env.TUVOLI_URL || 'https://noairlines.tuvoli.com';
 const TUVOLI_DEBUG = process.env.TUVOLI_DEBUG === 'true' || false; // Set to true to see browser in action
 
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED REJECTION at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('UNCAUGHT EXCEPTION:', error);
+  process.exit(1);
+});
+
 console.log('========================================');
 console.log('Starting NoAirlines server...');
 console.log(`PORT: ${PORT}`);

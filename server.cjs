@@ -4385,25 +4385,18 @@ const mimeTypes = {
   '.mp4': 'video/mp4'
 };
 
-const server = http.createServer(async (req, res) => {
-  try {
-    // Healthcheck endpoint - respond immediately (before any logging)
-    if (req.url === '/health' || req.url === '/healthcheck' || req.url === '/') {
-      // For root path, check if it's a healthcheck (no Accept header or simple GET)
-      if (req.url === '/' && req.headers['user-agent'] && req.headers['user-agent'].includes('Healthcheck')) {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
-        return;
-      }
-      // Explicit healthcheck endpoints
-      if (req.url === '/health' || req.url === '/healthcheck') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
-        return;
-      }
-    }
-    
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+const server = http.createServer((req, res) => {
+  // Healthcheck endpoints - respond immediately, synchronously
+  if (req.url === '/health' || req.url === '/healthcheck') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+    return;
+  }
+  
+  // Handle all other requests asynchronously
+  (async () => {
+    try {
+      console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
 
     // Handle www to non-www redirect
     const host = req.headers.host;
@@ -4896,13 +4889,14 @@ NoAirlines.com`;
       res.end(content, 'utf-8');
     }
   });
-  } catch (error) {
-    console.error('Error handling request:', error);
-    if (!res.headersSent) {
-      res.writeHead(500, { 'Content-Type': 'text/plain' });
-      res.end('Internal Server Error');
+    } catch (error) {
+      console.error('Error handling request:', error);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Internal Server Error');
+      }
     }
-  }
+  })();
 });
 
 // Handle server errors (set up before listening)

@@ -525,6 +525,11 @@ You can see what's happening and understand why. Think about:
 4. What would a human do differently?
 5. What browser characteristics might be causing redirects?
 6. **Is the knowledge base wrong?** If recommended strategies keep failing, the knowledge base may be outdated or incorrect.
+7. **CRITICAL THINKING: If navigation keeps redirecting, what's the root cause?**
+   - If you try to navigate to noairlines.tuvoli.com but end up on tuvoli.com, the server is detecting you
+   - The server sees your browser fingerprint and says "this looks like automation, redirect to main site"
+   - The solution is NOT to keep trying navigation - it's to CHANGE YOUR FINGERPRINT FIRST
+   - Think: "If I keep getting redirected, I need to look different to the server"
 
 CRITICAL: QUESTION THE KNOWLEDGE BASE
 - The knowledge base above may contain errors or outdated information
@@ -534,13 +539,35 @@ CRITICAL: QUESTION THE KNOWLEDGE BASE
 - Be willing to try completely different approaches than what knowledge base suggests
 - The knowledge base is a starting point, not a rulebook
 
-If you're stuck on tuvoli.com (main site) instead of noairlines.tuvoli.com (subdomain):
-- The server is likely detecting automation and redirecting
-- You need to change your browser "fingerprint" (user agent, headers, viewport)
-- Try manipulate_browser action to change characteristics, THEN navigate
-- Or use JavaScript navigation which sometimes bypasses server-side redirects
-- Consider that cookies/session might be needed - try accessing root first
-- **If knowledge base strategies aren't working, ignore them and experiment**
+IF YOU'RE STUCK ON tuvoli.com (main site) INSTEAD OF noairlines.tuvoli.com (subdomain):
+🚨 THIS IS THE MOST COMMON PROBLEM - READ THIS CAREFULLY:
+
+The server is detecting automation and redirecting you. Here's what to think:
+1. **Root Cause Analysis**: Why does navigation keep redirecting?
+   - Answer: The server sees your browser fingerprint and recognizes it as automation
+   - Your user agent, headers, cookies, viewport - all of these create a "fingerprint"
+   - The server says "this looks like a bot" and redirects you
+
+2. **The Solution is NOT more navigation attempts**:
+   - Trying navigate, navigate_js, navigate_root_then again won't help
+   - You'll just get redirected again because your fingerprint is the same
+   - You need to CHANGE YOUR FINGERPRINT FIRST
+
+3. **What to do (in this order)**:
+   a. Use manipulate_browser action with browserAction: "clear_cookies" - fresh start
+   b. Use manipulate_browser action with browserAction: "change_user_agent" - look different
+   c. Use manipulate_browser action with browserAction: "change_viewport" - different screen size
+   d. Use manipulate_browser action with browserAction: "set_headers" - different headers
+   e. THEN try navigate or navigate_js with your new fingerprint
+
+4. **Think like this**: "If I keep getting redirected when I try to go to noairlines.tuvoli.com, 
+   the problem isn't the navigation method - it's that the server doesn't like my browser fingerprint.
+   I need to change who I appear to be, THEN navigate."
+
+5. **Don't waste attempts**: If navigation failed 2+ times, STOP trying navigation and START 
+   manipulating your browser fingerprint. Navigation will keep failing until you change your fingerprint.
+
+THIS IS THE KEY INSIGHT: Navigation failures = fingerprint problem, not navigation problem.
 
 KNOWLEDGE FROM PREVIOUS SUCCESSFUL ATTEMPTS:
 1. LOGIN PAGE NAVIGATION: The URL https://noairlines.tuvoli.com/login?returnURL=%2Fhome may redirect. You have multiple strategies available:

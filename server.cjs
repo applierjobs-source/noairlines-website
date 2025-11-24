@@ -421,13 +421,31 @@ CURRENT STATE:
 - Body Text Preview: ${pageState.bodyText.substring(0, 500)}${investigationContext}
 
 KNOWLEDGE FROM PREVIOUS SUCCESSFUL ATTEMPTS:
-1. LOGIN PAGE NAVIGATION: To reach the login page at https://noairlines.tuvoli.com/login?returnURL=%2Fhome, use Strategy 3 (navigation with custom headers). The page may redirect initially, but custom headers help bypass redirects.
+1. LOGIN PAGE NAVIGATION: The URL https://noairlines.tuvoli.com/login?returnURL=%2Fhome may redirect. You have multiple strategies available:
 
-IMPORTANT: If you're already on the login page (URL contains '/login'), DO NOT navigate again. Instead:
-- Wait 6+ seconds for fields to load (login fields take time to appear)
+   STRATEGY A - Direct Navigation with Headers:
+   - Use action "navigate" with url: "https://noairlines.tuvoli.com/login?returnURL=%2Fhome"
+   - This uses Puppeteer's goto() with custom headers
+   
+   STRATEGY B - JavaScript Navigation:
+   - Use action "navigate_js" to navigate via JavaScript: window.location.href = "https://noairlines.tuvoli.com/login?returnURL=%2Fhome"
+   - This bypasses some redirect mechanisms
+   
+   STRATEGY C - Click Login Link:
+   - If you see a login link/button on the page, use action "click" to click it
+   - Look for buttons/links with text containing "login", "sign in", or href containing "/login"
+   
+   STRATEGY D - Access Subdomain Root First:
+   - Navigate to "https://noairlines.tuvoli.com/" first, then navigate to "/login?returnURL=%2Fhome"
+   - Sometimes accessing the root helps establish the session
+
+IMPORTANT NAVIGATION RULES:
+- Check current URL before navigating - if already on login page (URL contains '/login'), DO NOT navigate again
+- If navigation fails or redirects, try a different strategy
+- After navigation, ALWAYS wait 6+ seconds for fields to load
 - Check if login fields are visible before trying to fill them
-- If fields aren't visible yet, use action "wait" with waitTime: 6000
-- Only navigate if you're NOT on the login page
+- If fields aren't visible after navigation, use action "wait" with waitTime: 6000
+- If you've tried navigating 2+ times to the same URL, try a different strategy or wait instead
 
 2. LOGIN FORM FIELDS (PROVEN WORKING):
    - Username field: input[placeholder='Enter Username'] (this has worked successfully)
@@ -474,15 +492,26 @@ Analyze the screenshot and current state. Use the knowledge above to determine t
 
 Return JSON with this structure:
 {
-  "action": "click" | "type" | "navigate" | "wait" | "complete" | "error",
+  "action": "click" | "type" | "navigate" | "navigate_js" | "navigate_root_then" | "wait" | "complete" | "error",
   "reasoning": "Brief explanation of why this action, referencing which proven strategy you're using",
   "selector": "CSS selector or XPath for the element (if action is click or type)",
   "text": "Text to type (if action is type)",
-  "url": "URL to navigate to (if action is navigate)",
+  "url": "URL to navigate to (if action is navigate, navigate_js, or navigate_root_then)",
   "waitTime": "Milliseconds to wait (if action is wait)",
   "isComplete": true/false,
-  "nextGoal": "What to do after this action"
+  "nextGoal": "What to do after this action",
+  "strategy": "Which navigation strategy you're using (A, B, C, or D)"
 }
+
+AVAILABLE ACTIONS:
+- "navigate": Standard Puppeteer navigation (Strategy A)
+- "navigate_js": JavaScript-based navigation (Strategy B) - use if standard navigation fails
+- "navigate_root_then": Navigate to root first, then target (Strategy D) - use if redirects persist
+- "click": Click an element (Strategy C if clicking login link)
+- "type": Type text into an input field
+- "wait": Wait for specified milliseconds
+- "complete": Goal is complete
+- "error": Cannot proceed (with reasoning)
 
 Be VERY specific with selectors. Use the proven selectors from knowledge above when applicable. Prioritize:
 1. IDs: #elementId
@@ -857,10 +886,70 @@ Return JSON:
               
             case 'navigate':
               if (actionPlan.url) {
-                await page.goto(actionPlan.url, { waitUntil: 'networkidle2', timeout: 30000 });
-                console.log(`✓ Navigated to: ${actionPlan.url}`);
-                await delay(2000);
-                return true;
+                try {
+                  // Check if we're already on this URL
+                  const currentUrl = page.url();
+                  if (currentUrl === actionPlan.url || currentUrl.includes(actionPlan.url.split('?')[0])) {
+                    console.log(`⚠ Already on target URL: ${currentUrl}, skipping navigation`);
+                    return true; // Consider it successful since we're already there
+                  }
+                  
+                  await page.goto(actionPlan.url, { waitUntil: 'networkidle2', timeout: 30000 });
+                  const newUrl = page.url();
+                  console.log(`✓ Navigated to: ${newUrl}`);
+                  await delay(2000);
+                  return true;
+                } catch (e) {
+                  console.log(`✗ Navigation failed: ${e.message}`);
+                  return false;
+                }
+              }
+              break;
+              
+            case 'navigate_js':
+              // JavaScript-based navigation (bypasses some redirects)
+              if (actionPlan.url) {
+                try {
+                  const currentUrl = page.url();
+                  if (currentUrl === actionPlan.url || currentUrl.includes(actionPlan.url.split('?')[0])) {
+                    console.log(`⚠ Already on target URL: ${currentUrl}, skipping JS navigation`);
+                    return true;
+                  }
+                  
+                  await page.evaluate((url) => {
+                    window.location.href = url;
+                  }, actionPlan.url);
+                  await delay(3000); // Wait for navigation
+                  const newUrl = page.url();
+                  console.log(`✓ JavaScript navigation to: ${newUrl}`);
+                  await delay(2000);
+                  return true;
+                } catch (e) {
+                  console.log(`✗ JS navigation failed: ${e.message}`);
+                  return false;
+                }
+              }
+              break;
+              
+            case 'navigate_root_then':
+              // Navigate to root first, then to target (helps establish session)
+              if (actionPlan.url) {
+                try {
+                  const urlObj = new URL(actionPlan.url);
+                  const rootUrl = `${urlObj.protocol}//${urlObj.host}/`;
+                  console.log(`Navigating to root first: ${rootUrl}`);
+                  await page.goto(rootUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+                  await delay(2000);
+                  console.log(`Now navigating to target: ${actionPlan.url}`);
+                  await page.goto(actionPlan.url, { waitUntil: 'networkidle2', timeout: 30000 });
+                  const newUrl = page.url();
+                  console.log(`✓ Root-then-target navigation to: ${newUrl}`);
+                  await delay(2000);
+                  return true;
+                } catch (e) {
+                  console.log(`✗ Root-then-target navigation failed: ${e.message}`);
+                  return false;
+                }
               }
               break;
               
@@ -975,8 +1064,10 @@ Return JSON:
         
         // AI-guided loop: Keep asking AI what to do next until goal is complete
         let lastUrl = '';
-        let navigationLoopCount = 0;
-        const maxNavigationLoops = 3;
+        let navigationAttempts = new Map(); // Track navigation attempts per URL
+        let consecutiveNavigationFailures = 0;
+        const maxNavigationLoops = 2; // Reduced to 2 to force strategy switching sooner
+        const maxConsecutiveFailures = 3;
         
         while (aiAttempts < maxAIAttempts) {
           aiAttempts++;
@@ -984,32 +1075,45 @@ Return JSON:
           
           // Get current URL to detect navigation loops
           const currentUrl = page.url();
+          
+          // Enhanced loop detection
           if (currentUrl === lastUrl && lastUrl !== '') {
-            navigationLoopCount++;
-            console.log(`⚠ Navigation loop detected (${navigationLoopCount}/${maxNavigationLoops}) - same URL: ${currentUrl}`);
-            if (navigationLoopCount >= maxNavigationLoops) {
-              console.log('⚠ Too many navigation loops, forcing wait and field detection...');
+            const attemptCount = navigationAttempts.get(currentUrl) || 0;
+            navigationAttempts.set(currentUrl, attemptCount + 1);
+            
+            if (attemptCount >= maxNavigationLoops) {
+              console.log(`⚠ Navigation loop detected - tried ${attemptCount + 1} times to reach: ${currentUrl}`);
+              console.log('⚠ Forcing strategy change - AI should try different navigation method or wait');
+              
               // Force AI to wait and check for fields instead of navigating
               await delay(6000); // Wait for login fields to load
               await saveScreenshot('after-wait-for-fields');
-              // Skip AI reasoning this time and go straight to checking for login fields
+              
+              // Check for login fields
               const hasLoginFields = await page.evaluate(() => {
                 return !!document.querySelector('input[type="password"]') && 
                        !!document.querySelector('input[placeholder*="Username" i], input[placeholder*="Email" i]');
               });
+              
               if (hasLoginFields) {
                 console.log('✓ Login fields detected! Proceeding to fill them...');
-                navigationLoopCount = 0; // Reset counter
+                navigationAttempts.clear(); // Reset all counters
                 lastUrl = ''; // Reset to allow navigation again
+                consecutiveNavigationFailures = 0;
                 // Continue with AI reasoning but it should now see the fields
               } else {
                 console.log('⚠ Still no login fields after wait, investigating...');
                 await investigateAndRetry();
-                // Continue instead of breaking
+                // Force AI to try a different navigation strategy
+                // Add context that navigation is failing
               }
             }
           } else {
-            navigationLoopCount = 0; // Reset if URL changed
+            // URL changed, reset counters for old URL
+            if (lastUrl) {
+              navigationAttempts.delete(lastUrl);
+            }
+            navigationAttempts.set(currentUrl, (navigationAttempts.get(currentUrl) || 0) + 1);
           }
           lastUrl = currentUrl;
           
@@ -1044,18 +1148,49 @@ Return JSON:
             actionPlan.reasoning = 'Waiting for page to fully load and fields to appear';
           }
           
+          // Check if this is a navigation action and we've tried it before
+          const isNavigationAction = ['navigate', 'navigate_js', 'navigate_root_then'].includes(actionPlan.action);
+          if (isNavigationAction && actionPlan.url) {
+            const navAttempts = navigationAttempts.get(actionPlan.url) || 0;
+            if (navAttempts >= maxNavigationLoops) {
+              console.log(`⚠ Already tried navigating to ${actionPlan.url} ${navAttempts} times, forcing different strategy`);
+              // Modify action plan to try a different navigation method
+              if (actionPlan.action === 'navigate') {
+                actionPlan.action = 'navigate_js';
+                actionPlan.reasoning = 'Switching to JavaScript navigation after standard navigation failed';
+              } else if (actionPlan.action === 'navigate_js') {
+                actionPlan.action = 'navigate_root_then';
+                actionPlan.reasoning = 'Switching to root-then-target navigation after JS navigation failed';
+              } else {
+                // Tried all navigation methods, force wait
+                actionPlan.action = 'wait';
+                actionPlan.waitTime = 8000;
+                actionPlan.reasoning = 'All navigation methods failed, waiting for page to load';
+              }
+            }
+          }
+          
           const success = await executeAIAction(actionPlan);
           
           if (!success) {
-            console.log('⚠ Action failed, investigating and retrying...');
-            // Investigation phase: Analyze why action failed and try alternative
-            const investigationResult = await investigateAndRetry(actionPlan);
-            if (!investigationResult) {
-              console.log('⚠ Investigation did not resolve the issue, but continuing...');
-              // Don't break - let AI try more approaches
+            consecutiveNavigationFailures++;
+            console.log(`⚠ Action failed (consecutive failures: ${consecutiveNavigationFailures}/${maxConsecutiveFailures})`);
+            
+            if (consecutiveNavigationFailures >= maxConsecutiveFailures) {
+              console.log('⚠ Too many consecutive failures, investigating...');
+              const investigationResult = await investigateAndRetry(actionPlan);
+              if (investigationResult && typeof investigationResult === 'object' && investigationResult.solution) {
+                consecutiveNavigationFailures = 0; // Reset on successful investigation
+              }
+            } else {
+              // Investigation phase: Analyze why action failed and try alternative
+              await investigateAndRetry(actionPlan);
             }
             // Continue the loop to let AI try again
             continue;
+          } else {
+            // Success - reset failure counter
+            consecutiveNavigationFailures = 0;
           }
           
           // Small delay between actions

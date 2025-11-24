@@ -1242,7 +1242,8 @@ const createTuvoliContact = async (itineraryData) => {
             title: document.title,
             hasLoginForm: !!document.querySelector('input[type="password"]'),
             hasDashboard: !!document.querySelector('[class*="dashboard" i], [id*="dashboard" i]'),
-            bodyText: document.body?.innerText?.substring(0, 200) || ''
+            bodyText: document.body?.innerText?.substring(0, 200) || '',
+            url: window.location.href
           };
         });
         
@@ -1251,6 +1252,16 @@ const createTuvoliContact = async (itineraryData) => {
         // If login form is gone, we might have logged in successfully
         if (!pageContent.hasLoginForm) {
           console.log('Login form disappeared - login likely successful!');
+          // Try navigating away from login page
+          console.log('Attempting to navigate to home/dashboard...');
+          try {
+            await page.goto(`${TUVOLI_URL}/home`, { waitUntil: 'networkidle2', timeout: 30000 });
+            await delay(2000);
+            currentUrl = page.url();
+            console.log(`Navigated to: ${currentUrl}`);
+          } catch (e) {
+            console.log('Navigation to /home failed, will try contact-management directly');
+          }
         } else if (errorMessage) {
           throw new Error(`Login failed: ${errorMessage}`);
         } else {
@@ -1274,26 +1285,45 @@ const createTuvoliContact = async (itineraryData) => {
       console.log('Logged into Tuvoli successfully');
       
       // Wait a moment for the page to fully load after login
-      await delay(2000);
+      await delay(3000);
 
-      // Navigate to contact management page
-      console.log('Navigating to contact management...');
+      // Navigate to contact management page - MUST be on noairlines.tuvoli.com/contact-management
+      console.log('Navigating to contact management: https://noairlines.tuvoli.com/contact-management');
+      let contactPageLoaded = false;
+      
       try {
         await page.goto(`${TUVOLI_URL}/contact-management`, { waitUntil: 'networkidle2', timeout: 60000 });
-        console.log('Successfully navigated to contact management');
+        const contactUrl = page.url();
+        console.log(`After navigation, URL: ${contactUrl}`);
+        
+        if (contactUrl.includes('contact-management') || contactUrl.includes('contacts')) {
+          contactPageLoaded = true;
+          console.log('✓ Successfully navigated to contact management');
+        } else {
+          console.log('⚠ Not on contact management page, current URL:', contactUrl);
+        }
       } catch (e) {
-        console.log(`Navigation to contact-management failed: ${e.message}, trying alternative URLs...`);
+        console.log(`Navigation to contact-management failed: ${e.message}`);
+      }
+      
+      if (!contactPageLoaded) {
         // Try alternative URLs
+        console.log('Trying alternative contact management URLs...');
         const altUrls = [
+          `${TUVOLI_URL}/contact-management`,
           `${TUVOLI_URL}/contacts`,
-          `${TUVOLI_URL}/contacts/new`,
-          `${TUVOLI_URL}/contact-management/new`
+          `${TUVOLI_URL}/home`
         ];
         for (const url of altUrls) {
           try {
             await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-            console.log(`Successfully navigated to: ${url}`);
-            break;
+            await delay(2000);
+            const altUrl = page.url();
+            console.log(`Tried ${url}, current URL: ${altUrl}`);
+            if (altUrl.includes('contact-management') || altUrl.includes('contacts')) {
+              contactPageLoaded = true;
+              break;
+            }
           } catch (altError) {
             continue;
           }
@@ -1302,44 +1332,148 @@ const createTuvoliContact = async (itineraryData) => {
 
       // Use AI to wait for page to be ready
       await waitForPageReady(page, 'contact management page');
+      
+      // Take screenshot to verify we're on the right page
+      const contactPageScreenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
+      console.log('Contact management page loaded, looking for "Add New Contact" button...');
 
-      // Look for "Add Contact" or "New Contact" button and click it
+      // Use AI Vision to find "Add New Contact" button
+      console.log('Using AI Vision to find "Add New Contact" button...');
+      let addButtonSelector = null;
+      
+      if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
+        try {
+          const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a web automation expert. Analyze this screenshot and find the "Add New Contact" button. Return JSON: {"addButtonSelector": "button..."} or {"addButtonSelector": null}'
+                },
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: 'Find the "Add New Contact" button on this contact management page. Return a CSS selector.'
+                    },
+                    {
+                      type: 'image_url',
+                      image_url: {
+                        url: `data:image/png;base64,${contactPageScreenshot}`
+                      }
+                    }
+                  ]
+                }
+              ],
+              max_tokens: 200
+            })
+          });
+
+          if (visionResponse.ok) {
+            const visionData = await visionResponse.json();
+            const visionContent = visionData.choices[0]?.message?.content;
+            const visionJsonMatch = visionContent.match(/\{[\s\S]*\}/);
+            if (visionJsonMatch) {
+              const visionResult = JSON.parse(visionJsonMatch[0]);
+              if (visionResult.addButtonSelector && visionResult.addButtonSelector !== 'null') {
+                addButtonSelector = visionResult.addButtonSelector;
+                console.log('AI Vision found Add New Contact button:', addButtonSelector);
+              }
+            }
+          }
+        } catch (e) {
+          console.log('AI Vision button detection failed:', e.message);
+        }
+      }
+      
+      // Look for "Add New Contact" or "Add Contact" button and click it
       console.log('Looking for add contact button...');
       const addButtonSelectors = [
+        addButtonSelector, // Try AI Vision selector first
+        'button:has-text("Add New Contact")',
         'button:has-text("Add Contact")',
         'button:has-text("New Contact")',
         'button:has-text("Create Contact")',
+        'a:has-text("Add New Contact")',
         'a:has-text("Add Contact")',
         'a:has-text("New Contact")',
         'a[href*="contact"]:has-text("Add")',
+        'button[aria-label*="Add New"]',
         'button[aria-label*="Add"]',
         'button[aria-label*="New"]',
         '.add-contact',
         '#add-contact',
         '[data-testid="add-contact"]'
-      ];
+      ].filter(s => s !== null);
       
       let formOpened = false;
       for (const selector of addButtonSelectors) {
         try {
-          await page.waitForSelector(selector, { timeout: 3000 });
+          await page.waitForSelector(selector, { timeout: 5000, visible: true });
           await page.click(selector);
-          await delay(2000); // Wait for form to open
+          await delay(3000); // Wait longer for modal/form to open
           formOpened = true;
-          console.log('Add contact button clicked, form should be open');
+          console.log(`✓ Add contact button clicked using selector: ${selector}`);
           break;
         } catch (e) {
           continue;
         }
       }
+      
+      // Try XPath for "Add New Contact" button
+      if (!formOpened) {
+        try {
+          console.log('Trying XPath to find "Add New Contact" button...');
+          const addButtons = await page.$x("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add new contact')]");
+          if (addButtons.length === 0) {
+            const addButtons2 = await page.$x("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add contact')]");
+            if (addButtons2.length > 0) {
+              await addButtons2[0].click();
+              formOpened = true;
+              console.log('✓ Clicked "Add Contact" button using XPath');
+            }
+          } else {
+            await addButtons[0].click();
+            formOpened = true;
+            console.log('✓ Clicked "Add New Contact" button using XPath');
+          }
+          if (formOpened) {
+            await delay(3000);
+          }
+        } catch (e) {
+          console.log('XPath button search failed:', e.message);
+        }
+      }
 
       if (!formOpened) {
         // If no button found, try navigating directly to new contact URL
-        console.log('Button not found, trying direct navigation...');
-        await page.goto(`${TUVOLI_URL}/contact-management/new`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {
-          return page.goto(`${TUVOLI_URL}/contact-management/create`, { waitUntil: 'networkidle2', timeout: 30000 });
-        });
-        await delay(2000);
+        console.log('Button not found, trying direct navigation to new contact form...');
+        try {
+          await page.goto(`${TUVOLI_URL}/contact-management/new`, { waitUntil: 'networkidle2', timeout: 30000 });
+          await delay(3000);
+          formOpened = true;
+          console.log('✓ Navigated directly to new contact form');
+        } catch (e) {
+          try {
+            await page.goto(`${TUVOLI_URL}/contact-management/create`, { waitUntil: 'networkidle2', timeout: 30000 });
+            await delay(3000);
+            formOpened = true;
+            console.log('✓ Navigated directly to create contact form');
+          } catch (e2) {
+            console.log('Direct navigation also failed');
+          }
+        }
+      }
+      
+      if (!formOpened) {
+        throw new Error('Could not open contact creation form');
       }
 
       // Wait for modal/form to be fully loaded

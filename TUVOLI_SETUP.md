@@ -1,125 +1,120 @@
-# Tuvoli API Integration Setup
+# Tuvoli Integration via Zapier (No API Access Needed)
 
 ## Overview
 
-When a new submission is received on noairlines.com, the system automatically creates a new contact in your Tuvoli account at https://noairlines.tuvoli.com/ using AI to format the contact data.
-
-## Required Environment Variables
-
-Add these to your Railway environment variables:
-
-```
-TUVOLI_API_KEY=your_tuvoli_api_key_here
-TUVOLI_API_URL=https://api.tuvoli.com
-TUVOLI_ACCOUNT_ID=your_tuvoli_account_id
-```
-
-## How to Get Tuvoli API Credentials
-
-1. **Contact Tuvoli Support**
-   - Email: support@tuvoli.com
-   - Or contact through your Tuvoli dashboard
-   - Request API access for your account
-
-2. **Get Your API Key**
-   - Tuvoli will provide you with:
-     - API Key (for authentication)
-     - Account ID (your Tuvoli account identifier)
-     - API Base URL (usually https://api.tuvoli.com)
-
-3. **Verify API Endpoint**
-   - The integration tries: `${TUVOLI_API_URL}/api/v1/contacts`
-   - Falls back to: `${TUVOLI_API_URL}/contacts`
-   - If your API uses a different endpoint, we can adjust it
+When a new submission is received on noairlines.com, the system automatically sends Tuvoli-ready contact data to your Zapier webhook. Zapier can then create the contact in your Tuvoli account without requiring paid API access.
 
 ## How It Works
 
 1. **User submits quote request** on noairlines.com
-2. **AI formats contact data** using OpenAI to structure:
+2. **System formats contact data** for Tuvoli:
    - First name and last name (parsed from full name)
    - Email address
    - Phone number
    - Notes with itinerary details
-3. **Contact created in Tuvoli** via API call
-4. **Logs recorded** for debugging
+3. **Data sent to Zapier webhook** (your existing WEBHOOK_URL)
+4. **Zapier creates contact in Tuvoli** automatically
+
+## Setup in Zapier
+
+### Step 1: Create a Zap
+
+1. Go to https://zapier.com and create a new Zap
+2. **Trigger**: Webhooks by Zapier → Catch Hook
+3. Copy the webhook URL and add it to Railway as `WEBHOOK_URL`
+
+### Step 2: Add Tuvoli Action
+
+1. **Action**: Search for "Tuvoli" in Zapier
+2. If Tuvoli has a Zapier integration:
+   - Select "Create Contact" or "Add Contact"
+   - Map the fields from the webhook:
+     - First Name → `tuvoli_first_name` or `firstName`
+     - Last Name → `tuvoli_last_name` or `lastName`
+     - Email → `tuvoli_email` or `email`
+     - Phone → `tuvoli_phone` or `phone`
+     - Notes → `tuvoli_notes` or `notes`
+
+3. If Tuvoli doesn't have a Zapier integration:
+   - Use "Webhooks by Zapier" → POST
+   - Configure it to send data to Tuvoli's contact form endpoint
+   - Or use "Code by Zapier" to format and send the data
+
+### Step 3: Test the Integration
+
+1. Submit a test quote on noairlines.com
+2. Check Zapier to see if the webhook was received
+3. Verify the contact was created in Tuvoli
 
 ## Contact Data Structure
 
-The system creates contacts with this structure:
+The webhook includes these fields (both Tuvoli-prefixed and standard):
 
 ```json
 {
+  "tuvoli_first_name": "John",
+  "tuvoli_last_name": "Doe",
+  "tuvoli_email": "john@example.com",
+  "tuvoli_phone": "+15126363628",
+  "tuvoli_notes": "Quote request from NoAirlines.com\nRoute: AUS → DFW\nDate: 2025-12-10 at 14:30\nPassengers: 2\nTrip Type: one-way",
   "firstName": "John",
   "lastName": "Doe",
   "email": "john@example.com",
   "phone": "+15126363628",
-  "notes": "Quote request: AUS to DFW on 2025-12-10 for 2 passenger(s). Trip type: one-way."
+  "notes": "Quote request: AUS → DFW on 2025-12-10 for 2 passenger(s). Trip type: one-way."
 }
 ```
+
+## Alternative: Browser Automation
+
+If Zapier doesn't work, we can use browser automation (Puppeteer) to automatically log into Tuvoli and create contacts. This would require:
+
+1. Tuvoli login credentials (stored securely as environment variables)
+2. Puppeteer installed on the server
+3. Configuration for the contact creation form
+
+Let me know if you'd like to explore this option.
 
 ## Testing
 
 1. Submit a test quote on noairlines.com
-2. Check Railway logs for:
-   - "Tuvoli contact creation result:"
-   - Any error messages
-3. Check your Tuvoli account to verify the contact was created
-4. If the contact doesn't appear, check the logs for API errors
+2. Check Railway logs for: "Webhook sent with Tuvoli contact data"
+3. Check Zapier dashboard to see if the webhook was received
+4. Verify the contact appears in your Tuvoli account
 
 ## Troubleshooting
 
-### Contact Not Created?
+### Contact Not Created in Tuvoli?
 
-1. **Check Railway Logs**
-   - Look for "Tuvoli contact creation result:"
-   - Check for error messages
+1. **Check Zapier Dashboard**
+   - Go to your Zapier account
+   - Check if the webhook was received
+   - Check if the Zap ran successfully
+   - Look for any error messages
 
-2. **Verify API Credentials**
-   - Ensure TUVOLI_API_KEY is set correctly
-   - Ensure TUVOLI_ACCOUNT_ID is set correctly
-   - Ensure TUVOLI_API_URL is correct
+2. **Verify Webhook URL**
+   - Ensure `WEBHOOK_URL` in Railway matches your Zapier webhook URL
+   - Test the webhook manually using a tool like Postman
 
-3. **Check API Endpoint**
-   - The code tries two common endpoints
-   - If your API uses a different endpoint, we need to update the code
+3. **Check Field Mapping**
+   - Ensure Zapier is mapping the correct fields to Tuvoli
+   - Field names might need adjustment based on Tuvoli's requirements
 
-4. **Verify API Permissions**
-   - Ensure your API key has permission to create contacts
-   - Contact Tuvoli support if permissions are missing
+4. **Check Railway Logs**
+   - Look for "Webhook sent with Tuvoli contact data"
+   - Check for any error messages
 
-### Common Errors
+## Benefits of This Approach
 
-**"Tuvoli API error: 401"**
-- Invalid API key
-- Check TUVOLI_API_KEY in Railway
+✅ **No API costs** - Uses free Zapier integration  
+✅ **Easy to set up** - Visual Zapier interface  
+✅ **Flexible** - Can add additional actions (email notifications, etc.)  
+✅ **Reliable** - Zapier handles retries and error handling  
+✅ **Scalable** - Works with any volume of submissions
 
-**"Tuvoli API error: 403"**
-- API key doesn't have permission to create contacts
-- Contact Tuvoli support
+## Next Steps
 
-**"Tuvoli API error: 404"**
-- API endpoint might be different
-- We may need to adjust the endpoint URL
-
-**"Tuvoli API error: 400"**
-- Contact data format might be incorrect
-- Check logs for the exact error message
-
-## API Endpoint Adjustment
-
-If Tuvoli uses a different API endpoint structure, we can adjust it. Common variations:
-
-- `/api/contacts`
-- `/v1/contacts`
-- `/contacts/create`
-- `/api/v2/contacts`
-
-Share the correct endpoint with the developer to update the code.
-
-## Notes
-
-- The integration uses AI (OpenAI) to format contact data if OPENAI_API_KEY is configured
-- Falls back to rule-based formatting if AI is not available
-- Contact creation failures don't block the quote submission process
-- All contact creation attempts are logged for debugging
-
+1. Set up your Zapier Zap with the webhook trigger
+2. Add Tuvoli action (or webhook action if no direct integration)
+3. Test with a sample submission
+4. Monitor Zapier dashboard for successful runs

@@ -18,10 +18,8 @@ const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || '';
 // OpenAI configuration for AI evaluation
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
-// Tuvoli API configuration
-const TUVOLI_API_KEY = process.env.TUVOLI_API_KEY || '';
-const TUVOLI_API_URL = process.env.TUVOLI_API_URL || 'https://api.tuvoli.com';
-const TUVOLI_ACCOUNT_ID = process.env.TUVOLI_ACCOUNT_ID || '';
+// Tuvoli integration via Zapier webhook (no API access needed)
+// The webhook will include Tuvoli-ready contact data that Zapier can use
 
 console.log('========================================');
 console.log('Starting NoAirlines server...');
@@ -233,159 +231,34 @@ const formatPrice = (price) => {
   return `$${price}`;
 };
 
-// Create contact in Tuvoli using AI to format data
-const createTuvoliContact = async (itineraryData) => {
-  try {
-    if (!TUVOLI_API_KEY || !TUVOLI_ACCOUNT_ID) {
-      console.log('Tuvoli API not configured. Contact would be created with:', {
-        name: itineraryData.name,
-        email: itineraryData.email,
-        phone: itineraryData.phone
-      });
-      return { success: true, message: 'Tuvoli contact logged (API not configured)' };
-    }
-
-    // Use AI to format contact data for Tuvoli
-    let contactData;
-    
-    if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
-      try {
-        // Parse name into first and last name
-        const nameParts = (itineraryData.name || '').trim().split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-
-        // Use AI to create properly formatted contact data
-        const prompt = `You are formatting contact data for Tuvoli CRM system. Based on the following customer information, create a properly structured contact object.
-
-Customer Information:
-- Name: ${itineraryData.name}
-- Email: ${itineraryData.email}
-- Phone: ${itineraryData.phone}
-- Route: ${itineraryData.from} to ${itineraryData.to}
-- Date: ${itineraryData.date}
-- Passengers: ${itineraryData.passengers}
-- Trip Type: ${itineraryData.tripType || 'one-way'}
-
-Create a JSON object with the following structure for Tuvoli API:
-{
-  "firstName": "${firstName}",
-  "lastName": "${lastName}",
-  "email": "${itineraryData.email}",
-  "phone": "${itineraryData.phone}",
-  "notes": "Quote request: ${itineraryData.from} to ${itineraryData.to} on ${itineraryData.date} for ${itineraryData.passengers} passenger(s). Trip type: ${itineraryData.tripType || 'one-way'}."
-}
-
-Respond ONLY with valid JSON, no other text.`;
-
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              {
-                role: 'system',
-                content: 'You are a data formatting assistant. Always respond with valid JSON only.'
-              },
-              {
-                role: 'user',
-                content: prompt
-              }
-            ],
-            temperature: 0.1,
-            max_tokens: 200
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const content = data.choices[0]?.message?.content;
-          if (content) {
-            try {
-              contactData = JSON.parse(content);
-            } catch (parseError) {
-              console.error('Error parsing AI response for Tuvoli:', parseError);
-              contactData = createDefaultContactData(itineraryData);
-            }
-          } else {
-            contactData = createDefaultContactData(itineraryData);
-          }
-        } else {
-          contactData = createDefaultContactData(itineraryData);
-        }
-      } catch (aiError) {
-        console.error('Error using AI for Tuvoli contact formatting:', aiError);
-        contactData = createDefaultContactData(itineraryData);
-      }
-    } else {
-      contactData = createDefaultContactData(itineraryData);
-    }
-
-    // Call Tuvoli API to create contact
-    // Note: Adjust the endpoint and payload structure based on Tuvoli's actual API documentation
-    const tuvoliResponse = await fetch(`${TUVOLI_API_URL}/api/v1/contacts`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${TUVOLI_API_KEY}`,
-        'X-Account-Id': TUVOLI_ACCOUNT_ID
-      },
-      body: JSON.stringify(contactData)
-    });
-
-    if (!tuvoliResponse.ok) {
-      const errorText = await tuvoliResponse.text();
-      console.error('Tuvoli API error:', tuvoliResponse.status, errorText);
-      
-      // Try alternative endpoint structure
-      try {
-        const altResponse = await fetch(`${TUVOLI_API_URL}/contacts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${TUVOLI_API_KEY}`,
-            'X-Account-Id': TUVOLI_ACCOUNT_ID
-          },
-          body: JSON.stringify(contactData)
-        });
-        
-        if (altResponse.ok) {
-          const data = await altResponse.json();
-          console.log('Tuvoli contact created successfully:', data.id || data.contact_id);
-          return { success: true, contactId: data.id || data.contact_id };
-        }
-      } catch (altError) {
-        console.error('Alternative Tuvoli endpoint also failed:', altError);
-      }
-      
-      return { success: false, error: `Tuvoli API error: ${tuvoliResponse.status}` };
-    }
-
-    const data = await tuvoliResponse.json();
-    console.log('Tuvoli contact created successfully:', data.id || data.contact_id);
-    return { success: true, contactId: data.id || data.contact_id };
-  } catch (error) {
-    console.error('Error creating Tuvoli contact:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// Helper function to create default contact data structure
-const createDefaultContactData = (itineraryData) => {
+// Format contact data for Tuvoli (via Zapier webhook)
+const formatTuvoliContactData = (itineraryData) => {
+  // Parse name into first and last name
   const nameParts = (itineraryData.name || '').trim().split(' ');
   const firstName = nameParts[0] || '';
   const lastName = nameParts.slice(1).join(' ') || '';
 
+  // Extract airport codes for route
+  const fromCode = extractAirportCode(itineraryData.from);
+  const toCode = extractAirportCode(itineraryData.to);
+  const routeDisplay = fromCode && toCode 
+    ? formatRouteDisplay(fromCode, toCode)
+    : `${itineraryData.from} → ${itineraryData.to}`;
+
   return {
+    // Tuvoli contact fields
+    tuvoli_first_name: firstName,
+    tuvoli_last_name: lastName,
+    tuvoli_email: itineraryData.email || '',
+    tuvoli_phone: itineraryData.phone || '',
+    tuvoli_notes: `Quote request from NoAirlines.com\nRoute: ${routeDisplay}\nDate: ${itineraryData.date} at ${itineraryData.time}\nPassengers: ${itineraryData.passengers}\nTrip Type: ${itineraryData.tripType || 'one-way'}${itineraryData.returnDate ? `\nReturn: ${itineraryData.returnDate} at ${itineraryData.returnTime}` : ''}`,
+    
+    // Also include original fields for Zapier flexibility
     firstName: firstName,
     lastName: lastName,
     email: itineraryData.email || '',
     phone: itineraryData.phone || '',
-    notes: `Quote request from NoAirlines.com: ${itineraryData.from} to ${itineraryData.to} on ${itineraryData.date} for ${itineraryData.passengers} passenger(s). Trip type: ${itineraryData.tripType || 'one-way'}.`
+    notes: `Quote request: ${routeDisplay} on ${itineraryData.date} for ${itineraryData.passengers} passenger(s). Trip type: ${itineraryData.tripType || 'one-way'}.`
   };
 };
 
@@ -452,6 +325,9 @@ const sendItineraryEmail = async (itineraryData) => {
       ? `${emailDisplay} (Phone: ${phoneDisplay})`
       : emailDisplay;
 
+    // Format Tuvoli contact data
+    const tuvoliContactData = formatTuvoliContactData(itineraryData);
+
     const emailData = {
       customer_name: itineraryData.name || 'NoAirlines Customer',
       customer_email: emailWithPhone,
@@ -469,7 +345,9 @@ const sendItineraryEmail = async (itineraryData) => {
       trip_type: itineraryData.tripType || 'one-way',
       message: `New flight inquiry from ${itineraryData.name || 'NoAirlines Customer'} (${itineraryData.email || 'no email provided'})\nPhone: ${phoneDisplay}`,
       recipients: EMAIL_RECIPIENTS.join(', '),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      // Include Tuvoli-ready contact data for Zapier integration
+      ...tuvoliContactData
     };
 
     // If no webhook URL is configured, just log the data
@@ -854,17 +732,9 @@ const server = http.createServer(async (req, res) => {
         const itineraryData = JSON.parse(body);
         console.log('Received itinerary submission:', itineraryData);
         
-        // Send email
+        // Send email (includes Tuvoli contact data for Zapier)
         const emailResult = await sendItineraryEmail(itineraryData);
-        
-        // Create contact in Tuvoli
-        try {
-          const tuvoliResult = await createTuvoliContact(itineraryData);
-          console.log('Tuvoli contact creation result:', tuvoliResult);
-        } catch (tuvoliError) {
-          console.error('Error creating Tuvoli contact:', tuvoliError);
-          // Don't fail the request if Tuvoli contact creation fails
-        }
+        console.log('Webhook sent with Tuvoli contact data. Zapier can now create contact in Tuvoli.');
         
         // Evaluate itinerary with AI and send SMS
         if (itineraryData.phone && itineraryData.name) {

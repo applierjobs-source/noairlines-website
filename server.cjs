@@ -297,7 +297,57 @@ const createTuvoliContact = async (itineraryData) => {
 
 // Send SMS using Twilio
 const sendSMS = async (phoneNumber, message) => {
-      await page.setViewport({ width: 1280, height: 720 });
+  try {
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+      console.log('Twilio not configured. SMS message would be:', message);
+      return { success: true, message: 'SMS logged (Twilio not configured)' };
+    }
+
+    // Format phone number (ensure it starts with +)
+    let formattedPhone = phoneNumber.trim();
+    if (!formattedPhone.startsWith('+')) {
+      // Remove any non-digit characters except +
+      formattedPhone = formattedPhone.replace(/\D/g, '');
+      if (formattedPhone.length === 10) {
+        formattedPhone = '+1' + formattedPhone; // US number
+      } else if (formattedPhone.length === 11 && formattedPhone.startsWith('1')) {
+        formattedPhone = '+' + formattedPhone;
+      } else {
+        formattedPhone = '+' + formattedPhone;
+      }
+    }
+
+    const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
+    
+    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${auth}`
+      },
+      body: new URLSearchParams({
+        From: TWILIO_PHONE_NUMBER,
+        To: formattedPhone,
+        Body: message
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('SMS sent successfully:', data.sid);
+      return { success: true, messageSid: data.sid };
+    } else {
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(`Twilio API error: ${errorData.message || response.statusText}`);
+    }
+  } catch (error) {
+    console.error('Error sending SMS:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Email sending function using webhook
+const sendItineraryEmail = async (itineraryData) => {
       
       // Helper to save screenshots for debugging (always save on failures, optional on success)
       const saveScreenshot = async (name, always = false) => {

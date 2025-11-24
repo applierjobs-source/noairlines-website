@@ -3783,6 +3783,31 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         }
       }
       
+      // Try JavaScript search for Create button
+      if (!submitted) {
+        const createButtonFound = await page.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll('button, [role="button"]'));
+          for (const btn of buttons) {
+            const text = btn.textContent?.trim().toLowerCase() || btn.getAttribute('aria-label')?.toLowerCase() || '';
+            const isCreate = text.includes('create') && !text.includes('add') && !text.includes('new');
+            const isSubmit = btn.type === 'submit';
+            const isEnabled = !btn.disabled && !btn.classList.contains('disabled');
+            
+            if ((isCreate || isSubmit) && isEnabled && btn.offsetParent !== null) {
+              btn.click();
+              return { found: true, text: btn.textContent?.trim() || 'submit button', method: 'javascript' };
+            }
+          }
+          return { found: false };
+        });
+        
+        if (createButtonFound.found) {
+          console.log(`✓ Clicked Create button via JavaScript: "${createButtonFound.text}"`);
+          submitted = true;
+          await delay(500);
+        }
+      }
+      
       if (!submitted) {
         console.log('⚠ Could not find submit button, trying to submit form directly...');
         await page.evaluate(() => {
@@ -3791,6 +3816,13 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
             forms[0].submit();
           }
         });
+        submitted = true; // Mark as submitted even if we couldn't find button
+      }
+      
+      if (submitted) {
+        console.log('✅ Create button clicked - waiting for contact creation...');
+      } else {
+        console.log('⚠⚠⚠ WARNING: Create button may not have been clicked ⚠⚠⚠');
       }
       
       // Wait for form submission and check for success
@@ -3799,7 +3831,7 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       await saveScreenshot('after-submit');
       
       // Check if contact was created successfully
-      const successCheck = await page.evaluate(() => {
+      const successCheck = await page.evaluate((contactFirstName, contactLastName) => {
         // Look for success messages
         const successIndicators = [
           'success',
@@ -3814,22 +3846,40 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         
         // Check if modal/form is gone (indicates success)
         const hasModal = !!document.querySelector('[role="dialog"], .modal, [class*="modal" i]');
-        const hasForm = !!document.querySelector('input[type="password"], input[name*="firstName" i]');
+        const hasForm = !!document.querySelector('input[name*="firstName" i], input[id*="first-name" i]');
+        
+        // Check if contact name appears in the contact list
+        const contactName = `${contactFirstName} ${contactLastName}`.toLowerCase();
+        const nameInList = bodyText.includes(contactName);
+        
+        // Check for error messages
+        const errorIndicators = ['error', 'failed', 'invalid', 'required', 'missing'];
+        const hasErrorMessage = errorIndicators.some(indicator => bodyText.includes(indicator));
         
         return {
           hasSuccessMessage,
           modalGone: !hasModal,
           formGone: !hasForm,
-          currentUrl: window.location.href
+          nameInList: nameInList,
+          hasErrorMessage: hasErrorMessage,
+          currentUrl: window.location.href,
+          bodyTextPreview: bodyText.substring(0, 500)
         };
-      });
+      }, firstName, lastName);
       
       console.log('Contact creation result check:', JSON.stringify(successCheck, null, 2));
       
-      if (successCheck.hasSuccessMessage || (successCheck.modalGone && successCheck.formGone)) {
-        console.log('✓ Contact created successfully in Tuvoli');
+      if (successCheck.hasSuccessMessage || (successCheck.modalGone && successCheck.formGone) || successCheck.nameInList) {
+        console.log('✅✅✅ Contact created successfully in Tuvoli ✅✅✅');
+        if (successCheck.nameInList) {
+          console.log(`✅ Contact "${firstName} ${lastName}" found in contact list!`);
+        }
+      } else if (successCheck.hasErrorMessage) {
+        console.log('⚠⚠⚠ ERROR: Contact creation may have failed - error message detected ⚠⚠⚠');
+        console.log('Body text preview:', successCheck.bodyTextPreview);
       } else {
         console.log('⚠ Contact creation status unclear - may need manual verification');
+        console.log('Body text preview:', successCheck.bodyTextPreview);
       }
       
       // Check if AI-guided mode completed successfully

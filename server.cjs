@@ -4705,6 +4705,9 @@ const server = http.createServer(async (req, res) => {
         const emailResult = await sendItineraryEmail(itineraryData);
         
         // Create contact in Tuvoli via browser automation
+        // DISABLED: Tuvoli automation is currently paused - not working reliably
+        // To re-enable: Uncomment the code below and set TUVOLI_ENABLED=true in Railway
+        /*
         try {
           const tuvoliResult = await createTuvoliContact(itineraryData);
           console.log('Tuvoli contact creation result:', tuvoliResult);
@@ -4712,6 +4715,12 @@ const server = http.createServer(async (req, res) => {
           console.error('Error creating Tuvoli contact:', tuvoliError);
           // Don't fail the request if Tuvoli contact creation fails
         }
+        */
+        console.log('Tuvoli automation is disabled. Contact data logged:', {
+          name: itineraryData.name,
+          email: itineraryData.email,
+          phone: itineraryData.phone
+        });
         
         // Evaluate itinerary with AI and send SMS
         if (itineraryData.phone && itineraryData.name) {

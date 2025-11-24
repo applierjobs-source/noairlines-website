@@ -199,7 +199,10 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
     return defaultTimes[aircraft] || '2h 0m'
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.MouseEvent<HTMLButtonElement>) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
     const name = `${firstName} ${lastName}`.trim()
     const itineraryData = {
       from: fromLocation,
@@ -1206,6 +1209,7 @@ export default function RouteLandingPage({ route }: RouteLandingPageProps) {
                       <ArrowLeft className="mr-2 h-5 w-5" /> Back
                     </Button>
                     <Button
+                      type="button"
                       onClick={handleSubmit}
                       className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500"
                     >

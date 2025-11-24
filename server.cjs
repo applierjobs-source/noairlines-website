@@ -47,8 +47,14 @@ console.log(`DIST_DIR: ${DIST_DIR}`);
 // Check if dist directory exists
 if (!fs.existsSync(DIST_DIR)) {
   console.error('ERROR: dist directory not found! Make sure to run "npm run build" first.');
-  console.error('Current directory contents:');
-  console.error(fs.readdirSync(__dirname));
+  console.error('Current directory:', __dirname);
+  console.error('Expected dist directory:', DIST_DIR);
+  try {
+    console.error('Current directory contents:');
+    console.error(fs.readdirSync(__dirname));
+  } catch (e) {
+    console.error('Could not read directory:', e.message);
+  }
   process.exit(1);
 }
 

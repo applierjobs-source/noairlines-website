@@ -335,17 +335,134 @@ const createTuvoliContact = async (itineraryData) => {
 
       // Navigate to Tuvoli login page
       console.log('Navigating to Tuvoli login...');
-      await page.goto(`${TUVOLI_URL}/login`, { waitUntil: 'networkidle2', timeout: 30000 });
+      await page.goto(`${TUVOLI_URL}/login`, { waitUntil: 'networkidle2', timeout: 60000 });
 
-      // Login to Tuvoli
-      console.log('Logging into Tuvoli...');
-      await page.waitForSelector('input[type="email"], input[name="email"], #email', { timeout: 10000 });
-      await page.type('input[type="email"], input[name="email"], #email', TUVOLI_EMAIL);
-      await page.type('input[type="password"], input[name="password"], #password', TUVOLI_PASSWORD);
-      await page.click('button[type="submit"], button:has-text("Sign In"), button:has-text("Login")');
+      // Wait a moment for page to fully render
+      await page.waitForTimeout(3000);
+
+      // Debug: Check what's actually on the page
+      const pageTitle = await page.title();
+      const pageUrl = page.url();
+      console.log(`Page loaded - Title: ${pageTitle}, URL: ${pageUrl}`);
+
+      // Try to find email field with multiple strategies
+      console.log('Looking for email input field...');
+      let emailFieldFound = false;
+      const emailSelectors = [
+        'input[type="email"]',
+        'input[name="email"]',
+        'input[id="email"]',
+        'input[placeholder*="email" i]',
+        'input[placeholder*="Email" i]',
+        'input[autocomplete="email"]',
+        'input[type="text"][name*="email" i]',
+        'input[type="text"][id*="email" i]'
+      ];
+
+      for (const selector of emailSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 5000 });
+          console.log(`Found email field with selector: ${selector}`);
+          emailFieldFound = true;
+          await page.type(selector, TUVOLI_EMAIL, { delay: 100 });
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (!emailFieldFound) {
+        // Take a screenshot for debugging
+        const screenshot = await page.screenshot({ encoding: 'base64' });
+        console.log('Email field not found. Page screenshot saved (base64).');
+        
+        // Get page HTML structure for debugging
+        const pageContent = await page.evaluate(() => {
+          const inputs = Array.from(document.querySelectorAll('input'));
+          return inputs.map(input => ({
+            type: input.type,
+            name: input.name,
+            id: input.id,
+            placeholder: input.placeholder,
+            className: input.className
+          }));
+        });
+        console.log('Available input fields on page:', JSON.stringify(pageContent, null, 2));
+        
+        throw new Error('Could not find email input field on login page');
+      }
+
+      // Find and fill password field
+      console.log('Looking for password input field...');
+      const passwordSelectors = [
+        'input[type="password"]',
+        'input[name="password"]',
+        'input[id="password"]',
+        'input[placeholder*="password" i]',
+        'input[placeholder*="Password" i]',
+        'input[autocomplete="current-password"]'
+      ];
+
+      let passwordFieldFound = false;
+      for (const selector of passwordSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 5000 });
+          console.log(`Found password field with selector: ${selector}`);
+          passwordFieldFound = true;
+          await page.type(selector, TUVOLI_PASSWORD, { delay: 100 });
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (!passwordFieldFound) {
+        throw new Error('Could not find password input field on login page');
+      }
+
+      // Find and click submit button
+      console.log('Looking for submit button...');
+      const loginSubmitSelectors = [
+        'button[type="submit"]',
+        'button:has-text("Sign In")',
+        'button:has-text("Login")',
+        'button:has-text("Log in")',
+        'input[type="submit"]',
+        'form button',
+        'button[class*="submit" i]',
+        'button[class*="login" i]'
+      ];
+
+      let submitButtonFound = false;
+      for (const selector of loginSubmitSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 5000 });
+          console.log(`Found submit button with selector: ${selector}`);
+          submitButtonFound = true;
+          await page.click(selector);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (!submitButtonFound) {
+        // Try pressing Enter as fallback
+        console.log('Submit button not found, trying Enter key...');
+        await page.keyboard.press('Enter');
+      }
       
       // Wait for navigation after login
-      await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 });
+      console.log('Waiting for navigation after login...');
+      await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }).catch(async () => {
+        // If navigation doesn't happen, wait a bit and check URL
+        await page.waitForTimeout(5000);
+        const currentUrl = page.url();
+        console.log(`After login attempt, current URL: ${currentUrl}`);
+        if (currentUrl.includes('/login')) {
+          throw new Error('Still on login page after login attempt');
+        }
+      });
       console.log('Logged into Tuvoli successfully');
 
       // Navigate to contact management page

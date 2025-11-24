@@ -333,12 +333,15 @@ const createTuvoliContact = async (itineraryData) => {
       page.setDefaultNavigationTimeout(60000);
       page.setDefaultTimeout(60000);
 
+      // Helper function to delay (replacement for deprecated waitForTimeout)
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
       // Navigate to Tuvoli login page
       console.log('Navigating to Tuvoli login...');
       await page.goto(`${TUVOLI_URL}/login`, { waitUntil: 'networkidle2', timeout: 60000 });
 
       // Wait a moment for page to fully render
-      await page.waitForTimeout(3000);
+      await delay(3000);
 
       // Debug: Check what's actually on the page
       const pageTitle = await page.title();
@@ -456,7 +459,7 @@ const createTuvoliContact = async (itineraryData) => {
       console.log('Waiting for navigation after login...');
       await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }).catch(async () => {
         // If navigation doesn't happen, wait a bit and check URL
-        await page.waitForTimeout(5000);
+        await delay(5000);
         const currentUrl = page.url();
         console.log(`After login attempt, current URL: ${currentUrl}`);
         if (currentUrl.includes('/login')) {
@@ -470,7 +473,7 @@ const createTuvoliContact = async (itineraryData) => {
       await page.goto(`${TUVOLI_URL}/contact-management`, { waitUntil: 'networkidle2', timeout: 30000 });
 
       // Wait a moment for page to load
-      await page.waitForTimeout(2000);
+      await delay(2000);
 
       // Look for "Add Contact" or "New Contact" button and click it
       console.log('Looking for add contact button...');
@@ -493,7 +496,7 @@ const createTuvoliContact = async (itineraryData) => {
         try {
           await page.waitForSelector(selector, { timeout: 3000 });
           await page.click(selector);
-          await page.waitForTimeout(2000); // Wait for form to open
+          await delay(2000); // Wait for form to open
           formOpened = true;
           console.log('Add contact button clicked, form should be open');
           break;
@@ -508,7 +511,7 @@ const createTuvoliContact = async (itineraryData) => {
         await page.goto(`${TUVOLI_URL}/contact-management/new`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {
           return page.goto(`${TUVOLI_URL}/contact-management/create`, { waitUntil: 'networkidle2', timeout: 30000 });
         });
-        await page.waitForTimeout(2000);
+        await delay(2000);
       }
 
       // Use AI to analyze the page and find form fields dynamically
@@ -716,7 +719,7 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       }
       
       // Wait for confirmation
-      await page.waitForTimeout(3000);
+      await delay(3000);
       console.log('Contact creation process completed');
 
       await browser.close();

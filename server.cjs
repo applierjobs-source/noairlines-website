@@ -360,7 +360,10 @@ const createTuvoliContact = async (itineraryData) => {
         currentUnderstanding: null,
         knowledgeBaseFailures: [], // Track when knowledge base strategies fail
         validatedStrategies: [], // Strategies we've actually tested and confirmed work
-        invalidatedStrategies: [] // Strategies from knowledge base that don't work
+        invalidatedStrategies: [], // Strategies from knowledge base that don't work
+        workingSelectors: {}, // Selectors that actually worked: { 'firstName': 'input[...]', 'checkbox': '...' }
+        workingApproaches: [], // Approaches that worked: ['browser_manipulation_then_navigate', 'xpath_checkbox']
+        learnedFacts: [] // Facts learned: ['Individual Account checkbox found via JavaScript search', 'Navigation works after clearing cookies']
       };
       
       // Theory of Mind: Analyze why we're stuck
@@ -484,25 +487,44 @@ const createTuvoliContact = async (itineraryData) => {
 Use these insights to make a more informed decision.`
             : '';
           
-          // Build context about what we've learned
-          const learnedContext = reasoningMemory.failedStrategies.length > 0
-            ? `\nLEARNED FROM PREVIOUS ATTEMPTS:
-- Failed Strategies: ${reasoningMemory.failedStrategies.join(', ')}
+          // Build context about what we've learned - UPDATED KNOWLEDGE BASE
+          const learnedContext = `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+UPDATED KNOWLEDGE BASE (from this session):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ VALIDATED STRATEGIES (actually tested and confirmed to work):
+${reasoningMemory.validatedStrategies.length > 0 ? reasoningMemory.validatedStrategies.map(s => `- ${s}`).join('\n') : '- None yet'}
+
+✅ WORKING APPROACHES (combinations that worked):
+${reasoningMemory.workingApproaches.length > 0 ? reasoningMemory.workingApproaches.map(a => `- ${a}`).join('\n') : '- None yet'}
+
+✅ WORKING SELECTORS (selectors that actually found elements):
+${Object.keys(reasoningMemory.workingSelectors).length > 0 ? Object.entries(reasoningMemory.workingSelectors).map(([k, v]) => `- ${k}: ${v}`).join('\n') : '- None yet'}
+
+✅ LEARNED FACTS (things we discovered):
+${reasoningMemory.learnedFacts.length > 0 ? reasoningMemory.learnedFacts.map(f => `- ${f}`).join('\n') : '- None yet'}
+
+❌ INVALIDATED STRATEGIES (from knowledge base, but don't work):
+${reasoningMemory.invalidatedStrategies.length > 0 ? reasoningMemory.invalidatedStrategies.map(s => `- ${s} (don't use this)`).join('\n') : '- None'}
+
+⚠ FAILED STRATEGIES (tried but didn't work):
+${reasoningMemory.failedStrategies.length > 0 ? reasoningMemory.failedStrategies.slice(-5).map(s => `- ${s}`).join('\n') : '- None'}
+
+📊 SESSION STATS:
 - Navigation Attempts: ${reasoningMemory.navigationAttempts.length}
 - Detected Problems: ${reasoningMemory.detectedProblems.join('; ') || 'None'}
 - Current Understanding: ${situation.problem ? `${situation.problem} (${situation.likelyCause})` : 'Analyzing...'}
 - Recommended Approach: ${situation.recommendedApproach || 'Standard navigation'}
-- Validated Strategies (actually tested and work): ${reasoningMemory.validatedStrategies.join(', ') || 'None yet'}
-- Invalidated Strategies (from knowledge base, but don't work): ${reasoningMemory.invalidatedStrategies.join(', ') || 'None'}
 
-⚠ KNOWLEDGE BASE VALIDATION:
-- If a strategy from the knowledge base fails 2+ times, it's probably wrong for this situation
-- Don't trust the knowledge base blindly - verify everything
-- If knowledge base says "Strategy X works" but it doesn't, add it to invalidated strategies
-- Prefer strategies you've validated yourself over untested knowledge base claims
+🧠 KNOWLEDGE BASE UPDATE RULES:
+- Use VALIDATED STRATEGIES first - these are proven to work
+- Use WORKING SELECTORS when available - these found elements successfully
+- Avoid INVALIDATED STRATEGIES - these don't work for this situation
+- Prefer WORKING APPROACHES - these combinations succeeded
+- Learn from LEARNED FACTS - these are discoveries from this session
+- Update this knowledge base as you discover what works
 
-Use this knowledge to avoid repeating failed strategies.`
-            : '';
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
           
           const reasoningPrompt = `You are an expert web automation agent with theory of mind - you can reason about why things fail and adapt your strategy. Your mission is to accomplish this goal:
 
@@ -1844,15 +1866,44 @@ Return JSON:
             consecutiveNavigationFailures = 0;
             if (actionPlan.action) {
               reasoningMemory.successfulActions.push(actionPlan.action);
-              // Keep only last 3 successful actions
-              if (reasoningMemory.successfulActions.length > 3) {
+              // Keep only last 5 successful actions
+              if (reasoningMemory.successfulActions.length > 5) {
                 reasoningMemory.successfulActions.shift();
               }
               
               // Validate this strategy actually works
               if (!reasoningMemory.validatedStrategies.includes(actionPlan.action)) {
                 reasoningMemory.validatedStrategies.push(actionPlan.action);
-                console.log(`🧠 Knowledge Base Validation: Strategy "${actionPlan.action}" actually works - validated!`);
+                console.log(`🧠 Knowledge Base Update: Strategy "${actionPlan.action}" validated - adding to working strategies`);
+              }
+              
+              // Store working selectors if provided
+              if (actionPlan.selector) {
+                const selectorType = actionPlan.action === 'click' ? 'click' : 
+                                   actionPlan.action === 'type' ? actionPlan.text?.includes('@') ? 'email' : 'text' : 
+                                   'other';
+                if (!reasoningMemory.workingSelectors[selectorType]) {
+                  reasoningMemory.workingSelectors[selectorType] = actionPlan.selector;
+                  console.log(`🧠 Knowledge Base Update: Working selector for ${selectorType}: ${actionPlan.selector}`);
+                }
+              }
+              
+              // Store working approach
+              let approach = actionPlan.action;
+              if (actionPlan.browserAction) {
+                approach = `${actionPlan.browserAction}_then_${actionPlan.action}`;
+              }
+              if (!reasoningMemory.workingApproaches.includes(approach)) {
+                reasoningMemory.workingApproaches.push(approach);
+                console.log(`🧠 Knowledge Base Update: Working approach: ${approach}`);
+              }
+              
+              // Learn facts
+              if (actionPlan.action === 'navigate' && actionPlan.url?.includes('noairlines.tuvoli.com')) {
+                const fact = `Navigation to ${actionPlan.url} works using ${actionPlan.action}`;
+                if (!reasoningMemory.learnedFacts.includes(fact)) {
+                  reasoningMemory.learnedFacts.push(fact);
+                }
               }
               
               // Remove from invalidated if it was there (maybe it works now)
@@ -3245,6 +3296,13 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
             await page.keyboard.up('Control');
             await page.type(selector, value, { delay: 50 });
             console.log(`✓ Filled ${fieldName} using AI Vision selector: ${selector}`);
+            
+            // Update knowledge base with working selector
+            if (!reasoningMemory.workingSelectors[fieldName.toLowerCase()]) {
+              reasoningMemory.workingSelectors[fieldName.toLowerCase()] = selector;
+              console.log(`🧠 Knowledge Base Update: Working selector for ${fieldName}: ${selector}`);
+            }
+            
             return true;
           } catch (e) {
             console.log(`AI Vision selector failed for ${fieldName}, trying other methods...`);
@@ -3629,6 +3687,18 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         
         if (isActuallyChecked) {
           console.log('✅ Verified: Individual Account checkbox is checked');
+          
+          // Update knowledge base with working approach
+          const checkboxApproach = 'javascript_checkbox_search_with_force_visibility';
+          if (!reasoningMemory.workingApproaches.includes(checkboxApproach)) {
+            reasoningMemory.workingApproaches.push(checkboxApproach);
+            console.log(`🧠 Knowledge Base Update: Checkbox approach "${checkboxApproach}" works - added to knowledge base`);
+          }
+          
+          const fact = 'Individual Account checkbox can be found and checked using JavaScript search of all checkboxes by label text';
+          if (!reasoningMemory.learnedFacts.includes(fact)) {
+            reasoningMemory.learnedFacts.push(fact);
+          }
         } else {
           console.log('⚠ Warning: Checkbox may not be checked - verification failed');
         }

@@ -3483,9 +3483,244 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         }
       }
       
+      // THEORY OF MIND: After 2 failed attempts, evaluate if checkbox is required
+      if (!checkboxChecked && checkboxCheckAttempts >= MAX_CHECKBOX_ATTEMPTS) {
+        console.log(`⚠ Checkbox check failed ${checkboxCheckAttempts} times - evaluating requirement and alternatives...`);
+        const evaluation = await evaluateCheckboxRequirement();
+        
+        if (!evaluation.checkboxRequired && evaluation.alternatives && evaluation.alternatives.length > 0) {
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('✅ AI DETERMINED: Checkbox may not be required!');
+          console.log(`Alternatives found: ${evaluation.alternatives.join(', ')}`);
+          console.log(`Recommended: ${evaluation.recommendedAction}`);
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          
+          // Try alternatives
+          if (evaluation.alternatives.some(alt => alt.toLowerCase().includes('account dropdown') || alt.toLowerCase().includes('account select'))) {
+            console.log('🔍 Trying Account dropdown/select as alternative...');
+            try {
+              const accountSelect = await page.evaluate(() => {
+                const select = document.querySelector('select[name*="account" i]') ||
+                              document.querySelector('select[id*="account" i]') ||
+                              document.querySelector('input[type="search"][placeholder*="account" i]');
+                if (select) {
+                  // Try to select first option or type something
+                  if (select.tagName === 'SELECT') {
+                    if (select.options.length > 0) {
+                      select.selectedIndex = 0;
+                      select.dispatchEvent(new Event('change', { bubbles: true }));
+                      return { found: true, action: 'selected_first_option' };
+                    }
+                  } else if (select.tagName === 'INPUT') {
+                    select.value = 'Individual';
+                    select.dispatchEvent(new Event('input', { bubbles: true }));
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    return { found: true, action: 'typed_individual' };
+                  }
+                }
+                return { found: false };
+              });
+              
+              if (accountSelect.found) {
+                console.log(`✓ Used Account dropdown alternative: ${accountSelect.action}`);
+                checkboxChecked = true; // Mark as handled
+              }
+            } catch (e) {
+              console.log(`Account dropdown alternative failed: ${e.message}`);
+            }
+          }
+          
+          // If AI says we can submit without checkbox, mark as ready
+          if (evaluation.recommendedAction?.toLowerCase().includes('submit') || 
+              evaluation.recommendedAction?.toLowerCase().includes('try without')) {
+            console.log('✅ AI recommends submitting without checkbox - proceeding');
+            checkboxChecked = true; // Mark as handled, we'll try submitting
+          }
+        } else {
+          console.log('⚠ AI determined checkbox is required, but we cannot check it');
+          console.log('Proceeding anyway - form submission may fail');
+        }
+      }
+      
+      // Track checkbox check attempts
+      let checkboxCheckAttempts = 0;
+      const MAX_CHECKBOX_ATTEMPTS = 2;
+      
+      // Theory of Mind: Evaluate if checkbox is required and find alternatives
+      const evaluateCheckboxRequirement = async () => {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🧠 THEORY OF MIND: Evaluating checkbox requirement and alternatives...');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        if (!OPENAI_API_KEY || OPENAI_API_KEY === '') {
+          console.log('⚠ OpenAI API key not available, skipping AI evaluation');
+          return { checkboxRequired: true, alternatives: [] };
+        }
+        
+        try {
+          // Get comprehensive form state
+          const formAnalysis = await page.evaluate(() => {
+            const checkbox = document.getElementById('individual-account') || 
+                            document.querySelector('input[name="individual-account"]') ||
+                            document.querySelector('input[formcontrolname="individualAccount"]');
+            
+            // Look for Account dropdown/select
+            const accountSelect = document.querySelector('select[name*="account" i]') ||
+                                 document.querySelector('select[id*="account" i]') ||
+                                 document.querySelector('input[type="search"][placeholder*="account" i]') ||
+                                 document.querySelector('[role="combobox"][aria-label*="account" i]');
+            
+            // Look for required field indicators
+            const accountField = document.querySelector('input[name*="account" i]') ||
+                                document.querySelector('input[id*="account" i]') ||
+                                document.querySelector('select[name*="account" i]');
+            
+            // Check for validation messages
+            const validationMessages = Array.from(document.querySelectorAll('[class*="error" i], [class*="invalid" i], [class*="required" i]'))
+              .map(el => el.textContent?.trim())
+              .filter(text => text && text.length > 0);
+            
+            // Get all form fields
+            const allFields = Array.from(document.querySelectorAll('input, select, textarea')).map(field => ({
+              type: field.type || field.tagName.toLowerCase(),
+              name: field.name || '',
+              id: field.id || '',
+              placeholder: field.placeholder || '',
+              required: field.hasAttribute('required'),
+              value: field.value || '',
+              visible: field.offsetParent !== null,
+              label: field.closest('label')?.textContent || 
+                     document.querySelector(`label[for="${field.id}"]`)?.textContent || ''
+            }));
+            
+            // Check if form can be submitted (button state)
+            const submitButton = document.querySelector('button[type="submit"]') ||
+                                Array.from(document.querySelectorAll('button')).find(btn => 
+                                  btn.textContent?.toLowerCase().includes('create') ||
+                                  btn.textContent?.toLowerCase().includes('save') ||
+                                  btn.textContent?.toLowerCase().includes('submit')
+                                );
+            
+            const submitButtonDisabled = submitButton ? submitButton.hasAttribute('disabled') || submitButton.classList.contains('disabled') : false;
+            
+            return {
+              checkboxExists: !!checkbox,
+              checkboxChecked: checkbox ? checkbox.checked : false,
+              checkboxVisible: checkbox ? checkbox.offsetParent !== null : false,
+              checkboxDisabled: checkbox ? checkbox.hasAttribute('disabled') : false,
+              accountSelectExists: !!accountSelect,
+              accountFieldExists: !!accountField,
+              accountFieldRequired: accountField ? accountField.hasAttribute('required') : false,
+              validationMessages: validationMessages,
+              allFields: allFields,
+              submitButtonDisabled: submitButtonDisabled,
+              formHTML: document.querySelector('form')?.innerHTML?.substring(0, 2000) || ''
+            };
+          });
+          
+          // Get screenshot for AI analysis
+          const screenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
+          
+          // Ask AI to evaluate
+          const evaluationPrompt = `You are analyzing a contact form that has an "Individual Account" checkbox that we cannot reliably check. 
+
+FORM STATE:
+${JSON.stringify(formAnalysis, null, 2)}
+
+SCREENSHOT: [Base64 image provided]
+
+THEORY OF MIND QUESTIONS:
+1. Is the "Individual Account" checkbox actually REQUIRED for form submission?
+   - Look at validation messages, required attributes, form structure
+   - Check if there's an Account dropdown/select that could be used instead
+   - Analyze if the form can be submitted without the checkbox
+
+2. What are ALTERNATIVE ways to create this contact?
+   - Can we use an Account dropdown/select instead of the checkbox?
+   - Is there a way to bypass the Account requirement?
+   - Can we submit the form without the checkbox and handle validation errors?
+   - Are there other fields that could satisfy the requirement?
+
+3. If checkbox is required, why might it be failing?
+   - Is it disabled?
+   - Is it hidden?
+   - Does it need specific conditions to be enabled?
+   - Is there a dependency (e.g., must fill other fields first)?
+
+4. What should we do next?
+   - Try Account dropdown if available?
+   - Submit form anyway and see what happens?
+   - Look for alternative contact creation methods?
+
+Return JSON:
+{
+  "checkboxRequired": true/false,
+  "whyRequired": "explanation",
+  "alternatives": ["alternative 1", "alternative 2"],
+  "recommendedAction": "what to do next",
+  "confidence": "high/medium/low",
+  "reasoning": "your thought process"
+}`;
+
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${OPENAI_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: evaluationPrompt },
+                    { type: 'image_url', image_url: { url: `data:image/png;base64,${screenshot}` } }
+                  ]
+                }
+              ],
+              max_tokens: 1000,
+              temperature: 0.3
+            })
+          });
+          
+          const data = await response.json();
+          const evaluationText = data.choices[0]?.message?.content || '{}';
+          
+          // Parse JSON from response (might have markdown code blocks)
+          let evaluation = {};
+          try {
+            const jsonMatch = evaluationText.match(/```json\s*([\s\S]*?)\s*```/) || 
+                             evaluationText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              evaluation = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+            } else {
+              evaluation = JSON.parse(evaluationText);
+            }
+          } catch (e) {
+            console.log('⚠ Could not parse AI evaluation, using defaults');
+            evaluation = { checkboxRequired: true, alternatives: [], recommendedAction: 'continue trying checkbox' };
+          }
+          
+          console.log('🧠 AI EVALUATION RESULT:');
+          console.log(`  Checkbox Required: ${evaluation.checkboxRequired}`);
+          console.log(`  Why Required: ${evaluation.whyRequired || 'Not specified'}`);
+          console.log(`  Alternatives: ${evaluation.alternatives?.join(', ') || 'None found'}`);
+          console.log(`  Recommended Action: ${evaluation.recommendedAction || 'Continue'}`);
+          console.log(`  Confidence: ${evaluation.confidence || 'Unknown'}`);
+          console.log(`  Reasoning: ${evaluation.reasoning || 'Not provided'}`);
+          
+          return evaluation;
+        } catch (error) {
+          console.log(`⚠ Error during checkbox evaluation: ${error.message}`);
+          return { checkboxRequired: true, alternatives: [], recommendedAction: 'continue trying checkbox' };
+        }
+      };
+      
       // NUCLEAR APPROACH: Check "Individual Account" checkbox MULTIPLE times
       // This function will be called repeatedly to ensure it stays checked
       const forceCheckIndividualAccount = async () => {
+        checkboxCheckAttempts++;
         const result = await page.evaluate(() => {
           // Find checkbox by any means necessary
           let checkbox = document.getElementById('individual-account');

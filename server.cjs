@@ -4887,18 +4887,29 @@ server.on('error', (err) => {
 
 // Start listening
 console.log(`Attempting to start server on port ${PORT}...`);
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`✓ Server running at http://0.0.0.0:${PORT}/`);
-  console.log(`✓ Serving from: ${DIST_DIR}`);
-  console.log(`✓ Environment: ${process.env.NODE_ENV || 'production'}`);
-  console.log(`✓ Ready to accept connections`);
-  console.log(`✓ Healthcheck available at /health and /`);
-}).on('error', (err) => {
-  console.error('SERVER LISTEN ERROR:', err);
-  console.error('Error code:', err.code);
-  console.error('Error message:', err.message);
+console.log(`Server object created:`, typeof server);
+console.log(`Server listening method:`, typeof server.listen);
+
+try {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`✓ Server running at http://0.0.0.0:${PORT}/`);
+    console.log(`✓ Serving from: ${DIST_DIR}`);
+    console.log(`✓ Environment: ${process.env.NODE_ENV || 'production'}`);
+    console.log(`✓ Ready to accept connections`);
+    console.log(`✓ Healthcheck available at /health and /`);
+  }).on('error', (err) => {
+    console.error('SERVER LISTEN ERROR:', err);
+    console.error('Error code:', err.code);
+    console.error('Error message:', err.message);
+    process.exit(1);
+  });
+  
+  console.log(`Server.listen() called successfully`);
+} catch (error) {
+  console.error('ERROR calling server.listen():', error);
+  console.error('Error stack:', error.stack);
   process.exit(1);
-});
+}
 
 // Handle process termination
 process.on('SIGTERM', () => {

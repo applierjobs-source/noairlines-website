@@ -1183,20 +1183,47 @@ const createTuvoliContact = async (itineraryData) => {
       
       // Wait for navigation after login
       console.log('Waiting for navigation after login...');
-      await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }).catch(async () => {
+      try {
+        await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 });
+        console.log('Navigation detected after login');
+      } catch (e) {
         // If navigation doesn't happen, wait a bit and check URL
+        console.log('No navigation detected, checking current URL...');
         await delay(5000);
         const currentUrl = page.url();
         console.log(`After login attempt, current URL: ${currentUrl}`);
         if (currentUrl.includes('/login')) {
           throw new Error('Still on login page after login attempt');
         }
-      });
+      }
       console.log('Logged into Tuvoli successfully');
+      
+      // Wait a moment for the page to fully load after login
+      await delay(2000);
 
       // Navigate to contact management page
       console.log('Navigating to contact management...');
-      await page.goto(`${TUVOLI_URL}/contact-management`, { waitUntil: 'networkidle2', timeout: 30000 });
+      try {
+        await page.goto(`${TUVOLI_URL}/contact-management`, { waitUntil: 'networkidle2', timeout: 60000 });
+        console.log('Successfully navigated to contact management');
+      } catch (e) {
+        console.log(`Navigation to contact-management failed: ${e.message}, trying alternative URLs...`);
+        // Try alternative URLs
+        const altUrls = [
+          `${TUVOLI_URL}/contacts`,
+          `${TUVOLI_URL}/contacts/new`,
+          `${TUVOLI_URL}/contact-management/new`
+        ];
+        for (const url of altUrls) {
+          try {
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+            console.log(`Successfully navigated to: ${url}`);
+            break;
+          } catch (altError) {
+            continue;
+          }
+        }
+      }
 
       // Use AI to wait for page to be ready
       await waitForPageReady(page, 'contact management page');

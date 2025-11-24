@@ -619,10 +619,80 @@ If you can't determine the next action, set "action": "error" with reasoning.`;
         );
       });
 
-      // Helper function to delay (replacement for deprecated waitForTimeout)
-      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      // ============================================================
+      // AI-POWERED AUTOMATION: Let AI figure out how to accomplish the goal
+      // ============================================================
+      const mainGoal = `Login to ${TUVOLI_URL}, navigate to contact management, click "Add New Contact", fill in the form with First Name: "${firstName}", Last Name: "${lastName}", Email: "${itineraryData.email || ''}", Phone: "${itineraryData.phone || ''}", check "Individual Account" checkbox, and click "Create" to create a new contact.`;
+      
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🚀 STARTING AI-POWERED AUTOMATION');
+      console.log(`Goal: ${mainGoal}`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      // AI-Powered approach: Let AI guide us through the process
+      let aiGuidedMode = OPENAI_API_KEY && OPENAI_API_KEY !== '';
+      let aiAttempts = 0;
+      const maxAIAttempts = 25; // Maximum steps AI can take
+      
+      if (aiGuidedMode) {
+        console.log('🤖 Using AI-guided automation mode');
+        
+        // Start by navigating to login page
+        try {
+          await page.goto(`${TUVOLI_URL}/login?returnURL=%2Fhome`, { waitUntil: 'networkidle2', timeout: 60000 });
+          await delay(3000);
+          await saveScreenshot('initial-login-page');
+        } catch (e) {
+          console.log(`Navigation failed: ${e.message}, AI will figure it out`);
+        }
+        
+        // AI-guided loop: Keep asking AI what to do next until goal is complete
+        while (aiAttempts < maxAIAttempts) {
+          aiAttempts++;
+          console.log(`\n🤖 AI Reasoning Step ${aiAttempts}/${maxAIAttempts}`);
+          
+          const actionPlan = await aiReasonNextAction(mainGoal, {});
+          
+          if (!actionPlan) {
+            console.log('⚠ AI could not determine next action, falling back to manual approach');
+            aiGuidedMode = false;
+            break;
+          }
+          
+          if (actionPlan.isComplete) {
+            console.log('✅ AI reports goal is complete!');
+            await saveScreenshot('ai-complete');
+            break;
+          }
+          
+          const success = await executeAIAction(actionPlan);
+          
+          if (!success && actionPlan.action === 'error') {
+            console.log('⚠ AI reported an error, falling back to manual approach');
+            aiGuidedMode = false;
+            break;
+          }
+          
+          // Small delay between actions
+          await delay(1000);
+        }
+        
+        if (aiAttempts >= maxAIAttempts) {
+          console.log('⚠ Reached maximum AI attempts, falling back to manual approach');
+          aiGuidedMode = false;
+        }
+      }
+      
+      // If AI-guided mode didn't complete, fall back to manual approach
+      if (!aiGuidedMode || aiAttempts >= maxAIAttempts) {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📋 FALLING BACK TO MANUAL AUTOMATION');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        // Helper function to delay (replacement for deprecated waitForTimeout)
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-      // AI-powered smart waiting: Check if page is ready using AI
+        // AI-powered smart waiting: Check if page is ready using AI
       const waitForPageReady = async (page, description = 'page') => {
         if (!OPENAI_API_KEY || OPENAI_API_KEY === '') {
           // Fallback: just wait a bit

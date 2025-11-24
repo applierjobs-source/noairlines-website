@@ -123,14 +123,18 @@ function NoAirlinesBooking() {
       setStep(6) // Go to return flight step
     } else if (step === 5 && tripType === "one-way") {
       setStep(7) // Skip return flight step for one-way
+    } else if (step === 8) {
+      setStep(9) // Go to phone confirmation step
     } else {
       setStep(step + 1)
     }
   }
   
   const prevStep = () => {
-    // If on phone step, go back to email step
-    if (step === 8 && tripType === "round-trip") {
+    // If on phone confirmation step, go back to phone input
+    if (step === 9) {
+      setStep(8) // Go back to phone input step
+    } else if (step === 8 && tripType === "round-trip") {
       setStep(7) // Go back to email step
     } else if (step === 8 && tripType === "one-way") {
       setStep(7) // Go back to email step
@@ -147,7 +151,7 @@ function NoAirlinesBooking() {
 
   const handleBookNow = (quote: CharterQuote) => {
     setSelectedQuote(quote)
-    setStep(12)
+    setStep(13)
   }
 
   // Calculate flight time based on route and aircraft type
@@ -352,7 +356,7 @@ function NoAirlinesBooking() {
       
       setQuotes(mockQuotes)
       setLoadingQuotes(false)
-      setStep(11)
+      setStep(12)
     }, 1500) // 1.5 second loading delay
   }
 
@@ -726,7 +730,7 @@ function NoAirlinesBooking() {
 
   // Fire Google Ads conversion event when user reaches confirmation step
   useEffect(() => {
-    if (step === 12 && typeof window !== "undefined" && typeof window.gtag === "function") {
+    if (step === 13 && typeof window !== "undefined" && typeof window.gtag === "function") {
       window.gtag("event", "conversion", {
         send_to: "AW-17710035997/ESHYCLzZsrsbEJ3o5vxB",
         value: 1.0,
@@ -778,7 +782,7 @@ function NoAirlinesBooking() {
           {/* Progress Bar - Only show when booking form is visible */}
           {showBookingForm && (
             <div className="mt-6">
-              <JetProgressBar step={step} totalSteps={12} />
+              <JetProgressBar step={step} totalSteps={13} />
             </div>
           )}
         </div>
@@ -1279,10 +1283,56 @@ function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 9: Name */}
+            {/* Step 9: Phone Confirmation */}
             {step === 9 && (
               <motion.div
-                key="step7"
+                key="step9-phone-confirm"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="space-y-8"
+              >
+                <div className="text-center space-y-4">
+                  <Phone className="h-16 w-16 mx-auto text-blue-600" />
+                  <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+                    Confirm Your Phone Number
+                  </h1>
+                  <p className="text-lg text-zinc-600">
+                    We'll send your quote to this number
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 text-center">
+                    <div className="text-sm text-zinc-600 mb-2">Phone Number</div>
+                    <div className="text-2xl font-semibold text-blue-600">{phone}</div>
+                  </div>
+                  <p className="text-sm text-zinc-500 text-center">
+                    Is this number correct? You'll receive your quote via text message.
+                  </p>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={prevStep}
+                      className="h-14 text-lg bg-transparent border-2 border-black text-black hover:bg-black hover:text-white min-w-[120px] transition-colors"
+                    >
+                      <ArrowLeft className="mr-2 h-5 w-5" /> Edit
+                    </Button>
+                    <Button
+                      onClick={() => setStep(10)}
+                      className="flex-1 h-14 text-lg bg-blue-600 hover:bg-blue-500"
+                    >
+                      Yes, that's correct <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 10: Name */}
+            {step === 10 && (
+              <motion.div
+                key="step10"
                 variants={pageVariants}
                 initial="initial"
                 animate="animate"
@@ -1324,8 +1374,8 @@ function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 10: Summary */}
-            {step === 10 && (
+            {/* Step 11: Summary */}
+            {step === 11 && (
               <motion.div
                 key="step8"
                 variants={pageVariants}
@@ -1396,8 +1446,8 @@ function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 11: Charter Quotes */}
-            {step === 11 && (
+            {/* Step 12: Charter Quotes */}
+            {step === 12 && (
               <motion.div
                 key="step10"
                 variants={pageVariants}
@@ -1528,8 +1578,8 @@ function NoAirlinesBooking() {
               </motion.div>
             )}
 
-            {/* Step 12: Thank You Page */}
-            {step === 12 && (
+            {/* Step 13: Thank You Page */}
+            {step === 13 && (
               <motion.div
                 key="step11"
                 variants={pageVariants}

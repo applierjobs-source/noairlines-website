@@ -25,5 +25,9 @@ RUN ls -la dist/ && echo "=== Build completed ===" && \
 # Expose a default port (Railway will override this)
 EXPOSE 3000
 
+# Healthcheck - check root path
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/health || exit 1
+
 # Start the server (using .cjs extension for CommonJS)
 CMD ["node", "server.cjs"]

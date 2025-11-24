@@ -447,12 +447,15 @@ KNOWLEDGE FROM PREVIOUS SUCCESSFUL ATTEMPTS:
    - This is your "trial and error" toolkit - experiment until something works
 
 IMPORTANT NAVIGATION RULES:
-- Check current URL before navigating - if already on login page (URL contains '/login'), DO NOT navigate again
-- If navigation fails or redirects, try a different strategy
+- Check current URL before navigating - if already on login page (URL contains 'noairlines.tuvoli.com/login'), DO NOT navigate again
+- If you're on tuvoli.com (main site) instead of noairlines.tuvoli.com, you MUST navigate to the subdomain
+- The login page MUST be on noairlines.tuvoli.com, NOT tuvoli.com
+- If navigation fails or redirects to tuvoli.com, try a different strategy (navigate_js, navigate_root_then, or manipulate_browser)
 - After navigation, ALWAYS wait 6+ seconds for fields to load
 - Check if login fields are visible before trying to fill them
 - If fields aren't visible after navigation, use action "wait" with waitTime: 6000
 - If you've tried navigating 2+ times to the same URL, try a different strategy or wait instead
+- If you're stuck on tuvoli.com, use manipulate_browser to try different approaches
 
 2. LOGIN FORM FIELDS (PROVEN WORKING):
    - Username field: input[placeholder='Enter Username'] (this has worked successfully)
@@ -1337,14 +1340,74 @@ Return JSON:
       if (aiGuidedMode) {
         console.log('🤖 Using AI-guided automation mode');
         
-        // Start by navigating to login page
+        // Start by navigating to login page - try multiple strategies
+        console.log('Attempting initial navigation to login page...');
+        let initialNavSuccess = false;
+        
+        // Strategy 1: Direct navigation
         try {
-          await page.goto(`${TUVOLI_URL}/login?returnURL=%2Fhome`, { waitUntil: 'networkidle2', timeout: 60000 });
+          const targetUrl = `${TUVOLI_URL}/login?returnURL=%2Fhome`;
+          console.log(`Trying direct navigation to: ${targetUrl}`);
+          await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 60000 });
           await delay(3000);
-          await saveScreenshot('initial-login-page');
+          const urlAfterNav = page.url();
+          console.log(`After navigation, URL: ${urlAfterNav}`);
+          
+          if (urlAfterNav.includes('noairlines.tuvoli.com') && urlAfterNav.includes('login')) {
+            initialNavSuccess = true;
+            console.log('✓ Successfully navigated to login page');
+          } else {
+            console.log(`⚠ Navigation redirected to: ${urlAfterNav}`);
+          }
         } catch (e) {
-          console.log(`Navigation failed: ${e.message}, AI will figure it out`);
+          console.log(`Direct navigation failed: ${e.message}`);
         }
+        
+        // Strategy 2: If redirected, try JavaScript navigation
+        if (!initialNavSuccess) {
+          try {
+            console.log('Trying JavaScript navigation...');
+            await page.evaluate((url) => {
+              window.location.href = url;
+            }, `${TUVOLI_URL}/login?returnURL=%2Fhome`);
+            await delay(5000);
+            const urlAfterJS = page.url();
+            console.log(`After JS navigation, URL: ${urlAfterJS}`);
+            
+            if (urlAfterJS.includes('noairlines.tuvoli.com') && urlAfterJS.includes('login')) {
+              initialNavSuccess = true;
+              console.log('✓ JavaScript navigation succeeded');
+            }
+          } catch (e) {
+            console.log(`JavaScript navigation failed: ${e.message}`);
+          }
+        }
+        
+        // Strategy 3: Navigate to root first, then login
+        if (!initialNavSuccess) {
+          try {
+            console.log('Trying root-then-login strategy...');
+            await page.goto(`${TUVOLI_URL}/`, { waitUntil: 'networkidle2', timeout: 30000 });
+            await delay(2000);
+            await page.goto(`${TUVOLI_URL}/login?returnURL=%2Fhome`, { waitUntil: 'networkidle2', timeout: 30000 });
+            await delay(3000);
+            const urlAfterRoot = page.url();
+            console.log(`After root-then-login, URL: ${urlAfterRoot}`);
+            
+            if (urlAfterRoot.includes('noairlines.tuvoli.com') && urlAfterRoot.includes('login')) {
+              initialNavSuccess = true;
+              console.log('✓ Root-then-login succeeded');
+            }
+          } catch (e) {
+            console.log(`Root-then-login failed: ${e.message}`);
+          }
+        }
+        
+        if (!initialNavSuccess) {
+          console.log('⚠ Initial navigation strategies failed, AI will investigate and try alternatives');
+        }
+        
+        await saveScreenshot('initial-page-state');
         
         // AI-guided loop: Keep asking AI what to do next until goal is complete
         let lastUrl = '';

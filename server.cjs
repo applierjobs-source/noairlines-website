@@ -693,7 +693,14 @@ IMPORTANT NAVIGATION RULES:
      * Use selector: input[type="tel"] or input[placeholder*="Primary Phone" i]
      * Fill with the phone from the goal (extract from "Phone: [value]" in goal)
    - Account field: input or select with placeholder/label "Account *" (REQUIRED - fill with first name + last name)
-   - Add (+) button: button with "+" or "Add" text/icon (click after filling Account field)
+     * This is a TYPEAHEAD field - when you type, a dropdown appears (ngb-typeahead-window)
+     * After typing, wait 500-1000ms for the dropdown to appear
+   - Add (+) button: Located INSIDE the typeahead dropdown (ngb-typeahead-window)
+     * Selector: ngb-typeahead-window button.dropdown-item.active
+     * Or: ngb-typeahead-window button[role="option"] with class "active"
+     * Or: button with class "dropdown-item active" containing i.fa-plus icon
+     * The button has: role="option", class="dropdown-item active", contains .add-contact div with i.fa-plus icon
+     * Click this button AFTER typing in Account field and waiting for dropdown to appear
    - Individual Account checkbox: NOT REQUIRED - ignore it completely
      * MUST be checked before submitting - this is critical!
      * **SIMPLE SOLUTION FIRST**: The checkbox has id="individual-account" - use #individual-account or input[id="individual-account"]
@@ -3495,6 +3502,7 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       let accountFilled = false;
       const accountSelectors = [
         'input[placeholder*="Account" i]',
+        'input[placeholder*="Select an account" i]',
         'input[name*="account" i]',
         'input[id*="account" i]',
         'input[type="search"][placeholder*="account" i]',
@@ -3513,7 +3521,7 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
             await page.keyboard.press('a');
             await page.keyboard.up('Control');
             await page.type(selector, accountValue, { delay: 50 });
-            await delay(500);
+            await delay(1000); // Wait longer for typeahead dropdown to appear
             console.log(`✓ Filled Account field with "${accountValue}" using selector: ${selector}`);
             accountFilled = true;
             break;
@@ -3594,13 +3602,27 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       }
       
       // Find and click the add (+) button
+      // IMPORTANT: The add button is inside a typeahead dropdown (ngb-typeahead-window)
+      // It appears AFTER typing in the Account field
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('Looking for add (+) button...');
+      console.log('Looking for add (+) button in typeahead dropdown...');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       let addButtonClicked = false;
       
-      // Try various selectors for add button (after Account field)
+      // Wait for typeahead dropdown to appear (ngb-typeahead-window)
+      await delay(500);
+      
+      // Try selectors for add button INSIDE typeahead dropdown (based on screenshot)
       const addPlusButtonSelectors = [
+        'ngb-typeahead-window button.dropdown-item.active', // Active dropdown item
+        'ngb-typeahead-window button[role="option"]', // Option in typeahead
+        'ngb-typeahead-window .add-contact', // Add contact div
+        'ngb-typeahead-window button .add-icon', // Icon container
+        'ngb-typeahead-window button i.fa-plus', // Font Awesome plus icon
+        'ngb-typeahead-window .dropdown-item.active', // Active dropdown item
+        'button.dropdown-item.active .add-contact', // Add contact in active item
+        'button[role="option"].dropdown-item.active', // Active option button
+        'button.dropdown-item.active i.fa-plus', // Plus icon in active button
         'button[aria-label*="add" i]',
         'button[title*="add" i]',
         'button:has-text("+")',
@@ -3614,10 +3636,12 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       
       for (const selector of addPlusButtonSelectors) {
         try {
+          // Wait for dropdown to appear
+          await page.waitForSelector(selector, { timeout: 2000, visible: true });
           const addButton = await page.$(selector);
           if (addButton) {
             await addButton.click();
-            await delay(500);
+            await delay(1000); // Wait longer after clicking
             console.log(`✓ Clicked add (+) button using selector: ${selector}`);
             addButtonClicked = true;
             break;
@@ -3627,14 +3651,15 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         }
       }
       
-      // Try XPath for add button
+      // Try XPath for add button in typeahead dropdown
       if (!addButtonClicked) {
         try {
-          const addButtons = await page.$x("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '+')] | //button[@aria-label[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add')]]");
+          // Look for button with add-contact class or fa-plus icon inside typeahead
+          const addButtons = await page.$x("//ngb-typeahead-window//button[contains(@class, 'dropdown-item') and contains(@class, 'active')] | //ngb-typeahead-window//button[.//i[contains(@class, 'fa-plus')]] | //button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '+')] | //button[@aria-label[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add')]]");
           if (addButtons.length > 0) {
             await addButtons[0].click();
-            await delay(500);
-            console.log('✓ Clicked add (+) button using XPath');
+            await delay(1000);
+            console.log('✓ Clicked add (+) button using XPath (typeahead dropdown)');
             addButtonClicked = true;
           }
         } catch (e) {
@@ -3642,27 +3667,44 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         }
       }
       
-      // Try JavaScript search for add button
+      // Try JavaScript search for add button in typeahead dropdown
       if (!addButtonClicked) {
         const addButtonFound = await page.evaluate(() => {
-          const buttons = Array.from(document.querySelectorAll('button, [role="button"]'));
-          for (const btn of buttons) {
+          // First, look in typeahead dropdown
+          const typeaheadWindow = document.querySelector('ngb-typeahead-window');
+          if (typeaheadWindow) {
+            const buttons = Array.from(typeaheadWindow.querySelectorAll('button'));
+            for (const btn of buttons) {
+              const hasAddContact = btn.querySelector('.add-contact') || btn.classList.contains('add-contact');
+              const hasPlusIcon = btn.querySelector('i.fa-plus, i.fas.fa-plus, .fa-plus');
+              const isActive = btn.classList.contains('active') && btn.classList.contains('dropdown-item');
+              
+              if ((hasAddContact || hasPlusIcon) && isActive) {
+                btn.click();
+                return { found: true, text: 'typeahead dropdown add button', method: 'typeahead' };
+              }
+            }
+          }
+          
+          // Fallback: search all buttons
+          const allButtons = Array.from(document.querySelectorAll('button, [role="button"]'));
+          for (const btn of allButtons) {
             const text = btn.textContent?.trim() || btn.getAttribute('aria-label') || '';
             const hasPlus = text.includes('+') || text.toLowerCase().includes('add');
             const hasPlusIcon = btn.querySelector('i.fa-plus, i.fas.fa-plus, .fa-plus');
             
             if (hasPlus || hasPlusIcon) {
               btn.click();
-              return { found: true, text: text.substring(0, 20) };
+              return { found: true, text: text.substring(0, 20), method: 'fallback' };
             }
           }
           return { found: false };
         });
         
         if (addButtonFound.found) {
-          console.log(`✓ Clicked add (+) button via JavaScript: "${addButtonFound.text}"`);
+          console.log(`✓ Clicked add (+) button via JavaScript (${addButtonFound.method}): "${addButtonFound.text}"`);
           addButtonClicked = true;
-          await delay(500);
+          await delay(1000);
         }
       }
       

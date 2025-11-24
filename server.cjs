@@ -400,15 +400,130 @@ const createTuvoliContact = async (itineraryData) => {
         console.log('Proceeding after waiting period...');
       };
 
-      // Navigate to Tuvoli login page
-      // Use the correct login URL: https://noairlines.tuvoli.com/login
+      // Navigate to Tuvoli login page with better redirect handling
       const loginUrl = `${TUVOLI_URL}/login?returnURL=%2Fhome`;
       console.log(`Navigating to Tuvoli login: ${loginUrl}`);
-      await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+      
+      // Try multiple navigation strategies to bypass redirects
+      let navigationSuccess = false;
+      
+      // Strategy 1: Direct navigation with referer
+      try {
+        await page.setExtraHTTPHeaders({
+          'Referer': TUVOLI_URL
+        });
+        await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+        const url1 = page.url();
+        if (url1.includes('noairlines.tuvoli.com') && url1.includes('/login')) {
+          navigationSuccess = true;
+          console.log('Successfully navigated to login page (Strategy 1)');
+        }
+      } catch (e) {
+        console.log('Strategy 1 failed:', e.message);
+      }
+      
+      // Strategy 2: If redirected, try setting cookies and navigating again
+      if (!navigationSuccess) {
+        try {
+          console.log('Trying Strategy 2: Setting cookies and retrying...');
+          await page.setCookie({
+            name: 'subdomain',
+            value: 'noairlines',
+            domain: '.tuvoli.com',
+            path: '/'
+          });
+          await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+          const url2 = page.url();
+          if (url2.includes('noairlines.tuvoli.com') && url2.includes('/login')) {
+            navigationSuccess = true;
+            console.log('Successfully navigated to login page (Strategy 2)');
+          }
+        } catch (e) {
+          console.log('Strategy 2 failed:', e.message);
+        }
+      }
+      
+      // Strategy 3: Use evaluate to navigate (bypasses some redirects)
+      if (!navigationSuccess) {
+        try {
+          console.log('Trying Strategy 3: JavaScript navigation...');
+          await page.goto('https://tuvoli.com', { waitUntil: 'networkidle2', timeout: 30000 });
+          await page.evaluate((url) => {
+            window.location.replace(url);
+          }, loginUrl);
+          await delay(8000); // Wait longer for JS navigation
+          const url3 = page.url();
+          if (url3.includes('noairlines.tuvoli.com') && url3.includes('/login')) {
+            navigationSuccess = true;
+            console.log('Successfully navigated to login page (Strategy 3)');
+          }
+        } catch (e) {
+          console.log('Strategy 3 failed:', e.message);
+        }
+      }
 
       // Tuvoli login fields take at least 6 seconds to load
       console.log('Waiting for login fields to load (Tuvoli takes ~6 seconds)...');
       await delay(6000);
+
+      // Use AI vision to actually see the page and find login elements
+      console.log('Using AI vision to analyze the page...');
+      const screenshot = await page.screenshot({ encoding: 'base64', fullPage: false });
+      
+      if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
+        try {
+          const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a web automation expert. Analyze this screenshot and identify: 1) Are we on a login page? 2) Where are the username and password fields? 3) What CSS selectors would work? Return JSON: {"onLoginPage": true/false, "usernameSelector": "input[...]", "passwordSelector": "input[...]", "submitSelector": "button[...]"}'
+                },
+                {
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: 'Analyze this login page screenshot. Find the username field (labeled "Enter Username"), password field, and sign in button. Return CSS selectors.'
+                    },
+                    {
+                      type: 'image_url',
+                      image_url: {
+                        url: `data:image/png;base64,${screenshot}`
+                      }
+                    }
+                  ]
+                }
+              ],
+              max_tokens: 300
+            })
+          });
+
+          if (visionResponse.ok) {
+            const visionData = await visionResponse.json();
+            const visionContent = visionData.choices[0]?.message?.content;
+            const visionJsonMatch = visionContent.match(/\{[\s\S]*\}/);
+            if (visionJsonMatch) {
+              const visionResult = JSON.parse(visionJsonMatch[0]);
+              console.log('AI Vision analysis:', visionResult);
+              
+              if (visionResult.onLoginPage && visionResult.usernameSelector) {
+                console.log('AI Vision found login page! Using vision-detected selectors...');
+                // Store these selectors to use later
+                page._visionSelectors = visionResult;
+              }
+            }
+          }
+        } catch (e) {
+          console.log('AI Vision analysis failed:', e.message);
+        }
+      }
 
       // Use AI to wait for page to be ready (additional check)
       await waitForPageReady(page, 'login page');
@@ -534,7 +649,20 @@ const createTuvoliContact = async (itineraryData) => {
       let usernameFieldFound = false;
       let usernameSelector = null;
 
-      if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
+      // First, try using vision-detected selectors if available
+      if (page._visionSelectors && page._visionSelectors.usernameSelector) {
+        try {
+          console.log(`Trying AI Vision-detected selector: ${page._visionSelectors.usernameSelector}`);
+          await page.waitForSelector(page._visionSelectors.usernameSelector, { timeout: 10000 });
+          usernameSelector = page._visionSelectors.usernameSelector;
+          usernameFieldFound = true;
+          console.log(`✓ Successfully used AI Vision selector for username`);
+        } catch (e) {
+          console.log(`AI Vision selector didn't work, trying other methods...`);
+        }
+      }
+
+      if (OPENAI_API_KEY && OPENAI_API_KEY !== '' && !usernameFieldFound) {
         // Try AI-powered detection with retries (handles slow-loading pages)
         // Tuvoli fields take at least 6 seconds, so we wait longer between retries
         for (let attempt = 0; attempt < 4; attempt++) {
@@ -667,7 +795,20 @@ const createTuvoliContact = async (itineraryData) => {
       let passwordFieldFound = false;
       let passwordSelector = null;
 
-      if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
+      // First, try using vision-detected selectors if available
+      if (page._visionSelectors && page._visionSelectors.passwordSelector) {
+        try {
+          console.log(`Trying AI Vision-detected selector: ${page._visionSelectors.passwordSelector}`);
+          await page.waitForSelector(page._visionSelectors.passwordSelector, { timeout: 10000 });
+          passwordSelector = page._visionSelectors.passwordSelector;
+          passwordFieldFound = true;
+          console.log(`✓ Successfully used AI Vision selector for password`);
+        } catch (e) {
+          console.log(`AI Vision selector didn't work, trying other methods...`);
+        }
+      }
+
+      if (OPENAI_API_KEY && OPENAI_API_KEY !== '' && !passwordFieldFound) {
         // Retry logic for password field (Tuvoli loads slowly)
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
@@ -774,27 +915,46 @@ const createTuvoliContact = async (itineraryData) => {
 
       // Find and click submit button
       console.log('Looking for submit button...');
-      const loginSubmitSelectors = [
-        'button[type="submit"]',
-        'button:has-text("Sign In")',
-        'button:has-text("Login")',
-        'button:has-text("Log in")',
-        'input[type="submit"]',
-        'form button',
-        'button[class*="submit" i]',
-        'button[class*="login" i]'
-      ];
-
       let submitButtonFound = false;
-      for (const selector of loginSubmitSelectors) {
+      
+      // First, try using vision-detected selector if available
+      if (page._visionSelectors && page._visionSelectors.submitSelector) {
         try {
-          await page.waitForSelector(selector, { timeout: 5000 });
-          console.log(`Found submit button with selector: ${selector}`);
+          console.log(`Trying AI Vision-detected selector: ${page._visionSelectors.submitSelector}`);
+          await page.waitForSelector(page._visionSelectors.submitSelector, { timeout: 10000 });
+          await page.click(page._visionSelectors.submitSelector);
           submitButtonFound = true;
-          await page.click(selector);
-          break;
+          console.log(`✓ Successfully used AI Vision selector for submit button`);
         } catch (e) {
-          continue;
+          console.log(`AI Vision selector didn't work, trying other methods...`);
+        }
+      }
+      
+      // Fallback to traditional selectors
+      if (!submitButtonFound) {
+        const loginSubmitSelectors = [
+          'button:has-text("Sign in")',
+          'button:has-text("Sign In")',
+          'button[type="submit"]',
+          'button:has-text("Login")',
+          'button:has-text("Log in")',
+          'input[type="submit"]',
+          'form button',
+          'button[class*="submit" i]',
+          'button[class*="login" i]',
+          'button[class*="sign" i]'
+        ];
+
+        for (const selector of loginSubmitSelectors) {
+          try {
+            await page.waitForSelector(selector, { timeout: 10000 });
+            console.log(`Found submit button with selector: ${selector}`);
+            submitButtonFound = true;
+            await page.click(selector);
+            break;
+          } catch (e) {
+            continue;
+          }
         }
       }
 

@@ -356,106 +356,213 @@ const createTuvoliContact = async (itineraryData) => {
         await page.waitForTimeout(2000);
       }
 
-      // Fill in contact form
+      // Use AI to analyze the page and find form fields dynamically
+      console.log('Using AI to analyze form structure...');
+      const formHTML = await page.evaluate(() => {
+        // Get all form elements and their attributes
+        const forms = Array.from(document.querySelectorAll('form'));
+        const inputs = Array.from(document.querySelectorAll('input, textarea, select'));
+        const buttons = Array.from(document.querySelectorAll('button, input[type="submit"]'));
+        
+        return {
+          forms: forms.map(form => ({
+            id: form.id,
+            className: form.className,
+            action: form.action,
+            method: form.method
+          })),
+          inputs: inputs.map(input => ({
+            type: input.type,
+            name: input.name,
+            id: input.id,
+            placeholder: input.placeholder,
+            label: input.labels?.[0]?.textContent || '',
+            className: input.className,
+            tagName: input.tagName.toLowerCase()
+          })),
+          buttons: buttons.map(button => ({
+            type: button.type,
+            text: button.textContent?.trim() || button.value || '',
+            id: button.id,
+            className: button.className
+          }))
+        };
+      });
+
+      // Use OpenAI to determine the correct selectors
+      let fieldSelectors = null;
+      if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
+        try {
+          const prompt = `You are analyzing a web form to find CSS selectors for contact fields. Here's the form structure:
+
+${JSON.stringify(formHTML, null, 2)}
+
+Based on this structure, provide a JSON object with CSS selectors for each field. The selectors should be specific and reliable. Look for fields that would contain:
+- First name (could be firstName, first_name, fname, etc.)
+- Last name (could be lastName, last_name, lname, surname, etc.)
+- Email (usually type="email" or name="email")
+- Phone (usually type="tel" or name="phone", phoneNumber, etc.)
+- Notes/Description (usually a textarea)
+
+Return ONLY a JSON object in this exact format:
+{
+  "firstName": "input[name='firstName']",
+  "lastName": "input[name='lastName']",
+  "email": "input[type='email']",
+  "phone": "input[type='tel']",
+  "notes": "textarea[name='notes']",
+  "submitButton": "button[type='submit']"
+}
+
+If a field doesn't exist in the form, use null. Use the most specific selector possible (prefer name or id over class). Make sure selectors are valid CSS selectors.`;
+
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a web automation expert. Always respond with valid JSON only, no other text. Extract JSON from your response if needed.'
+                },
+                {
+                  role: 'user',
+                  content: prompt
+                }
+              ],
+              temperature: 0.1,
+              max_tokens: 400
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const content = data.choices[0]?.message?.content;
+            if (content) {
+              try {
+                // Extract JSON from response (in case there's extra text)
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                  fieldSelectors = JSON.parse(jsonMatch[0]);
+                  console.log('AI determined selectors:', fieldSelectors);
+                }
+              } catch (parseError) {
+                console.error('Error parsing AI response:', parseError);
+                console.log('AI response was:', content);
+              }
+            }
+          } else {
+            console.error('OpenAI API error:', response.status);
+          }
+        } catch (aiError) {
+          console.error('Error using AI to analyze form:', aiError);
+        }
+      }
+
+      // Fill in contact form using AI-determined selectors or fallback to common selectors
       console.log('Filling contact form...');
       
-      // Try to find and fill first name field
-      const firstNameSelectors = [
-        'input[name="firstName"]',
-        'input[name="first_name"]',
-        'input[id="firstName"]',
-        'input[id="first_name"]',
-        'input[placeholder*="First"]',
-        'input[placeholder*="first"]'
-      ];
-      for (const selector of firstNameSelectors) {
-        try {
-          await page.waitForSelector(selector, { timeout: 2000 });
-          await page.type(selector, firstName);
-          break;
-        } catch (e) {
-          continue;
+      const fillField = async (selectors, value, fieldName) => {
+        if (!value) {
+          console.log(`Skipping ${fieldName} - no value provided`);
+          return false;
         }
-      }
+        
+        // Try AI-determined selector first
+        if (fieldSelectors && selectors.aiSelector && fieldSelectors[selectors.aiSelector] && fieldSelectors[selectors.aiSelector] !== 'null') {
+          try {
+            const selector = fieldSelectors[selectors.aiSelector];
+            await page.waitForSelector(selector, { timeout: 3000 });
+            await page.type(selector, value);
+            console.log(`✓ Filled ${fieldName} using AI selector: ${selector}`);
+            return true;
+          } catch (e) {
+            console.log(`AI selector failed for ${fieldName} (${selectors.aiSelector}), trying fallbacks...`);
+          }
+        }
+        
+        // Fallback to common selectors
+        for (const selector of selectors.fallback) {
+          try {
+            await page.waitForSelector(selector, { timeout: 2000 });
+            await page.type(selector, value);
+            console.log(`✓ Filled ${fieldName} using fallback selector: ${selector}`);
+            return true;
+          } catch (e) {
+            continue;
+          }
+        }
+        console.log(`✗ Could not find ${fieldName} field`);
+        return false;
+      };
 
-      // Try to find and fill last name field
-      const lastNameSelectors = [
-        'input[name="lastName"]',
-        'input[name="last_name"]',
-        'input[id="lastName"]',
-        'input[id="last_name"]',
-        'input[placeholder*="Last"]',
-        'input[placeholder*="last"]'
-      ];
-      for (const selector of lastNameSelectors) {
-        try {
-          await page.waitForSelector(selector, { timeout: 2000 });
-          await page.type(selector, lastName);
-          break;
-        } catch (e) {
-          continue;
-        }
-      }
-
-      // Try to find and fill email field
-      const emailSelectors = [
-        'input[type="email"]',
-        'input[name="email"]',
-        'input[id="email"]'
-      ];
-      for (const selector of emailSelectors) {
-        try {
-          await page.waitForSelector(selector, { timeout: 2000 });
-          await page.type(selector, itineraryData.email || '');
-          break;
-        } catch (e) {
-          continue;
-        }
-      }
-
-      // Try to find and fill phone field
-      const phoneSelectors = [
-        'input[type="tel"]',
-        'input[name="phone"]',
-        'input[name="phoneNumber"]',
-        'input[id="phone"]',
-        'input[id="phoneNumber"]'
-      ];
-      for (const selector of phoneSelectors) {
-        try {
-          await page.waitForSelector(selector, { timeout: 2000 });
-          await page.type(selector, itineraryData.phone || '');
-          break;
-        } catch (e) {
-          continue;
-        }
-      }
-
-      // Try to find and fill notes field
-      const notesSelectors = [
-        'textarea[name="notes"]',
-        'textarea[name="note"]',
-        'textarea[id="notes"]',
-        'textarea[id="note"]',
-        'textarea[placeholder*="Note"]'
-      ];
-      for (const selector of notesSelectors) {
-        try {
-          await page.waitForSelector(selector, { timeout: 2000 });
-          await page.type(selector, notes);
-          break;
-        } catch (e) {
-          continue;
-        }
-      }
+      // Fill each field
+      await fillField(
+        { aiSelector: 'firstName', fallback: ['input[name="firstName"]', 'input[name="first_name"]', 'input[id="firstName"]', 'input[placeholder*="First"]', 'input[placeholder*="first"]'] },
+        firstName,
+        'First Name'
+      );
+      
+      await fillField(
+        { aiSelector: 'lastName', fallback: ['input[name="lastName"]', 'input[name="last_name"]', 'input[id="lastName"]', 'input[placeholder*="Last"]', 'input[placeholder*="last"]'] },
+        lastName,
+        'Last Name'
+      );
+      
+      await fillField(
+        { aiSelector: 'email', fallback: ['input[type="email"]', 'input[name="email"]', 'input[id="email"]'] },
+        itineraryData.email || '',
+        'Email'
+      );
+      
+      await fillField(
+        { aiSelector: 'phone', fallback: ['input[type="tel"]', 'input[name="phone"]', 'input[name="phoneNumber"]', 'input[id="phone"]', 'input[id="phoneNumber"]'] },
+        itineraryData.phone || '',
+        'Phone'
+      );
+      
+      await fillField(
+        { aiSelector: 'notes', fallback: ['textarea[name="notes"]', 'textarea[name="note"]', 'textarea[id="notes"]', 'textarea[placeholder*="Note"]', 'textarea[placeholder*="note"]'] },
+        notes,
+        'Notes'
+      );
 
       // Submit the form
       console.log('Submitting contact form...');
-      await page.click('button[type="submit"], button:has-text("Save"), button:has-text("Create"), button:has-text("Add Contact")');
+      const submitSelectors = fieldSelectors?.submitButton && fieldSelectors.submitButton !== 'null'
+        ? [fieldSelectors.submitButton, 'button[type="submit"]', 'button:has-text("Save")', 'button:has-text("Create")', 'button:has-text("Add Contact")', 'button:has-text("Submit")']
+        : ['button[type="submit"]', 'button:has-text("Save")', 'button:has-text("Create")', 'button:has-text("Add Contact")', 'button:has-text("Submit")'];
+      
+      let submitted = false;
+      for (const selector of submitSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 3000 });
+          await page.click(selector);
+          console.log(`✓ Clicked submit button: ${selector}`);
+          submitted = true;
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (!submitted) {
+        console.log('⚠ Could not find submit button, trying to submit form directly...');
+        await page.evaluate(() => {
+          const forms = document.querySelectorAll('form');
+          if (forms.length > 0) {
+            forms[0].submit();
+          }
+        });
+      }
       
       // Wait for confirmation
       await page.waitForTimeout(3000);
-      console.log('Contact created successfully in Tuvoli');
+      console.log('Contact creation process completed');
 
       await browser.close();
       return { success: true, message: 'Contact created in Tuvoli via browser automation' };

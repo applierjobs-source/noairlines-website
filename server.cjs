@@ -666,7 +666,7 @@ IMPORTANT NAVIGATION RULES:
    - Use XPath: //button[contains(@class, 'menu') or contains(@aria-label, 'menu')] or //button[@aria-label[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'menu')]]
    - After clicking waffle, wait 1-2 seconds for menu to open, then click "Client Management"
 
-5. CONTACT MANAGEMENT PAGE:
+5. CLIENT MANAGEMENT PAGE (also called contact management):
    - **CRITICAL: Check if form is already open before clicking "Add New Contact"**
    - If you see form fields like "First Name", "Last Name", "Email", "Account" already visible on the page, the form is ALREADY OPEN
    - If form is already open, DO NOT click "Add New Contact" - just fill the remaining fields and submit
@@ -1582,7 +1582,7 @@ Return JSON:
       // ============================================================
       // AI-POWERED AUTOMATION: Let AI figure out how to accomplish the goal
       // ============================================================
-      const mainGoal = `Login to ${TUVOLI_URL}, navigate to contact management, click "Add New Contact", fill in the form with First Name: "${firstName}", Last Name: "${lastName}", Email: "${itineraryData.email || ''}", Phone: "${itineraryData.phone || ''}", fill Account field with "${firstName} ${lastName}", click add (+) button, and click "Create" to create a new contact.`;
+      const mainGoal = `Login to ${TUVOLI_URL}, navigate to CLIENT MANAGEMENT (also called contact management), click "Add New Contact", fill in the form with First Name: "${firstName}", Last Name: "${lastName}", Email: "${itineraryData.email || ''}", Phone: "${itineraryData.phone || ''}", fill Account field with "${firstName} ${lastName}", click add (+) button, and click "Create" to create a new contact.`;
       
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('🚀 STARTING AI-POWERED AUTOMATION');
@@ -3241,24 +3241,36 @@ Return JSON:
       if (!formOpened) {
         try {
           console.log('Trying XPath to find "Add New Contact" button...');
-          const addButtons = await page.$x("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add new contact')]");
-          if (addButtons.length === 0) {
-            const addButtons2 = await page.$x("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add contact')]");
-            if (addButtons2.length > 0) {
-              await addButtons2[0].click();
-              formOpened = true;
-              console.log('✓ Clicked "Add Contact" button using XPath');
-            }
-          } else {
-            await addButtons[0].click();
+          // Use evaluate to find buttons with XPath-like logic since page.$x might not be available
+          const addButtons = await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('button, a[role="button"], [role="button"]'));
+            return buttons
+              .map((btn, index) => {
+                const text = (btn.textContent || btn.getAttribute('aria-label') || '').toLowerCase();
+                const hasAddNewContact = text.includes('add new contact') || text.includes('add contact') || text.includes('new contact');
+                return hasAddNewContact ? { element: btn, index, text: text.substring(0, 30) } : null;
+              })
+              .filter(Boolean);
+          });
+          
+          if (addButtons && addButtons.length > 0) {
+            // Click the first matching button
+            await page.evaluate((index) => {
+              const buttons = Array.from(document.querySelectorAll('button, a[role="button"], [role="button"]'));
+              const matchingButtons = buttons.filter(btn => {
+                const text = (btn.textContent || btn.getAttribute('aria-label') || '').toLowerCase();
+                return text.includes('add new contact') || text.includes('add contact') || text.includes('new contact');
+              });
+              if (matchingButtons[index]) {
+                matchingButtons[index].click();
+              }
+            }, 0);
             formOpened = true;
-            console.log('✓ Clicked "Add New Contact" button using XPath');
-          }
-          if (formOpened) {
+            console.log(`✓ Clicked "Add New Contact" button (found: "${addButtons[0].text}")`);
             await delay(3000);
           }
         } catch (e) {
-          console.log('XPath button search failed:', e.message);
+          console.log(`XPath/JavaScript button search failed: ${e.message}`);
         }
       }
 
@@ -3676,23 +3688,54 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         }
       }
       
-      // Try XPath for Account field
+      // Try JavaScript search for Account field (XPath alternative)
       if (!accountFilled) {
         try {
-          const accountFields = await page.$x("//label[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'account')]//following::input[1] | //label[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'account')]//following::select[1]");
-          if (accountFields.length > 0) {
-            await accountFields[0].click();
-            await delay(300);
-            await page.keyboard.down('Control');
-            await page.keyboard.press('a');
-            await page.keyboard.up('Control');
-            await accountFields[0].type(accountValue, { delay: 50 });
-            await delay(500);
-            console.log('✓ Filled Account field using XPath');
+          const accountField = await page.evaluate((value) => {
+            // Find label with "Account" text
+            const labels = Array.from(document.querySelectorAll('label'));
+            for (const label of labels) {
+              const labelText = (label.textContent || '').toLowerCase();
+              if (labelText.includes('account') && labelText.includes('*')) {
+                // Find associated input/select
+                let field = null;
+                if (label.getAttribute('for')) {
+                  field = document.getElementById(label.getAttribute('for'));
+                }
+                if (!field) {
+                  field = label.querySelector('input, select');
+                }
+                if (!field) {
+                  // Look for input/select after label
+                  let next = label.nextElementSibling;
+                  while (next && !field) {
+                    if (next.tagName === 'INPUT' || next.tagName === 'SELECT') {
+                      field = next;
+                      break;
+                    }
+                    next = next.nextElementSibling;
+                  }
+                }
+                
+                if (field) {
+                  field.focus();
+                  field.value = value;
+                  field.dispatchEvent(new Event('input', { bubbles: true }));
+                  field.dispatchEvent(new Event('change', { bubbles: true }));
+                  return { found: true, tagName: field.tagName };
+                }
+              }
+            }
+            return { found: false };
+          }, accountValue);
+          
+          if (accountField.found) {
+            console.log(`✓ Filled Account field using JavaScript search (${accountField.tagName})`);
             accountFilled = true;
+            await delay(1000); // Wait for typeahead dropdown to appear
           }
         } catch (e) {
-          console.log(`XPath Account field search failed: ${e.message}`);
+          console.log(`JavaScript Account field search failed: ${e.message}`);
         }
       }
       
@@ -3796,19 +3839,35 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         }
       }
       
-      // Try XPath for add button in typeahead dropdown
+      // Try JavaScript search for add button in typeahead dropdown (XPath alternative)
       if (!addButtonClicked) {
         try {
-          // Look for button with add-contact class or fa-plus icon inside typeahead
-          const addButtons = await page.$x("//ngb-typeahead-window//button[contains(@class, 'dropdown-item') and contains(@class, 'active')] | //ngb-typeahead-window//button[.//i[contains(@class, 'fa-plus')]] | //button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '+')] | //button[@aria-label[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'add')]]");
-          if (addButtons.length > 0) {
-            await addButtons[0].click();
-            await delay(1000);
-            console.log('✓ Clicked add (+) button using XPath (typeahead dropdown)');
+          const addButtonFound = await page.evaluate(() => {
+            // First, look in typeahead dropdown
+            const typeaheadWindow = document.querySelector('ngb-typeahead-window');
+            if (typeaheadWindow) {
+              const buttons = Array.from(typeaheadWindow.querySelectorAll('button'));
+              for (const btn of buttons) {
+                const hasAddContact = btn.querySelector('.add-contact') || btn.classList.contains('add-contact');
+                const hasPlusIcon = btn.querySelector('i.fa-plus, i.fas.fa-plus, .fa-plus');
+                const isActive = btn.classList.contains('active') && btn.classList.contains('dropdown-item');
+                
+                if ((hasAddContact || hasPlusIcon) && isActive) {
+                  btn.click();
+                  return { found: true, text: 'typeahead dropdown add button', method: 'typeahead' };
+                }
+              }
+            }
+            return { found: false };
+          });
+          
+          if (addButtonFound.found) {
+            console.log(`✓ Clicked add (+) button via JavaScript (${addButtonFound.method}): "${addButtonFound.text}"`);
             addButtonClicked = true;
+            await delay(1000);
           }
         } catch (e) {
-          console.log(`XPath add button search failed: ${e.message}`);
+          console.log(`JavaScript add button search failed: ${e.message}`);
         }
       }
       
@@ -4006,17 +4065,32 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
         }
       }
       
-      // Try XPath for "Create" button
+      // Try JavaScript search for "Create" button (XPath alternative)
       if (!submitted) {
         try {
-          const createButtons = await page.$x("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'create')]");
-          if (createButtons.length > 0) {
-            await createButtons[0].click();
+          const createButtonFound = await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('button, [role="button"]'));
+            for (const btn of buttons) {
+              const text = (btn.textContent?.trim() || btn.getAttribute('aria-label') || '').toLowerCase();
+              const isCreate = text.includes('create') && !text.includes('add') && !text.includes('new');
+              const isSubmit = btn.type === 'submit';
+              const isEnabled = !btn.disabled && !btn.classList.contains('disabled');
+              
+              if ((isCreate || isSubmit) && isEnabled && btn.offsetParent !== null) {
+                btn.click();
+                return { found: true, text: btn.textContent?.trim() || 'submit button', method: 'javascript' };
+              }
+            }
+            return { found: false };
+          });
+          
+          if (createButtonFound.found) {
+            console.log(`✓ Clicked Create button via JavaScript: "${createButtonFound.text}"`);
             submitted = true;
-            console.log('✓ Clicked Create button using XPath');
+            await delay(500);
           }
         } catch (e) {
-          console.log('XPath Create button search failed');
+          console.log(`JavaScript Create button search failed: ${e.message}`);
         }
       }
       
@@ -4106,17 +4180,30 @@ If a field doesn't exist in the form, use null. Use the most specific selector p
       
       console.log('Contact creation result check:', JSON.stringify(successCheck, null, 2));
       
-      if (successCheck.hasSuccessMessage || (successCheck.modalGone && successCheck.formGone) || successCheck.nameInList) {
+      // More strict success verification - require actual evidence
+      const actuallySuccessful = successCheck.nameInList || 
+                                (successCheck.hasSuccessMessage && successCheck.modalGone && successCheck.formGone);
+      
+      if (actuallySuccessful) {
         console.log('✅✅✅ Contact created successfully in Tuvoli ✅✅✅');
         if (successCheck.nameInList) {
           console.log(`✅ Contact "${firstName} ${lastName}" found in contact list!`);
+        } else if (successCheck.hasSuccessMessage) {
+          console.log('✅ Success message detected and form/modal closed');
         }
       } else if (successCheck.hasErrorMessage) {
         console.log('⚠⚠⚠ ERROR: Contact creation may have failed - error message detected ⚠⚠⚠');
         console.log('Body text preview:', successCheck.bodyTextPreview);
+        console.log('⚠ Verification: nameInList=false, hasSuccessMessage=false - contact likely NOT created');
       } else {
-        console.log('⚠ Contact creation status unclear - may need manual verification');
-        console.log('Body text preview:', successCheck.bodyTextPreview);
+        console.log('⚠⚠⚠ Contact creation status UNCLEAR - verification failed ⚠⚠⚠');
+        console.log('⚠ nameInList:', successCheck.nameInList);
+        console.log('⚠ hasSuccessMessage:', successCheck.hasSuccessMessage);
+        console.log('⚠ modalGone:', successCheck.modalGone);
+        console.log('⚠ formGone:', successCheck.formGone);
+        console.log('⚠ Current URL:', successCheck.currentUrl);
+        console.log('⚠ Body text preview:', successCheck.bodyTextPreview);
+        console.log('⚠ Contact may NOT have been created - manual verification recommended');
       }
       
       // Check if AI-guided mode completed successfully

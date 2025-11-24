@@ -438,6 +438,13 @@ KNOWLEDGE FROM PREVIOUS SUCCESSFUL ATTEMPTS:
    STRATEGY D - Access Subdomain Root First:
    - Navigate to "https://noairlines.tuvoli.com/" first, then navigate to "/login?returnURL=%2Fhome"
    - Sometimes accessing the root helps establish the session
+   
+   STRATEGY E - Browser Manipulation (Trial and Error):
+   - Use action "manipulate_browser" to experiment with browser settings
+   - Try different user agents, viewports, headers, wait strategies
+   - Clear cookies/cache for fresh start
+   - Bypass security features if needed
+   - This is your "trial and error" toolkit - experiment until something works
 
 IMPORTANT NAVIGATION RULES:
 - Check current URL before navigating - if already on login page (URL contains '/login'), DO NOT navigate again
@@ -492,26 +499,45 @@ Analyze the screenshot and current state. Use the knowledge above to determine t
 
 Return JSON with this structure:
 {
-  "action": "click" | "type" | "navigate" | "navigate_js" | "navigate_root_then" | "wait" | "complete" | "error",
+  "action": "click" | "type" | "navigate" | "navigate_js" | "navigate_root_then" | "manipulate_browser" | "wait" | "complete" | "error",
   "reasoning": "Brief explanation of why this action, referencing which proven strategy you're using",
   "selector": "CSS selector or XPath for the element (if action is click or type)",
   "text": "Text to type (if action is type)",
-  "url": "URL to navigate to (if action is navigate, navigate_js, or navigate_root_then)",
+  "url": "URL to navigate to (if action is navigate, navigate_js, navigate_root_then, or manipulate_browser)",
   "waitTime": "Milliseconds to wait (if action is wait)",
   "isComplete": true/false,
   "nextGoal": "What to do after this action",
-  "strategy": "Which navigation strategy you're using (A, B, C, or D)"
+  "strategy": "Which navigation strategy you're using (A, B, C, D, or E)",
+  
+  // For manipulate_browser action:
+  "browserAction": "change_user_agent" | "change_viewport" | "set_headers" | "clear_cookies" | "new_context" | "try_different_wait" | "bypass_security",
+  "userAgent": "User agent string (if browserAction is change_user_agent)",
+  "width": "Viewport width (if browserAction is change_viewport)",
+  "height": "Viewport height (if browserAction is change_viewport)",
+  "headers": {"Header-Name": "value"} (if browserAction is set_headers),
+  "waitStrategy": "load" | "domcontentloaded" | "networkidle0" | "networkidle2" (if browserAction is try_different_wait)
 }
 
 AVAILABLE ACTIONS:
 - "navigate": Standard Puppeteer navigation (Strategy A)
 - "navigate_js": JavaScript-based navigation (Strategy B) - use if standard navigation fails
 - "navigate_root_then": Navigate to root first, then target (Strategy D) - use if redirects persist
+- "manipulate_browser": Direct Chromium/browser manipulation (Strategy E) - trial and error with browser settings
 - "click": Click an element (Strategy C if clicking login link)
 - "type": Type text into an input field
 - "wait": Wait for specified milliseconds
 - "complete": Goal is complete
 - "error": Cannot proceed (with reasoning)
+
+BROWSER MANIPULATION OPTIONS (Strategy E - Trial and Error):
+- "change_user_agent": Try different user agent (e.g., "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
+- "change_viewport": Try different screen size (e.g., width: 1920, height: 1080)
+- "set_headers": Modify HTTP headers (e.g., {"Referer": "https://noairlines.tuvoli.com"})
+- "clear_cookies": Clear cookies and cache (fresh start)
+- "try_different_wait": Try different wait strategies (load, domcontentloaded, networkidle0, networkidle2)
+- "bypass_security": Bypass CSP and try navigation
+
+Use manipulate_browser to experiment with different browser configurations if standard navigation fails.
 
 Be VERY specific with selectors. Use the proven selectors from knowledge above when applicable. Prioritize:
 1. IDs: #elementId
@@ -953,6 +979,84 @@ Return JSON:
               }
               break;
               
+            case 'manipulate_browser':
+              // Direct browser manipulation - AI can change browser settings
+              if (actionPlan.browserAction) {
+                try {
+                  switch (actionPlan.browserAction) {
+                    case 'change_user_agent':
+                      if (actionPlan.userAgent) {
+                        await page.setUserAgent(actionPlan.userAgent);
+                        console.log(`✓ Changed user agent to: ${actionPlan.userAgent}`);
+                        return true;
+                      }
+                      break;
+                      
+                    case 'change_viewport':
+                      if (actionPlan.width && actionPlan.height) {
+                        await page.setViewport({ width: actionPlan.width, height: actionPlan.height });
+                        console.log(`✓ Changed viewport to: ${actionPlan.width}x${actionPlan.height}`);
+                        return true;
+                      }
+                      break;
+                      
+                    case 'set_headers':
+                      if (actionPlan.headers) {
+                        await page.setExtraHTTPHeaders(actionPlan.headers);
+                        console.log(`✓ Changed headers: ${JSON.stringify(actionPlan.headers)}`);
+                        return true;
+                      }
+                      break;
+                      
+                    case 'clear_cookies':
+                      const client = await page.target().createCDPSession();
+                      await client.send('Network.clearBrowserCookies');
+                      await client.send('Network.clearBrowserCache');
+                      console.log('✓ Cleared cookies and cache');
+                      return true;
+                      
+                    case 'new_context':
+                      // Create a new browser context (fresh session)
+                      const context = await browser.createBrowserContext();
+                      const newPage = await context.newPage();
+                      await newPage.setViewport({ width: 1280, height: 720 });
+                      // Copy current page settings
+                      await newPage.setUserAgent(await page.evaluate(() => navigator.userAgent));
+                      console.log('✓ Created new browser context');
+                      // Note: This creates a new page, but we'd need to switch to it
+                      // For now, just log it
+                      return true;
+                      
+                    case 'try_different_wait':
+                      // Try different wait strategies
+                      const waitStrategy = actionPlan.waitStrategy || 'networkidle2';
+                      if (actionPlan.url) {
+                        await page.goto(actionPlan.url, { 
+                          waitUntil: waitStrategy, 
+                          timeout: 30000 
+                        });
+                        console.log(`✓ Navigated with wait strategy: ${waitStrategy}`);
+                        return true;
+                      }
+                      break;
+                      
+                    case 'bypass_security':
+                      // Try navigating with security bypass
+                      if (actionPlan.url) {
+                        await page.setBypassCSP(true);
+                        await page.goto(actionPlan.url, { waitUntil: 'networkidle2', timeout: 30000 });
+                        console.log('✓ Navigated with CSP bypass');
+                        return true;
+                      }
+                      break;
+                  }
+                } catch (e) {
+                  console.log(`✗ Browser manipulation failed: ${e.message}`);
+                  return false;
+                }
+              }
+              break;
+              
             case 'wait':
               const waitTime = actionPlan.waitTime || 2000;
               console.log(`⏳ Waiting ${waitTime}ms...`);
@@ -1149,7 +1253,7 @@ Return JSON:
           }
           
           // Check if this is a navigation action and we've tried it before
-          const isNavigationAction = ['navigate', 'navigate_js', 'navigate_root_then'].includes(actionPlan.action);
+          const isNavigationAction = ['navigate', 'navigate_js', 'navigate_root_then', 'manipulate_browser'].includes(actionPlan.action);
           if (isNavigationAction && actionPlan.url) {
             const navAttempts = navigationAttempts.get(actionPlan.url) || 0;
             if (navAttempts >= maxNavigationLoops) {
@@ -1161,6 +1265,12 @@ Return JSON:
               } else if (actionPlan.action === 'navigate_js') {
                 actionPlan.action = 'navigate_root_then';
                 actionPlan.reasoning = 'Switching to root-then-target navigation after JS navigation failed';
+              } else if (actionPlan.action === 'navigate_root_then') {
+                // Try browser manipulation
+                actionPlan.action = 'manipulate_browser';
+                actionPlan.browserAction = 'try_different_wait';
+                actionPlan.waitStrategy = 'domcontentloaded';
+                actionPlan.reasoning = 'Switching to browser manipulation with different wait strategy';
               } else {
                 // Tried all navigation methods, force wait
                 actionPlan.action = 'wait';
@@ -1168,6 +1278,12 @@ Return JSON:
                 actionPlan.reasoning = 'All navigation methods failed, waiting for page to load';
               }
             }
+          }
+          
+          // If browser manipulation is requested, ensure it has the URL
+          if (actionPlan.action === 'manipulate_browser' && actionPlan.browserAction === 'try_different_wait' && !actionPlan.url) {
+            // If no URL specified but we need to navigate, use the login URL
+            actionPlan.url = `${TUVOLI_URL}/login?returnURL=%2Fhome`;
           }
           
           const success = await executeAIAction(actionPlan);

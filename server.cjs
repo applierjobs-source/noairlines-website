@@ -2977,6 +2977,7 @@ Return JSON:
       
       console.log('✓ Logged into Tuvoli successfully');
       await saveScreenshot('after-login');
+      } // End of else block (if not already logged in)
       
       // Get final URL before navigation
       const finalUrlBeforeNav = page.url();

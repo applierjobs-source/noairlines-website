@@ -528,10 +528,11 @@ const createTuvoliContact = async (itineraryData) => {
         // We'll proceed to look for login fields on whatever page we're on
       }
 
-      // AI-powered element finding: Use AI to intelligently find email field with retries
-      console.log('Using AI to find email input field...');
-      let emailFieldFound = false;
-      let emailSelector = null;
+      // AI-powered element finding: Use AI to intelligently find username field with retries
+      // Tuvoli uses "Enter Username" not email
+      console.log('Using AI to find username input field...');
+      let usernameFieldFound = false;
+      let usernameSelector = null;
 
       if (OPENAI_API_KEY && OPENAI_API_KEY !== '') {
         // Try AI-powered detection with retries (handles slow-loading pages)
@@ -547,7 +548,8 @@ const createTuvoliContact = async (itineraryData) => {
                 placeholder: input.placeholder,
                 className: input.className,
                 visible: input.offsetParent !== null,
-                label: input.labels?.[0]?.textContent || ''
+                label: input.labels?.[0]?.textContent || '',
+                ariaLabel: input.getAttribute('aria-label') || ''
               }));
             });
 
@@ -568,11 +570,11 @@ const createTuvoliContact = async (itineraryData) => {
                 messages: [
                   {
                     role: 'system',
-                    content: 'You are a web automation expert. Return ONLY a valid CSS selector for the email input field, or "null" if not found. Return JSON: {"selector": "input[name=\'email\']"} or {"selector": null}'
+                    content: 'You are a web automation expert. Return ONLY a valid CSS selector for the username input field (the field labeled "Enter Username" or similar). Return JSON: {"selector": "input[name=\'username\']"} or {"selector": null}'
                   },
                   {
                     role: 'user',
-                    content: `Find the email input field in this form structure: ${JSON.stringify(pageStructure)}. Return the best CSS selector.`
+                    content: `Find the username input field (labeled "Enter Username") in this form structure: ${JSON.stringify(pageStructure)}. Return the best CSS selector.`
                   }
                 ],
                 temperature: 0.1,
@@ -588,10 +590,10 @@ const createTuvoliContact = async (itineraryData) => {
                 const result = JSON.parse(jsonMatch[0]);
                 if (result.selector && result.selector !== 'null') {
                   try {
-                    await page.waitForSelector(result.selector, { timeout: 5000 });
-                    emailSelector = result.selector;
-                    emailFieldFound = true;
-                    console.log(`AI found email field: ${result.selector}`);
+                    await page.waitForSelector(result.selector, { timeout: 10000 });
+                    usernameSelector = result.selector;
+                    usernameFieldFound = true;
+                    console.log(`AI found username field: ${result.selector}`);
                     break;
                   } catch (e) {
                     console.log(`AI selector didn't work: ${result.selector}, trying again...`);
@@ -610,26 +612,29 @@ const createTuvoliContact = async (itineraryData) => {
       }
 
       // Fallback to traditional selectors if AI didn't find it
-      if (!emailFieldFound) {
-        console.log('AI didn\'t find email field, trying traditional selectors with longer timeout...');
-        const emailSelectors = [
-          'input[type="email"]',
+      // Tuvoli uses "Enter Username" - look for username fields
+      if (!usernameFieldFound) {
+        console.log('AI didn\'t find username field, trying traditional selectors with longer timeout...');
+        const usernameSelectors = [
+          'input[placeholder*="Username" i]',
+          'input[placeholder*="username" i]',
+          'input[placeholder*="Enter Username" i]',
+          'input[name="username"]',
+          'input[id="username"]',
+          'input[type="text"]:first-of-type', // First text input is usually username
+          'input[autocomplete="username"]',
+          'input[type="email"]', // Some systems use email for username
           'input[name="email"]',
-          'input[id="email"]',
-          'input[placeholder*="email" i]',
-          'input[placeholder*="Email" i]',
-          'input[autocomplete="email"]',
-          'input[type="text"][name*="email" i]',
-          'input[type="text"][id*="email" i]'
+          'input[id="email"]'
         ];
 
-        for (const selector of emailSelectors) {
+        for (const selector of usernameSelectors) {
           try {
             // Use longer timeout since Tuvoli takes time to load
             await page.waitForSelector(selector, { timeout: 10000 });
-            emailSelector = selector;
-            emailFieldFound = true;
-            console.log(`Found email field with selector: ${selector}`);
+            usernameSelector = selector;
+            usernameFieldFound = true;
+            console.log(`Found username field with selector: ${selector}`);
             break;
           } catch (e) {
             continue;
@@ -637,7 +642,7 @@ const createTuvoliContact = async (itineraryData) => {
         }
       }
 
-      if (!emailFieldFound || !emailSelector) {
+      if (!usernameFieldFound || !usernameSelector) {
         // Get page HTML structure for debugging
         const pageContent = await page.evaluate(() => {
           const inputs = Array.from(document.querySelectorAll('input'));
@@ -646,15 +651,16 @@ const createTuvoliContact = async (itineraryData) => {
             name: input.name,
             id: input.id,
             placeholder: input.placeholder,
-            className: input.className
+            className: input.className,
+            ariaLabel: input.getAttribute('aria-label')
           }));
         });
         console.log('Available input fields on page:', JSON.stringify(pageContent, null, 2));
-        throw new Error('Could not find email input field on login page');
+        throw new Error('Could not find username input field on login page');
       }
 
-      // Type email into the field
-      await page.type(emailSelector, TUVOLI_EMAIL, { delay: 100 });
+      // Type username/email into the field (Tuvoli uses email as username)
+      await page.type(usernameSelector, TUVOLI_EMAIL, { delay: 100 });
 
       // AI-powered password field finding
       console.log('Using AI to find password input field...');

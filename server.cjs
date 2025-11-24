@@ -1731,8 +1731,22 @@ Return JSON:
           // Get current URL to detect navigation loops
           const currentUrl = page.url();
           
-          // Enhanced loop detection
-          if (currentUrl === lastUrl && lastUrl !== '') {
+          // Enhanced loop detection - but check if we're already where we need to be
+          const pageState = await page.evaluate(() => {
+            return {
+              url: window.location.href,
+              hasContactForm: !!document.querySelector('input[name*="first" i], input[id*="first-name" i]'),
+              hasLoginForm: !!document.querySelector('input[type="password"]'),
+              title: document.title
+            };
+          });
+          
+          // Check if we're already on contact management page with form open
+          const isOnContactManagement = currentUrl.includes('contact-management') || 
+                                       currentUrl.includes('contacts') ||
+                                       pageState.hasContactForm;
+          
+          if (currentUrl === lastUrl && lastUrl !== '' && !isOnContactManagement) {
             const attemptCount = navigationAttempts.get(currentUrl) || 0;
             navigationAttempts.set(currentUrl, attemptCount + 1);
             
@@ -1823,12 +1837,39 @@ Return JSON:
             }
           }
           
-          // If AI keeps trying to navigate to the same URL, force it to wait instead
+          // If AI keeps trying to navigate to the same URL, check if we're already where we need to be
           if (actionPlan.action === 'navigate' && actionPlan.url === currentUrl) {
-            console.log('⚠ AI trying to navigate to current URL, forcing wait instead...');
-            actionPlan.action = 'wait';
-            actionPlan.waitTime = 6000;
-            actionPlan.reasoning = 'Waiting for page to fully load and fields to appear';
+            // Check if we're on contact management with form open
+            const isOnTargetPage = currentUrl.includes('contact-management') || 
+                                  currentUrl.includes('contacts') ||
+                                  await page.evaluate(() => !!document.querySelector('input[name*="first" i], input[id*="first-name" i]'));
+            
+            if (isOnTargetPage) {
+              console.log('✓ Already on target page with form open - changing action to wait instead of navigate');
+              actionPlan.action = 'wait';
+              actionPlan.waitTime = 1000;
+              actionPlan.reasoning = 'Already on contact management page with form open - no navigation needed';
+            } else {
+              console.log('⚠ AI trying to navigate to current URL, forcing wait instead...');
+              actionPlan.action = 'wait';
+              actionPlan.waitTime = 6000;
+              actionPlan.reasoning = 'Waiting for page to fully load and fields to appear';
+            }
+          }
+          
+          // If AI tries to navigate to contact-management but we're already there with form open, change to wait
+          if (actionPlan.action === 'navigate' && actionPlan.url && 
+              (actionPlan.url.includes('contact-management') || actionPlan.url.includes('contacts'))) {
+            const isAlreadyThere = currentUrl.includes('contact-management') || 
+                                   currentUrl.includes('contacts') ||
+                                   await page.evaluate(() => !!document.querySelector('input[name*="first" i], input[id*="first-name" i]'));
+            
+            if (isAlreadyThere) {
+              console.log('✓ Already on contact management page - changing navigation to wait');
+              actionPlan.action = 'wait';
+              actionPlan.waitTime = 1000;
+              actionPlan.reasoning = 'Already on contact management page - no navigation needed, proceed with form filling';
+            }
           }
           
           // Check if this is a navigation action and we've tried it before

@@ -928,99 +928,166 @@ const createTuvoliContact = async (itineraryData) => {
 
       await page.type(passwordSelector, TUVOLI_PASSWORD, { delay: 100 });
 
-      // Find and click submit button
+      // Find and click submit button - make it more robust with retries
       console.log('Looking for submit button...');
       let submitButtonFound = false;
+      
+      // Wait a moment for button to be fully rendered (Tuvoli loads slowly)
+      await delay(2000);
+      
+      // Helper function to try clicking a button with retries
+      const tryClickButton = async (selector, description, useXPath = false) => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            if (useXPath) {
+              const buttons = await page.$x(selector);
+              if (buttons.length > 0) {
+                // Check if button is visible and enabled
+                const isVisible = await page.evaluate((btn) => {
+                  return btn.offsetParent !== null && !btn.disabled;
+                }, buttons[0]);
+                if (isVisible) {
+                  await buttons[0].click();
+                  return true;
+                }
+              }
+            } else {
+              await page.waitForSelector(selector, { timeout: 5000, visible: true });
+              // Check if button is actually clickable
+              const isClickable = await page.evaluate((sel) => {
+                const btn = document.querySelector(sel);
+                return btn && btn.offsetParent !== null && !btn.disabled;
+              }, selector);
+              if (isClickable) {
+                await page.click(selector);
+                return true;
+              }
+            }
+          } catch (e) {
+            if (attempt < 2) {
+              await delay(1000);
+            }
+          }
+        }
+        return false;
+      };
       
       // First, try using vision-detected selector if available
       if (page._visionSelectors && page._visionSelectors.submitSelector) {
         let visionSelector = page._visionSelectors.submitSelector;
         
         // Fix invalid CSS selectors from AI Vision (like :contains which doesn't exist in CSS)
-        // Convert to XPath or valid CSS
         if (visionSelector.includes(':contains(')) {
-          // Extract text from :contains('text')
           const textMatch = visionSelector.match(/:contains\(['"]([^'"]+)['"]\)/);
           if (textMatch) {
             const buttonText = textMatch[1];
             console.log(`AI Vision suggested :contains selector, converting to XPath for text: "${buttonText}"`);
-            try {
-              // Use XPath to find button with text
-              const xpath = `//button[contains(text(), '${buttonText}')]`;
-              const button = await page.$x(xpath);
-              if (button.length > 0) {
-                await button[0].click();
-                submitButtonFound = true;
-                console.log(`✓ Successfully clicked button using XPath`);
-              }
-            } catch (e) {
-              console.log(`XPath didn't work: ${e.message}`);
+            submitButtonFound = await tryClickButton(
+              `//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '${buttonText.toLowerCase()}')]`,
+              'AI Vision XPath',
+              true
+            );
+            if (submitButtonFound) {
+              console.log(`✓ Successfully clicked button using XPath`);
             }
           }
         } else {
-          // Try the selector as-is (might be valid CSS)
-          try {
-            console.log(`Trying AI Vision-detected selector: ${visionSelector}`);
-            await page.waitForSelector(visionSelector, { timeout: 10000 });
-            await page.click(visionSelector);
-            submitButtonFound = true;
+          // Try the selector as-is with retries
+          console.log(`Trying AI Vision-detected selector: ${visionSelector}`);
+          submitButtonFound = await tryClickButton(visionSelector, 'AI Vision selector');
+          if (submitButtonFound) {
             console.log(`✓ Successfully used AI Vision selector for submit button`);
-          } catch (e) {
-            console.log(`AI Vision selector didn't work (${e.message}), trying other methods...`);
+          } else {
+            console.log(`AI Vision selector didn't work after retries, trying other methods...`);
           }
         }
       }
       
-      // Fallback to traditional selectors
+      // Fallback to traditional selectors with multiple strategies
       if (!submitButtonFound) {
         const loginSubmitSelectors = [
-          'button[type="submit"]',
-          'input[type="submit"]',
-          'form button[type="submit"]',
-          'button:has-text("Sign in")',
-          'button:has-text("Sign In")',
-          'button:has-text("Signin")',
-          'button:has-text("Login")',
-          'button:has-text("Log in")',
-          'button[class*="submit" i]',
-          'button[class*="login" i]',
-          'button[class*="sign" i]',
-          'form button:first-of-type',
-          'button:first-of-type'
+          'form button[type="submit"]', // More specific - button in form
+          'button[type="submit"]', // Standard submit button
+          'input[type="submit"]', // Input submit button
+          'form button:last-of-type', // Last button in form (usually submit)
+          'form button', // Any button in form
+          'button[type="submit"]:not([disabled])', // Enabled submit button
         ];
 
         for (const selector of loginSubmitSelectors) {
-          try {
-            await page.waitForSelector(selector, { timeout: 10000 });
-            console.log(`Found submit button with selector: ${selector}`);
-            submitButtonFound = true;
-            await page.click(selector);
+          submitButtonFound = await tryClickButton(selector, selector);
+          if (submitButtonFound) {
+            console.log(`✓ Found and clicked submit button with selector: ${selector}`);
             break;
-          } catch (e) {
-            continue;
           }
         }
       }
       
-      // Try XPath for "Sign in" button text
+      // Try XPath for "Sign in" button text (case-insensitive)
+      if (!submitButtonFound) {
+        console.log('Trying XPath to find "Sign in" button...');
+        const xpathSelectors = [
+          "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'sign in')]",
+          "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'signin')]",
+          "//button[normalize-space(text())='Sign in']",
+          "//button[normalize-space(text())='Sign In']",
+          "//input[@type='submit']",
+          "//button[@type='submit']"
+        ];
+        
+        for (const xpath of xpathSelectors) {
+          submitButtonFound = await tryClickButton(xpath, 'XPath', true);
+          if (submitButtonFound) {
+            console.log(`✓ Found and clicked button using XPath: ${xpath.substring(0, 50)}...`);
+            break;
+          }
+        }
+      }
+      
+      // Try finding button by evaluating all buttons on page
       if (!submitButtonFound) {
         try {
-          console.log('Trying XPath to find "Sign in" button...');
-          const signInButtons = await page.$x("//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'sign in')]");
-          if (signInButtons.length > 0) {
-            await signInButtons[0].click();
-            submitButtonFound = true;
-            console.log('✓ Found and clicked "Sign in" button using XPath');
+          console.log('Trying to find submit button by evaluating page...');
+          const buttonInfo = await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll('button, input[type="submit"]'));
+            return buttons.map((btn, idx) => ({
+              index: idx,
+              type: btn.type,
+              text: btn.textContent?.trim() || btn.value || '',
+              tagName: btn.tagName,
+              isVisible: btn.offsetParent !== null,
+              isEnabled: !btn.disabled,
+              className: btn.className,
+              id: btn.id
+            }));
+          });
+          
+          console.log('Available buttons on page:', JSON.stringify(buttonInfo, null, 2));
+          
+          // Try to find the submit button
+          for (const btnInfo of buttonInfo) {
+            if (btnInfo.isVisible && btnInfo.isEnabled && 
+                (btnInfo.type === 'submit' || 
+                 btnInfo.text.toLowerCase().includes('sign in') ||
+                 btnInfo.text.toLowerCase().includes('login'))) {
+              const selector = btnInfo.id ? `#${btnInfo.id}` : 
+                              btnInfo.className ? `.${btnInfo.className.split(' ')[0]}` :
+                              `${btnInfo.tagName.toLowerCase()}:nth-of-type(${btnInfo.index + 1})`;
+              submitButtonFound = await tryClickButton(selector, `Evaluated button: ${btnInfo.text}`);
+              if (submitButtonFound) {
+                console.log(`✓ Clicked button found by evaluation: ${btnInfo.text}`);
+                break;
+              }
+            }
           }
         } catch (e) {
-          console.log(`XPath search failed: ${e.message}`);
+          console.log(`Button evaluation failed: ${e.message}`);
         }
       }
 
       if (!submitButtonFound) {
         // Try pressing Enter as fallback (often works for forms)
-        console.log('Submit button not found, trying Enter key on password field...');
-        // Focus on password field and press Enter
+        console.log('Submit button not found after all attempts, trying Enter key on password field...');
         if (passwordSelector) {
           await page.focus(passwordSelector);
           await delay(500);

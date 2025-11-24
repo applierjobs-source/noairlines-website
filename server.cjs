@@ -1852,7 +1852,12 @@ Return JSON:
             const hasFormFields = !!document.querySelector('input[name*="first" i], input[id*="first-name" i], input[id="first-name"]');
             const hasModal = !!document.querySelector('[role="dialog"], .modal, [class*="modal" i]');
             const isContactPage = url.includes('contact-management') || url.includes('contacts');
-            const hasAddButton = !!document.querySelector('button:has-text("Add New Contact"), button[aria-label*="add new contact" i]');
+            
+            // Check for Add New Contact button (can't use :has-text in CSS, so check text content)
+            const hasAddButton = Array.from(document.querySelectorAll('button, [role="button"]')).some(btn => {
+              const text = (btn.textContent || btn.getAttribute('aria-label') || '').toLowerCase();
+              return text.includes('add new contact') || text.includes('add contact');
+            });
             
             return {
               isContactPage: isContactPage,

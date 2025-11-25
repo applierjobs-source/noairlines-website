@@ -1,0 +1,26 @@
+FROM n8nio/n8n:latest
+
+USER root
+
+# Install Chromium and all required dependencies for Puppeteer
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    ttf-opensans \
+    ttf-dejavu \
+    ttf-liberation \
+    udev
+
+# Install puppeteer-core (lighter than full puppeteer, uses system Chromium)
+RUN npm install -g puppeteer-core
+
+# Configure Puppeteer to use system Chromium instead of downloading
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+USER node
+
